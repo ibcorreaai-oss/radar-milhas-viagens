@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
+import { planHasChannel } from '@/lib/plans';
 import type { CabinClass } from '@/lib/types';
 
 // Server Action do formulário de perfil (`<form action={updateProfile}>`).
@@ -32,8 +33,11 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const flexibleDates = formData.get('flexible_dates') === 'true';
   const monthlyBudgetRaw = String(formData.get('monthly_budget') ?? '').trim();
   const monthlyBudget = monthlyBudgetRaw ? Number(monthlyBudgetRaw) : null;
-  const notifyEmail = formData.get('notify_email') === 'true';
-  const notifyWhatsapp = formData.get('notify_whatsapp') === 'true';
+  // Clampa contra o plano atual — mesma regra do onboarding (ver
+  // app/onboarding/actions.ts), pra nunca gravar notify_*=true pra um canal
+  // que o plano do usuário não libera.
+  const notifyEmail = formData.get('notify_email') === 'true' && planHasChannel(ctx.plan, 'email');
+  const notifyWhatsapp = formData.get('notify_whatsapp') === 'true' && planHasChannel(ctx.plan, 'whatsapp');
   const preferredCurrency = String(formData.get('preferred_currency') ?? 'BRL').trim() || 'BRL';
 
   if (!fullName) {

@@ -2,6 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth';
+import { planHasChannel } from '@/lib/plans';
 import type { CabinClass } from '@/lib/types';
 
 export interface OnboardingState {
@@ -40,8 +42,15 @@ export async function completeOnboarding(
     : 'qualquer';
 
   const flexibleDates = formData.get('flexible_dates') === 'true';
-  const notifyEmail = formData.get('notify_email') === 'true';
-  const notifyWhatsapp = formData.get('notify_whatsapp') === 'true';
+
+  // Plano do usuário determina quais canais de alerta ele pode de fato
+  // receber (ver lib/plans.ts) — clampa aqui pra nunca gravar notify_*=true
+  // pra um canal que o plano atual não libera, mesmo que o switch do form
+  // tenha vindo marcado (defesa em profundidade, não só UI).
+  const ctx = await getUserContext();
+  const plan = ctx?.plan ?? 'free';
+  const notifyEmail = formData.get('notify_email') === 'true' && planHasChannel(plan, 'email');
+  const notifyWhatsapp = formData.get('notify_whatsapp') === 'true' && planHasChannel(plan, 'whatsapp');
 
   const monthlyBudgetRaw = String(formData.get('monthly_budget') || '').trim();
   const monthlyBudgetNumber = monthlyBudgetRaw ? Number(monthlyBudgetRaw) : null;

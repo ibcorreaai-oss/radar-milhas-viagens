@@ -36,6 +36,12 @@ export function OpportunityForm({
   action: (formData: FormData) => void;
 }) {
   const [featured, setFeatured] = useState(opportunity?.featured ?? false);
+  // Controlado à parte do <input type="datetime-local"> (que não tem
+  // timezone embutido) para converter pra ISO/UTC no horário local do
+  // navegador do admin antes de submeter — senão o Postgres interpreta a
+  // string "YYYY-MM-DDTHH:mm" como UTC, adiantando/atrasando a expiração.
+  const [expiresAtLocal, setExpiresAtLocal] = useState(toDatetimeLocalValue(opportunity?.expires_at));
+  const expiresAtIso = expiresAtLocal ? new Date(expiresAtLocal).toISOString() : '';
 
   return (
     <Card>
@@ -145,10 +151,11 @@ export function OpportunityForm({
               <Label htmlFor="expires_at">Expira em</Label>
               <Input
                 id="expires_at"
-                name="expires_at"
                 type="datetime-local"
-                defaultValue={toDatetimeLocalValue(opportunity?.expires_at)}
+                value={expiresAtLocal}
+                onChange={(e) => setExpiresAtLocal(e.target.value)}
               />
+              <input type="hidden" name="expires_at" value={expiresAtIso} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="source">Origem do dado</Label>

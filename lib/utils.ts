@@ -34,3 +34,13 @@ export function formatDurationMinutes(minutes: number): string {
   const m = minutes % 60;
   return `${h}h${m > 0 ? ` ${m}min` : ''}`;
 }
+
+// Converte string de formulário em número, ou null se vazia/inválida —
+// nunca deixa NaN vazar para um insert/update no Supabase.
+export function parseNumberOrNull(raw: FormDataEntryValue | null | undefined): number | null {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}

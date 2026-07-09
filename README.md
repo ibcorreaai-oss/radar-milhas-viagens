@@ -67,7 +67,7 @@ Ordem sugerida:
 - [ ] Preencher `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_CONSULTOR`
 - [ ] Criar webhook apontando para `https://<seu-domínio>/api/webhooks/stripe`, eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
 - [ ] Copiar `STRIPE_WEBHOOK_SECRET`
-- [ ] Ativar o Billing Portal do Stripe (Settings → Billing → Customer portal)
+- [ ] Ativar o Billing Portal do Stripe (Settings → Billing → Customer portal) e habilitar a opção "Update subscription" (permitir trocar de plano) apontando pros 3 Prices pagos — o app manda quem já assina pro Billing Portal em vez de abrir um Checkout novo, justamente pra nunca criar uma segunda assinatura cobrando em paralelo
 - [ ] Testar uma assinatura ponta a ponta em modo teste
 
 ### 3. Resend (e-mail)

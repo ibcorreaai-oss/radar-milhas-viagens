@@ -43,12 +43,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // end_date é opcional (promoção sem data de fim definida) — se usasse só
+    // .gte('end_date', today), uma linha com end_date NULL nunca bateria a
+    // condição (NULL >= X é NULL, não true, em SQL) e ficaria presa em
+    // "futura" pra sempre mesmo depois do start_date passar.
     const { data: activated, error: activateError } = await admin
       .from('promotions')
       .update({ status: 'ativa' })
       .eq('status', 'futura')
       .lte('start_date', today)
-      .gte('end_date', today)
+      .or(`end_date.is.null,end_date.gte.${today}`)
       .select('id');
 
     if (activateError) {

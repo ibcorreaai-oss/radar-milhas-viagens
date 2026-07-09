@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 export interface LoginState {
   error?: string;
@@ -13,8 +14,7 @@ export async function signInWithPassword(
 ): Promise<LoginState> {
   const email = String(formData.get('email') || '').trim();
   const password = String(formData.get('password') || '');
-  const nextRaw = String(formData.get('next') || '');
-  const next = nextRaw.startsWith('/') ? nextRaw : '/dashboard';
+  const next = safeRedirectPath(String(formData.get('next') || ''), '/dashboard');
 
   if (!email || !password) {
     return { error: 'Preencha e-mail e senha.' };

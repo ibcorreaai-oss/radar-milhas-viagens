@@ -14,6 +14,18 @@ export interface UserContext {
 // Retorna null se não há sessão — cada página decide se redireciona
 // (o middleware já bloqueia rotas protegidas, isto é defesa em profundidade).
 export async function getUserContext(): Promise<UserContext | null> {
+  // Antes do Supabase real ser configurado (checklist do README ainda não
+  // rodada), trata como "sem sessão" em vez de lançar — createClient() joga
+  // erro de propósito pra quem PRECISA do Supabase de verdade, mas pra
+  // getUserContext() "não configurado" e "deslogado" são a mesma coisa pra
+  // quem chama (a maioria só faz `if (!ctx) redirect('/login')` ou mostra
+  // a página em modo público). Sem isso, todo page.tsx do grupo (app) —
+  // inclusive páginas públicas como /promocoes, /programas, /calculadora —
+  // quebra com 500 assim que entra no ar, antes mesmo do onboarding manual.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

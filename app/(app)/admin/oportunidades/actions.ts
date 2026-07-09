@@ -3,6 +3,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/admin-guard';
+import { parseNumberOrNull } from '@/lib/utils';
 import type { OpportunityType } from '@/lib/types';
 
 function parseOpportunityForm(formData: FormData) {
@@ -12,19 +14,15 @@ function parseOpportunityForm(formData: FormData) {
   const origin = String(formData.get('origin') ?? '').trim().toUpperCase() || null;
   const destination = String(formData.get('destination') ?? '').trim().toUpperCase() || null;
   const city = String(formData.get('city') ?? '').trim() || null;
-  const cashPriceRaw = String(formData.get('cash_price') ?? '').trim();
-  const cash_price = cashPriceRaw ? Number(cashPriceRaw) : null;
-  const pointsPriceRaw = String(formData.get('points_price') ?? '').trim();
-  const points_price = pointsPriceRaw ? Number(pointsPriceRaw) : null;
-  const taxesRaw = String(formData.get('taxes') ?? '0').trim();
-  const taxes = taxesRaw ? Number(taxesRaw) || 0 : 0;
+  const cash_price = parseNumberOrNull(formData.get('cash_price'));
+  const points_price = parseNumberOrNull(formData.get('points_price'));
+  const taxes = parseNumberOrNull(formData.get('taxes')) ?? 0;
   const loyalty_program = String(formData.get('loyalty_program') ?? '').trim() || null;
-  const scoreRaw = String(formData.get('score') ?? '0').trim();
-  const score = scoreRaw ? Math.max(0, Math.min(100, Number(scoreRaw) || 0)) : 0;
+  const score = Math.max(0, Math.min(100, parseNumberOrNull(formData.get('score')) ?? 0));
   const recommendation = String(formData.get('recommendation') ?? '').trim() || null;
   const featured = formData.get('featured') === 'true';
-  // Vem de um <input type="datetime-local"> — string "YYYY-MM-DDTHH:mm" que
-  // o Postgres aceita direto numa coluna timestamptz.
+  // O client (opportunity-form.tsx) já converte o <input type="datetime-local">
+  // pra ISO/UTC antes de submeter — aqui só recebemos a string ISO pronta.
   const expires_at = String(formData.get('expires_at') ?? '').trim() || null;
   const source = String(formData.get('source') ?? 'manual').trim() || 'manual';
   const affiliate_url = String(formData.get('affiliate_url') ?? '').trim() || null;
@@ -60,6 +58,7 @@ function parseOpportunityForm(formData: FormData) {
 }
 
 export async function createOpportunity(formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parseOpportunityForm(formData);
 
@@ -73,6 +72,7 @@ export async function createOpportunity(formData: FormData): Promise<void> {
 }
 
 export async function updateOpportunity(id: string, formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parseOpportunityForm(formData);
 
@@ -86,6 +86,7 @@ export async function updateOpportunity(id: string, formData: FormData): Promise
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from('opportunities').delete().eq('id', id);
@@ -97,6 +98,7 @@ export async function deleteOpportunity(id: string): Promise<void> {
 }
 
 export async function toggleFeatured(id: string, featured: boolean): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from('opportunities').update({ featured: !featured }).eq('id', id);

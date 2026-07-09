@@ -1,6 +1,6 @@
 import { Wallet } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LoyaltyProgramCard } from '@/components/loyalty-program-card';
 import { EmptyState } from '@/components/empty-state';
@@ -16,6 +16,18 @@ const TYPE_TAB_LABEL: Record<LoyaltyProgramType, string> = {
 };
 
 export default async function ProgramasPage() {
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          title="Catálogo de programas ainda não disponível"
+          description="O catálogo de programas de pontos está sendo configurado. Volte em breve."
+          icon={Wallet}
+        />
+      </div>
+    );
+  }
+
   const ctx = await getUserContext();
   const supabase = await createClient();
 

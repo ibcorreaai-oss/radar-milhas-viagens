@@ -294,9 +294,14 @@ function TabHospedagem({ userPrograms }: { userPrograms: UserProgramOption[] }) 
     }
   }
 
-  const cash = toNumber(cashPrice);
+  const cashPerNight = toNumber(cashPrice);
   const perNight = toNumber(pointsPerNight);
   const numNights = Math.max(1, toNumber(nights) || 1);
+  // Preço em dinheiro é por noite, mas os pontos exibidos/comparados já são
+  // o total da estadia — precisa multiplicar a diária pelas noites antes de
+  // comparar, senão o valor do milheiro e a economia saem com unidades
+  // incompatíveis (1 noite de dinheiro vs N noites de pontos).
+  const cash = cashPerNight * numNights;
   const points = perNight * numNights;
   const tax = toNumber(taxes);
   const cost1000 = costPer1000 !== '' ? toNumber(costPer1000) : null;
@@ -367,6 +372,7 @@ function TabHospedagem({ userPrograms }: { userPrograms: UserProgramOption[] }) 
         {points > 0 && (
           <p className="text-xs text-muted-foreground">
             Total para a estadia: {formatPoints(points)} pontos ({formatPoints(perNight)}/noite × {numNights} noites)
+            {cash > 0 && <> · {formatBRL(cash)} em dinheiro ({formatBRL(cashPerNight)}/noite)</>}
           </p>
         )}
 

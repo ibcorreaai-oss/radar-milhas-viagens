@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { askConsultant, type ChatMessage, type ConsultantUserContext } from './actions';
+import { askConsultant, type ChatMessage } from './actions';
 
 const SUGGESTED_QUESTIONS = [
   'Tenho X pontos, para onde consigo viajar barato em dezembro?',
@@ -15,7 +15,7 @@ const SUGGESTED_QUESTIONS = [
   'Devo esperar uma promoção ou comprar agora?',
 ];
 
-export function ConsultorChat({ userContext }: { userContext: ConsultantUserContext }) {
+export function ConsultorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,7 @@ export function ConsultorChat({ userContext }: { userContext: ConsultantUserCont
     setLoading(true);
 
     try {
-      const result = await askConsultant(messages, trimmed, userContext);
+      const result = await askConsultant(messages, trimmed);
       if (result.error || !result.reply) {
         setError(result.error || 'Não foi possível obter uma resposta agora. Tente novamente.');
       } else {

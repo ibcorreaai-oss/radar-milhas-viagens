@@ -3,6 +3,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/admin-guard';
+import { parseNumberOrNull } from '@/lib/utils';
 import type { PromotionType, PromotionStatus } from '@/lib/types';
 
 // Único parser de formulário reaproveitado por create/update — evita
@@ -11,8 +13,7 @@ function parsePromotionForm(formData: FormData) {
   const title = String(formData.get('title') ?? '').trim();
   const type = String(formData.get('type') ?? 'passagem') as PromotionType;
   const program = String(formData.get('program') ?? '').trim() || null;
-  const bonusPercentageRaw = String(formData.get('bonus_percentage') ?? '').trim();
-  const bonus_percentage = bonusPercentageRaw ? Number(bonusPercentageRaw) : null;
+  const bonus_percentage = parseNumberOrNull(formData.get('bonus_percentage'));
   const start_date = String(formData.get('start_date') ?? '').trim() || null;
   const end_date = String(formData.get('end_date') ?? '').trim() || null;
   const rules = String(formData.get('rules') ?? '').trim() || null;
@@ -29,6 +30,7 @@ function parsePromotionForm(formData: FormData) {
 }
 
 export async function createPromotion(formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parsePromotionForm(formData);
 
@@ -42,6 +44,7 @@ export async function createPromotion(formData: FormData): Promise<void> {
 }
 
 export async function updatePromotion(id: string, formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parsePromotionForm(formData);
 
@@ -55,6 +58,7 @@ export async function updatePromotion(id: string, formData: FormData): Promise<v
 }
 
 export async function deletePromotion(id: string): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from('promotions').delete().eq('id', id);

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/admin-guard';
 import type { LoyaltyProgramType } from '@/lib/types';
 
 function parseLoyaltyProgramForm(formData: FormData) {
@@ -32,6 +33,7 @@ function parseLoyaltyProgramForm(formData: FormData) {
 }
 
 export async function createLoyaltyProgram(formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parseLoyaltyProgramForm(formData);
 
@@ -45,6 +47,7 @@ export async function createLoyaltyProgram(formData: FormData): Promise<void> {
 }
 
 export async function updateLoyaltyProgram(id: string, formData: FormData): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
   const values = parseLoyaltyProgramForm(formData);
 
@@ -58,6 +61,7 @@ export async function updateLoyaltyProgram(id: string, formData: FormData): Prom
 }
 
 export async function deleteLoyaltyProgram(id: string): Promise<void> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from('loyalty_programs').delete().eq('id', id);

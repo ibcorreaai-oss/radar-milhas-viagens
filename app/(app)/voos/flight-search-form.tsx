@@ -84,7 +84,9 @@ export function FlightSearchForm() {
           </div>
 
           {/* Os switches acima são botões controlados (não inputs nativos) —
-              os hidden inputs abaixo é que efetivamente viajam no FormData. */}
+              os hidden inputs abaixo é que efetivamente viajam no FormData.
+              "compareBoth" é só copy no MVP: a action sempre traz preço em
+              dinheiro E em pontos quando o resultado tem os dois disponíveis. */}
           <input type="hidden" name="oneWay" value={oneWay ? 'true' : 'false'} />
           <input type="hidden" name="flexibleDates" value={flexibleDates ? 'true' : 'false'} />
           <input type="hidden" name="compareBoth" value={compareBoth ? 'true' : 'false'} />

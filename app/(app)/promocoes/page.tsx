@@ -1,6 +1,6 @@
 import { Gift } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PromotionCard } from '@/components/promotion-card';
 import { EmptyState } from '@/components/empty-state';
@@ -12,6 +12,18 @@ export default async function PromocoesPage() {
   // para eventual personalização futura, não bloqueia a renderização.
   const ctx = await getUserContext();
   void ctx;
+
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          title="Promoções ainda não disponíveis"
+          description="O catálogo de promoções está sendo configurado. Volte em breve."
+          icon={Gift}
+        />
+      </div>
+    );
+  }
 
   const supabase = await createClient();
   const { data } = await supabase
