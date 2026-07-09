@@ -30,9 +30,17 @@ export async function middleware(request: NextRequest) {
 
   let response = NextResponse.next({ request });
 
+  // Antes do Supabase real ser configurado (checklist do README ainda não
+  // rodada), não trava o app inteiro com 500 — deixa passar sem sessão.
+  // Rotas protegidas simplesmente não terão `user`, então nada sensível
+  // fica exposto; é só um fallback pra permitir ver a landing/preview.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
