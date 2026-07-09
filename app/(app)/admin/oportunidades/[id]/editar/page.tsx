@@ -1,0 +1,33 @@
+import { notFound, redirect } from 'next/navigation';
+import { getUserContext } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
+import { OpportunityForm } from '../../opportunity-form';
+import { updateOpportunity } from '../../actions';
+import type { Opportunity } from '@/lib/types';
+
+export default async function EditarOportunidadePage({ params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getUserContext();
+  if (ctx?.profile?.role !== 'admin') {
+    redirect('/dashboard');
+  }
+
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase.from('opportunities').select('*').eq('id', id).maybeSingle();
+
+  if (!data) {
+    notFound();
+  }
+
+  const opportunity = data as Opportunity;
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Editar oportunidade</h1>
+        <p className="mt-1 text-muted-foreground">{opportunity.title}</p>
+      </div>
+      <OpportunityForm opportunity={opportunity} action={updateOpportunity.bind(null, id)} />
+    </div>
+  );
+}
