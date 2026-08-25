@@ -111,6 +111,7 @@ export interface HotelSearch {
   checkout: string | null;
   guests: number;
   rooms: number;
+  flexible_dates: boolean;
   created_at: string;
 }
 

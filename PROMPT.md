@@ -4,6 +4,17 @@
 > O prompt original (30 seções, "emissor de milhas" implícito) foi reestruturado em torno de
 > um pivô estratégico e de uma ordem de construção que entrega valor vendável mais rápido.
 
+> **Atualização de 25/08/2026:** o Igor trouxe um "prompt mestre" de 96 seções pedindo uma
+> plataforma completa de busca/comparação de hospedagens estilo Booking/Trivago. Depois de
+> avaliado o conflito com o pivô abaixo, a decisão final do Igor foi: **o produto continua
+> sendo um clube premium de oportunidades e alertas de viagem com IA**, porém passa a usar
+> padrões modernos de UX de marketplaces de viagem (busca com autocomplete, calendário,
+> seletor de hóspedes, cards mais ricos) para facilitar busca, descoberta e análise de
+> oportunidades. **O objetivo não é reproduzir Booking ou Trivago — é construir uma camada de
+> inteligência sobre o mercado de viagens.** Booking/Trivago/Kayak/Skyscanner são referência de
+> UX, nunca modelo de negócio. Ver `VISION_MASTER.md` para o detalhamento e a ordem de
+> incorporação progressiva dessas ideias.
+
 ## 0. Avaliação do prompt original
 
 **Pontos fortes:** escopo de domínio muito bem pensado (score de oportunidade, dinheiro vs

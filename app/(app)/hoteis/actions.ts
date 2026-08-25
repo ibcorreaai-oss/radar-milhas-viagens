@@ -68,6 +68,8 @@ export async function searchHotels(formData: FormData): Promise<void> {
   const starsMinRaw = String(formData.get('starsMin') ?? '').trim();
   const starsMin = starsMinRaw ? Number(starsMinRaw) || 0 : 0;
 
+  const flexibleDates = formData.get('flexibleDates') === 'true';
+
   if (!city) {
     redirect('/hoteis?erro=1');
   }
@@ -82,6 +84,7 @@ export async function searchHotels(formData: FormData): Promise<void> {
       checkout,
       guests,
       rooms,
+      flexible_dates: flexibleDates,
     })
     .select('id')
     .single();
@@ -143,6 +146,7 @@ export async function searchHotels(formData: FormData): Promise<void> {
       pointsPrice: result.pointsPrice,
       taxes: result.taxes,
       averageMileValue,
+      flexibleDates,
     });
 
     return {

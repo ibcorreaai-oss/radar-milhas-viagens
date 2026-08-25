@@ -9,6 +9,9 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { DestinationField } from '@/components/destination-field';
+import { DateRangeField } from '@/components/date-range-field';
+import { GuestsField } from '@/components/guests-field';
 
 const STARS_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Qualquer categoria' },
@@ -19,6 +22,7 @@ const STARS_OPTIONS: { value: string; label: string }[] = [
 
 export function HotelSearchForm() {
   const [payWithPoints, setPayWithPoints] = useState(true);
+  const [flexibleDates, setFlexibleDates] = useState(false);
 
   return (
     <Card>
@@ -32,21 +36,25 @@ export function HotelSearchForm() {
       <CardContent>
         <form action={searchHotels} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="city">Cidade</Label>
-              <Input id="city" name="city" placeholder="Ex.: Fortaleza" required maxLength={80} />
-            </div>
+            <DestinationField
+              name="city"
+              label="Cidade"
+              placeholder="Ex.: Fortaleza"
+              required
+              className="sm:col-span-2"
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="checkin">Check-in</Label>
-              <Input id="checkin" name="checkin" type="date" required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="checkout">Check-out</Label>
-              <Input id="checkout" name="checkout" type="date" required />
-            </div>
+            <DateRangeField startName="checkin" endName="checkout" startLabel="Check-in" endLabel="Check-out" required />
+            <GuestsField
+              fieldLabel="Hóspedes e quartos"
+              counters={[
+                { key: 'guests', label: 'Hóspedes', min: 1, defaultValue: 2 },
+                { key: 'rooms', label: 'Quartos', min: 1, defaultValue: 1 },
+              ]}
+              summary={(v) => `${v.guests} hóspede${v.guests > 1 ? 's' : ''} · ${v.rooms} quarto${v.rooms > 1 ? 's' : ''}`}
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
@@ -56,34 +64,25 @@ export function HotelSearchForm() {
                 Também quero pagar com pontos
               </Label>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch id="flexibleDates" checked={flexibleDates} onCheckedChange={setFlexibleDates} />
+              <Label htmlFor="flexibleDates" className="cursor-pointer font-normal">
+                Minhas datas são flexíveis
+              </Label>
+            </div>
           </div>
 
-          {/* O switch acima é um botão controlado (não input nativo) — o
-              hidden input abaixo é que efetivamente viaja no FormData. No
-              MVP é só copy: o mock já traz as duas opções quando o hotel
-              tem programa de fidelidade. */}
+          {/* Os switches acima são botões controlados (não inputs nativos) — os
+              hidden inputs abaixo é que efetivamente viajam no FormData. */}
           <input type="hidden" name="payWithPoints" value={payWithPoints ? 'true' : 'false'} />
+          <input type="hidden" name="flexibleDates" value={flexibleDates ? 'true' : 'false'} />
 
           <Separator />
 
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="guests">Hóspedes</Label>
-              <Input id="guests" name="guests" type="number" min={1} defaultValue={2} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="rooms">Quartos</Label>
-              <Input id="rooms" name="rooms" type="number" min={1} defaultValue={1} required />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="maxBudgetPerNight">Orçamento máx./noite</Label>
-              <Input
-                id="maxBudgetPerNight"
-                name="maxBudgetPerNight"
-                type="number"
-                min={0}
-                placeholder="Opcional"
-              />
+              <Input id="maxBudgetPerNight" name="maxBudgetPerNight" type="number" min={0} placeholder="Opcional" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="starsMin">Categoria mínima</Label>

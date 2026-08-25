@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
+import { HeroSearchBox } from '@/components/hero-search-box';
+import { CashVsPointsTeaser } from '@/components/cash-vs-points-teaser';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -122,31 +124,28 @@ export default function HomePage() {
                 Clube de alertas de viagem com IA
               </Badge>
               <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Você não precisa virar especialista em milhas para viajar pagando menos
+                Viaje mais. Pague menos.
               </h1>
               <p className="mt-6 text-pretty text-lg text-muted-foreground sm:text-xl">
-                O Radar Milhas &amp; Viagens é uma assinatura que vigia o preço de passagens e
-                hotéis por você — em dinheiro ou em pontos — e avisa só quando realmente vale a
-                pena. Sem planilha, sem grupo de WhatsApp, sem virar expert.
+                A inteligência que monitora preços, pontos e milhas e avisa quando aparece uma
+                oportunidade de verdade — em dinheiro ou em pontos. Sem planilha, sem grupo de
+                WhatsApp, sem virar expert em milhas.
               </p>
-              <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link href="/cadastro" className={cn(buttonVariants({ size: 'lg' }), 'w-full sm:w-auto')}>
-                  Criar conta grátis
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="#precos"
-                  className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'w-full sm:w-auto')}
-                >
+            </div>
+
+            <div className="mt-10">
+              <HeroSearchBox />
+              <p className="mt-4 text-center text-sm text-muted-foreground">
+                Grátis para começar. Sem cartão de crédito.{' '}
+                <Link href="#precos" className="font-medium text-primary underline underline-offset-4">
                   Ver planos
                 </Link>
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                Grátis para começar. Sem cartão de crédito.
               </p>
             </div>
           </div>
         </section>
+
+        <CashVsPointsTeaser />
 
         {/* Como funciona */}
         <section id="como-funciona" className="scroll-mt-16 border-t border-border bg-muted/30 py-20">

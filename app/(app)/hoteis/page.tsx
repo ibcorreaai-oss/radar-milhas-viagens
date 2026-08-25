@@ -9,6 +9,7 @@ import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { EmptyState } from '@/components/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 function hotelSubtitle(result: HotelResult): string {
   const parts: string[] = [];
@@ -75,12 +76,17 @@ async function HotelResultsSection({ searchId }: { searchId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">
+        <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
           Hotéis em {typedSearch.city}
           {typedSearch.checkin && typedSearch.checkout && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
+            <span className="text-sm font-normal text-muted-foreground">
               {formatDate(typedSearch.checkin)} – {formatDate(typedSearch.checkout)}
             </span>
+          )}
+          {typedSearch.flexible_dates && (
+            <Badge variant="secondary" className="text-xs font-normal">
+              Datas flexíveis
+            </Badge>
           )}
         </h2>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
