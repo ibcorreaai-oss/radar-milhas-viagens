@@ -19,11 +19,17 @@ function SubmitButton({
   pendingLabel,
   intent,
   variant = 'default',
+  skipValidation = false,
 }: {
   label: string;
   pendingLabel: string;
   intent?: string;
   variant?: 'default' | 'ghost';
+  /** Achado em revisão adversarial: "Reenviar código" divide o <form> com o
+   * campo `code` (required) — sem isto, o browser bloqueia o clique em
+   * "Reenviar" com a validação nativa do campo de código ainda vazio, antes
+   * até da Server Action rodar. */
+  skipValidation?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
@@ -32,6 +38,7 @@ function SubmitButton({
       name={intent ? 'intent' : undefined}
       value={intent}
       variant={variant}
+      formNoValidate={skipValidation}
       className={variant === 'default' ? 'w-full' : 'w-full text-xs text-muted-foreground'}
       disabled={pending}
     >
@@ -111,6 +118,7 @@ function OtpLoginForm({ next }: { next?: string }) {
           label="Não recebeu? Reenviar código"
           pendingLabel="Reenviando..."
           variant="ghost"
+          skipValidation
         />
       </form>
     );

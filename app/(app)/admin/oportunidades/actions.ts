@@ -109,13 +109,24 @@ export async function deleteOpportunity(id: string): Promise<void> {
 }
 
 export async function toggleFeatured(id: string, featured: boolean): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from('opportunities').update({ featured: !featured }).eq('id', id);
   if (error) {
     throw new Error(`Erro ao atualizar destaque: ${error.message}`);
   }
+
+  // Achado na varredura de consistência da ETAPA 15.2: esta era a única
+  // action de escrita em /admin/* sem log de auditoria (todo o resto já
+  // tinha sido fechado na ETAPA 15.1).
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: !featured ? 'enable' : 'disable',
+    entity: 'opportunities',
+    entityId: id,
+    metadata: { featured: !featured },
+  });
 
   revalidatePath('/admin/oportunidades');
 }

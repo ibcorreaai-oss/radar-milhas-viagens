@@ -15,11 +15,17 @@ function SubmitButton({
   label,
   pendingLabel,
   variant = 'default',
+  skipValidation = false,
 }: {
   intent: string;
   label: string;
   pendingLabel: string;
   variant?: 'default' | 'ghost';
+  /** Achado em revisão adversarial: "Reenviar código" divide o <form> com o
+   * campo `code` (required) — sem isto, o browser bloqueia o clique em
+   * "Reenviar" com a validação nativa do campo de código ainda vazio, antes
+   * até da Server Action rodar. Mesmo fix de app/(auth)/login/login-form.tsx. */
+  skipValidation?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
@@ -28,6 +34,7 @@ function SubmitButton({
       name="intent"
       value={intent}
       variant={variant}
+      formNoValidate={skipValidation}
       className={variant === 'default' ? 'w-full' : 'w-full text-xs text-muted-foreground'}
       disabled={pending}
     >
@@ -71,6 +78,7 @@ export function CadastroForm({ referredByCode }: { referredByCode?: string }) {
           label="Não recebeu? Reenviar código"
           pendingLabel="Reenviando..."
           variant="ghost"
+          skipValidation
         />
       </form>
     );

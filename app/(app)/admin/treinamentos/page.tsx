@@ -1,13 +1,14 @@
 import Link from 'next/link';
-import { Plus, ArrowUp, ArrowDown, Eye, Users, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, Eye, Users, GraduationCap, CheckCircle2, Trash2 } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTable } from '@/components/admin-table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants, Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/ui/confirm-submit-button';
 import { cn } from '@/lib/utils';
-import { toggleModuleStatus, moveModule } from './actions';
+import { toggleModuleStatus, moveModule, deleteModule } from './actions';
 import { TRAINING_STATUS_LABEL } from '@/lib/types';
 import type { TrainingModule, TrainingLesson, LessonProgress } from '@/lib/types';
 
@@ -15,13 +16,11 @@ export default async function AdminTreinamentosPage() {
   await requireAdmin();
 
   const supabase = await createClient();
-  const [{ data: modulesData }, { data: lessonsData }, { count: usersStartedCount }, { data: progressRows }] =
-    await Promise.all([
-      supabase.from('training_modules').select('*').order('order_index'),
-      supabase.from('training_lessons').select('*'),
-      supabase.from('lesson_progress').select('user_id', { count: 'exact', head: true }),
-      supabase.from('lesson_progress').select('status'),
-    ]);
+  const [{ data: modulesData }, { data: lessonsData }, { data: progressRows }] = await Promise.all([
+    supabase.from('training_modules').select('*').order('order_index'),
+    supabase.from('training_lessons').select('*'),
+    supabase.from('lesson_progress').select('user_id, status'),
+  ]);
 
   const modules = (modulesData ?? []) as TrainingModule[];
   const lessons = (lessonsData ?? []) as TrainingLesson[];
@@ -30,15 +29,18 @@ export default async function AdminTreinamentosPage() {
     lessonCountByModule.set(lesson.module_id, (lessonCountByModule.get(lesson.module_id) ?? 0) + 1);
   }
 
-  const completedProgress = ((progressRows ?? []) as Pick<LessonProgress, 'status'>[]).filter(
-    (p) => p.status === 'completed'
-  ).length;
+  const progress = (progressRows ?? []) as Pick<LessonProgress, 'user_id' | 'status'>[];
+  const completedProgress = progress.filter((p) => p.status === 'completed').length;
+  // Achado em revisão adversarial: contar linhas de lesson_progress (1 por
+  // aula que o usuário tocou) infla essa métrica assim que alguém progride
+  // em mais de uma aula — precisa contar user_id distintos.
+  const usersStartedCount = new Set(progress.map((p) => p.user_id)).size;
   const publishedLessons = lessons.filter((l) => l.status === 'published').length;
 
   const stats = [
     { label: 'Módulos', value: modules.length, icon: GraduationCap },
     { label: 'Aulas publicadas', value: publishedLessons, icon: Eye },
-    { label: 'Usuários com progresso', value: usersStartedCount ?? 0, icon: Users },
+    { label: 'Usuários com progresso', value: usersStartedCount, icon: Users },
     { label: 'Aulas concluídas (total)', value: completedProgress, icon: CheckCircle2 },
   ];
 
@@ -116,6 +118,15 @@ export default async function AdminTreinamentosPage() {
             <Link href={`/admin/treinamentos/modulos/${m.id}`} className={cn(buttonVariants({ variant: 'default', size: 'sm' }))}>
               Gerenciar aulas
             </Link>
+            <form action={deleteModule.bind(null, m.id)}>
+              <ConfirmSubmitButton
+                variant="destructive"
+                size="sm"
+                confirmMessage={`Excluir o módulo "${m.title}"? Todas as ${lessonCountByModule.get(m.id) ?? 0} aula(s) dele e o progresso de usuários nessas aulas são excluídos junto. Fica registrado em audit_logs, mas não tem desfazer no app.`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </ConfirmSubmitButton>
+            </form>
           </div>
         )}
       />

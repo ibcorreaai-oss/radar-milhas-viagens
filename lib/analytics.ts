@@ -25,13 +25,31 @@ const TIKTOK_EVENT: Record<ConversionEvent, string> = {
   subscribe: 'Subscribe',
 };
 
+// Diferente de Meta/TikTok (eventos padrão com nome fixo), o Twitter/X Ads
+// não tem "nomes de evento" globais — cada conversão precisa de um "Event
+// ID" (formato tw-xxxxx-yyyyy) criado manualmente na conta de anúncios do
+// Igor. Achado em revisão adversarial: o código mandava o nome interno do
+// ConversionEvent (ex.: "lead") direto pro twq(), um ID que a conta do
+// Twitter nunca reconhece — a conversão carregava a pixel/PageView
+// corretamente, mas nenhum evento de conversão aparecia no Twitter Ads,
+// silenciosamente. Sem o Event ID configurado, o evento correspondente
+// simplesmente não dispara (mesmo espírito de "sem pixel configurado = no-op").
+const TWITTER_EVENT_ENV: Record<ConversionEvent, string | undefined> = {
+  lead: process.env.NEXT_PUBLIC_TWITTER_EVENT_ID_LEAD,
+  sign_up: process.env.NEXT_PUBLIC_TWITTER_EVENT_ID_SIGNUP,
+  subscribe: process.env.NEXT_PUBLIC_TWITTER_EVENT_ID_SUBSCRIBE,
+};
+
 export function trackConversion(event: ConversionEvent, params?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
 
   try {
     window.gtag?.('event', event, params);
     window.fbq?.('track', META_EVENT[event], params);
-    window.twq?.('event', event, params);
+    const twitterEventId = TWITTER_EVENT_ENV[event];
+    if (twitterEventId) {
+      window.twq?.('event', twitterEventId, params);
+    }
     window.ttq?.track(TIKTOK_EVENT[event], params);
   } catch (err) {
     // Nunca deixar uma falha de pixel de terceiro quebrar o fluxo real do

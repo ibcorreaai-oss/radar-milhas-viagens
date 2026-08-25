@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { isBlocked } from '@/lib/roles';
+import { BlockedAccountScreen } from '@/components/blocked-account-screen';
 import type { LoyaltyProgram, UserLoyaltyProgram } from '@/lib/types';
 import { OnboardingForm } from './onboarding-form';
 
@@ -13,6 +15,15 @@ export default async function OnboardingPage() {
   // profundidade, mesmo padrão de lib/auth.ts.
   if (!ctx) {
     redirect('/login?next=/onboarding');
+  }
+
+  // Achado em revisão adversarial (ETAPA 15.2): app/(app)/layout.tsx troca
+  // pra BlockedAccountScreen em toda rota do AppShell, mas /onboarding fica
+  // FORA do grupo (app) de propósito (não usa a sidebar) — isso também
+  // significava ficar fora daquele enforcement. Uma conta bloqueada
+  // continuava vendo o formulário de onboarding inteiro.
+  if (isBlocked(ctx.profile)) {
+    return <BlockedAccountScreen reason={ctx.profile?.blocked_reason ?? null} />;
   }
 
   const supabase = await createClient();

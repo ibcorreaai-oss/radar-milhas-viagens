@@ -30,11 +30,22 @@ const leadSchema = z.object({
 });
 
 // 10 trocas (20 mensagens) — depois disso, empurra pro cadastro em vez de
-// deixar a conversa continuar indefinidamente num endpoint público.
+// deixar a conversa continuar indefinidamente num endpoint público. Isto é
+// só uma sugestão de UX pro widget (o `history` mandado de volta é
+// controlado pelo PRÓPRIO client) — quem chama a Server Action direto pode
+// mandar qualquer array. A trava de verdade é MAX_MESSAGES_PER_DAY abaixo.
 const MAX_HISTORY = 20;
 // No máximo 3 conversas novas por e-mail em 24h — trava um script tentando
 // gerar lead/custo de IA em massa, sem precisar de infra de rate limit nova.
 const MAX_NEW_CHATS_PER_DAY = 3;
+// Teto de verdade contra abuso: achado em revisão adversarial que o check
+// acima só rodava quando `history.length === 0`, e esse campo é decidido
+// pelo client — chamar a action direto com um array forjado sempre curto
+// pulava o limite inteiro (chamada ilimitada e grátis à Anthropic). Este
+// contador roda em TODA mensagem, via RPC atômica no banco
+// (0019_home_chat_message_counter.sql), nunca confiando em nada vindo do
+// client. ~3 conversas de MAX_HISTORY cada, com folga.
+const MAX_MESSAGES_PER_DAY = 60;
 
 const FALLBACK_ANSWER =
   'No momento não consigo responder com IA completa, mas aqui vai o resumo: o Radar Milhas & Viagens compara preço de passagem/hotel em dinheiro vs pontos e avisa só quando vale a pena, com planos a partir de grátis. Crie sua conta em /cadastro (é gratuito) pra ver os alertas e o Consultor IA completo, personalizado com seus próprios pontos.';
@@ -62,6 +73,22 @@ async function recentChatCount(email: string): Promise<number> {
   const { data, error } = await supabase.rpc('count_recent_home_chat_leads', { target_email: email });
   if (error) {
     logger.error('integration', 'Falha ao checar limite de conversas do chat público', { reason: error.message });
+    return 0;
+  }
+  return data ?? 0;
+}
+
+// Incrementa e devolve a contagem de mensagens de HOJE pra este e-mail, via
+// RPC atômica (insert...on conflict) — nunca confia em `history.length` do
+// client. Falha aberta (0) só em erro de infraestrutura, igual ao padrão de
+// recentChatCount acima; se Supabase não está configurado, não há como
+// persistir o contador mesmo, então também não há limite pra impor.
+async function incrementDailyMessageCount(email: string): Promise<number> {
+  if (!isSupabaseConfigured()) return 0;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('increment_home_chat_message_count', { target_email: email });
+  if (error) {
+    logger.error('integration', 'Falha ao incrementar contador de mensagens do chat público', { reason: error.message });
     return 0;
   }
   return data ?? 0;
@@ -128,6 +155,15 @@ export async function askPublicAssistant(
   }
 
   const { name, email } = parsedLead.data;
+
+  // Teto de verdade, em toda mensagem — não depende de `history.length`
+  // (controlado pelo client, ver comentário de MAX_MESSAGES_PER_DAY acima).
+  const messageCountToday = await incrementDailyMessageCount(email);
+  if (messageCountToday > MAX_MESSAGES_PER_DAY) {
+    return {
+      error: 'Muitas mensagens enviadas com este e-mail hoje. Tente de novo amanhã, ou crie sua conta em /cadastro.',
+    };
+  }
 
   if (history.length === 0) {
     const recentCount = await recentChatCount(email);
