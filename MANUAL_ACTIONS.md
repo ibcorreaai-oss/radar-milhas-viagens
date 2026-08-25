@@ -110,3 +110,29 @@ sessão não mexeu em nenhuma integração de pagamento/e-mail/WhatsApp/voo/hote
   **Resolve sozinho** configurando `RESEND_API_KEY` (seção 3 do README) e trocando o mailer
   padrão do Supabase por SMTP próprio em Authentication → Settings → SMTP Settings — sem
   isso, qualquer projeto novo do Supabase esbarra nesse limite rápido demais pra uso real.
+
+## 8. Verificação pós-queda de energia (25/08, depois da ETAPA 13)
+
+Depois de uma queda de energia, o Igor pediu pra verificar se algo da ETAPA 13 (NeuroUX/
+engajamento) tinha se perdido. **Nada se perdeu** — o commit `a0a2d95` já estava feito e a
+árvore do git estava limpa. Verificação completa feita nesta sessão:
+
+- [x] `tsc --noEmit` limpo, `npm run build` limpo (44 rotas, sem erro/warning novo).
+- [x] Migration `0008_achievements_flag` já aplicada no banco real (`gvncsfkypxcgfmifjqzh`);
+      flag `achievementsPanel` confirmada `enabled=false` (comportamento esperado, admin decide).
+- [x] Advisors de segurança/performance do Supabase checados — só avisos pré-existentes
+      (função `is_admin()`, RLS `auth.<fn>()` sem `select`, índices não usados), nenhum novo
+      introduzido por esta etapa.
+- [ ] **Não foi possível testar ao vivo (logado) onboarding/dashboard/perfil/nudge de alerta**
+      desta etapa. Tentei cadastrar um usuário real de QA pela própria tela de `/cadastro`
+      (`npm run dev` + Playwright) pra validar visualmente — deu exatamente o mesmo erro já
+      documentado no item 6 acima: `email rate limit exceeded` no mailer padrão do Supabase
+      (confirmado com e-mail em domínio real `@gmail.com`, não é bug de validação). Ou seja,
+      **o SMTP próprio (RESEND_API_KEY + Authentication → SMTP Settings) continua sendo o
+      único bloqueio real pra qualquer teste ao vivo logado** — não só desta etapa, de
+      qualquer parte autenticada do produto. Não tentei contornar isso escrevendo direto nas
+      tabelas internas do Supabase Auth (`auth.users`/`auth.identities`) — o classificador de
+      segurança bloqueou a tentativa corretamente (dado de credencial), e é a decisão certa.
+      Assim que o SMTP for configurado, uma sessão futura pode criar um usuário de teste real
+      e validar visualmente barra de progresso, toasts, celebração de onboarding, painel de
+      conquistas etc.
