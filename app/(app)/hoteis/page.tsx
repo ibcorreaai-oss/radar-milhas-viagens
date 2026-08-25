@@ -55,9 +55,14 @@ async function HotelResultsSection({ searchId }: { searchId: string }) {
 
   const typedSearch = search as HotelSearch;
 
+  // Coluna explícita, sem raw_data (jsonb com o payload bruto do provider —
+  // pode ser grande e não é usado nesta tela) nem provider/currency/
+  // created_at (não renderizados aqui).
   const { data: results } = await supabase
     .from('hotel_results')
-    .select('*')
+    .select(
+      'id, hotel_name, location, rating, stars, cash_price, points_price, taxes, loyalty_program, cancellation_policy, breakfast_included, score, recommendation'
+    )
     .eq('search_id', searchId)
     .order('score', { ascending: false });
 

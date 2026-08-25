@@ -7,8 +7,9 @@ premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original d
 `VISION_MASTER.md` para o norte de longo prazo (referência de UX, não muda o posicionamento) e
 `ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience Radar,
 Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore, rollback de
-deploy e recuperação de exclusão acidental de dados, e `OBSERVABILITY.md` para logs
-estruturados, auditoria, monitoramento de uptime e alertas críticos.
+deploy e recuperação de exclusão acidental de dados, `OBSERVABILITY.md` para logs
+estruturados, auditoria, monitoramento de uptime e alertas críticos, e `PERFORMANCE.md` para a
+auditoria de performance (consultas, cache por requisição, imagens, Core Web Vitals).
 
 ## Stack
 
@@ -120,6 +121,8 @@ Ordem sugerida:
 - [ ] Conferir todas as env vars acima também na Vercel (não só no `.env.local`)
 - [ ] Apontar um serviço de uptime gratuito (UptimeRobot, Better Uptime, Freshping) para
       `/api/health` — ver `OBSERVABILITY.md`
+- [ ] Habilitar o Vercel Speed Insights (gratuito no plano Hobby) para medir Core Web Vitals
+      de campo com tráfego real — ver `PERFORMANCE.md`
 
 ### 8. Testes finais ponta a ponta
 - [ ] Cadastro → onboarding → dashboard

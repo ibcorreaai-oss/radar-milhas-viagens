@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile, Subscription, PlanId } from '@/lib/types';
 
@@ -13,7 +14,14 @@ export interface UserContext {
 // páginas server-side que precisam gatear por plano ou saber onboarding_done.
 // Retorna null se não há sessão — cada página decide se redireciona
 // (o middleware já bloqueia rotas protegidas, isto é defesa em profundidade).
-export async function getUserContext(): Promise<UserContext | null> {
+//
+// Envolto em cache() de propósito: app/(app)/layout.tsx chama isto pra
+// montar o AppShell E quase toda page.tsx chama de novo pra checar plano/
+// onboarding — sem cache(), isso são 2 buscas ao Supabase (profile +
+// subscription) DUPLICADAS por página carregada. cache() do React dedupe
+// chamadas com os mesmos argumentos dentro da mesma passada de renderização
+// no servidor — mesma requisição HTTP, não vaza entre usuários/requests.
+export const getUserContext = cache(async (): Promise<UserContext | null> => {
   // Antes do Supabase real ser configurado (checklist do README ainda não
   // rodada), trata como "sem sessão" em vez de lançar — createClient() joga
   // erro de propósito pra quem PRECISA do Supabase de verdade, mas pra
@@ -45,4 +53,4 @@ export async function getUserContext(): Promise<UserContext | null> {
     subscription: (subscription as Subscription) ?? null,
     plan: (subscription?.plan as PlanId) ?? 'free',
   };
-}
+});

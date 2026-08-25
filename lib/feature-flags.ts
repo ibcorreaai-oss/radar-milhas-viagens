@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { FeatureFlagKey } from '@/lib/types';
 
@@ -14,7 +15,10 @@ const DEFAULTS: Record<FeatureFlagKey, boolean> = {
 // Único ponto de leitura de feature flags. Se o Supabase não estiver
 // configurado ainda, ou a migration 0002 não tiver rodado, retorna tudo
 // desligado em vez de quebrar — mesmo princípio de getUserContext().
-export async function getFeatureFlags(): Promise<Record<FeatureFlagKey, boolean>> {
+//
+// cache() pelo mesmo motivo de lib/auth.ts: chamado no layout E de novo em
+// várias páginas (ex.: bucket-list, descobrir) na mesma requisição.
+export const getFeatureFlags = cache(async (): Promise<Record<FeatureFlagKey, boolean>> => {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { ...DEFAULTS };
   }
@@ -30,4 +34,4 @@ export async function getFeatureFlags(): Promise<Record<FeatureFlagKey, boolean>
     }
   }
   return flags;
-}
+});

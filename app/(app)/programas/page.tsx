@@ -31,27 +31,22 @@ export default async function ProgramasPage() {
   const ctx = await getUserContext();
   const supabase = await createClient();
 
-  const { data: programsData } = await supabase
-    .from('loyalty_programs')
-    .select('*')
-    .eq('active', true)
-    .order('name');
+  // Catálogo de programas e saldo do usuário são independentes — buscar em
+  // paralelo em vez de sequencial evita esperar a primeira query terminar
+  // pra só então começar a segunda.
+  const [{ data: programsData }, { data: userProgramsData }] = await Promise.all([
+    supabase.from('loyalty_programs').select('*').eq('active', true).order('name'),
+    ctx
+      ? supabase.from('user_loyalty_programs').select('program_id, points_balance').eq('user_id', ctx.userId)
+      : Promise.resolve({ data: null }),
+  ]);
 
   const programs = (programsData ?? []) as LoyaltyProgram[];
 
   const balanceByProgram = new Map<string, number>();
-  if (ctx) {
-    const { data: userProgramsData } = await supabase
-      .from('user_loyalty_programs')
-      .select('program_id, points_balance')
-      .eq('user_id', ctx.userId);
-
-    ((userProgramsData ?? []) as { program_id: string; points_balance: number }[]).forEach(
-      (ulp) => {
-        balanceByProgram.set(ulp.program_id, ulp.points_balance);
-      }
-    );
-  }
+  ((userProgramsData ?? []) as { program_id: string; points_balance: number }[]).forEach((ulp) => {
+    balanceByProgram.set(ulp.program_id, ulp.points_balance);
+  });
 
   const programsByType = TYPE_ORDER.reduce<Record<LoyaltyProgramType, LoyaltyProgram[]>>(
     (acc, type) => {

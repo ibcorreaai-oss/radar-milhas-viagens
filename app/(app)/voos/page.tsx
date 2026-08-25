@@ -50,9 +50,14 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
 
   const typedSearch = search as FlightSearch;
 
+  // Coluna explícita, sem raw_data (jsonb com o payload bruto do provider —
+  // pode ser grande e não é usado nesta tela) nem provider/currency/
+  // created_at (não renderizados aqui).
   const { data: results } = await supabase
     .from('flight_results')
-    .select('*')
+    .select(
+      'id, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
+    )
     .eq('search_id', searchId)
     .order('score', { ascending: false });
 

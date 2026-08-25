@@ -172,6 +172,10 @@ export function EventForm({
             <div className="space-y-1.5">
               <Label htmlFor="cover_image_url">URL da imagem de capa</Label>
               <Input id="cover_image_url" name="cover_image_url" type="url" defaultValue={event?.cover_image_url ?? ''} placeholder="https://..." />
+              <p className="text-xs text-muted-foreground">
+                Otimizada automaticamente se vier de Unsplash, Wikimedia, Cloudinary ou Pexels — de
+                qualquer outro site, a imagem ainda aparece, só sem otimização.
+              </p>
             </div>
           </div>
 

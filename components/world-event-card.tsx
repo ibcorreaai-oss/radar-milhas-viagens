@@ -1,5 +1,7 @@
-import { MapPin, CalendarRange, FlaskConical } from 'lucide-react';
+import Image from 'next/image';
+import { MapPin, CalendarRange, FlaskConical, ImageOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isOptimizableImageHost } from '@/lib/image-hosts';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import {
@@ -60,7 +62,29 @@ export function WorldEventCard({
         : 'Data a confirmar';
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      {/* Aspect-ratio fixo pra reservar o espaço antes da imagem carregar —
+          evita layout shift (CLS) quando a capa vem de uma URL externa. */}
+      <div className="relative aspect-[16/9] w-full bg-muted">
+        {event.cover_image_url && isOptimizableImageHost(event.cover_image_url) ? (
+          <Image
+            src={event.cover_image_url}
+            alt={event.title}
+            fill
+            sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+          />
+        ) : event.cover_image_url ? (
+          // Host fora da allowlist do otimizador (ver lib/image-hosts.ts) —
+          // <img> puro sempre funciona, só perde a otimização automática.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={event.cover_image_url} alt={event.title} loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ImageOff className="h-8 w-8" />
+          </div>
+        )}
+      </div>
       <CardHeader className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{event.category_label ?? (event.category_radar ? EVENT_RADAR_LABEL[event.category_radar] : 'Evento')}</Badge>
