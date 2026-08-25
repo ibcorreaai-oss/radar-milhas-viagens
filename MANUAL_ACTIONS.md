@@ -208,3 +208,22 @@ Ver `TRAINING.md` para arquitetura completa, decisões de curadoria e checklist 
       de volta pra rascunho, progresso de teste apagado, conta de teste rebaixada pra `user`. Essa
       conta de teste continua existindo no banco (role `user`, inofensiva) — pode excluir pelo
       dashboard do Supabase quando quiser, ou ignorar.
+
+## 13. Revisão adversarial completa 14→15.2 (25/08) — 11 bugs reais corrigidos
+
+A seu pedido ("revise tudo, tire os bugs, antes de eu desligar"), rodei `/code-review high` desde
+antes da ETAPA 14 até o Mini LMS + varredura manual própria. Detalhe completo de cada achado em
+`TRAINING.md` §8 (correções mais ligadas ao LMS) e no commit `bd50808`. Nada aqui bloqueia nada —
+só o que precisa de uma decisão ou configuração sua:
+
+- [ ] **Se for anunciar no Twitter/X**: preencha `NEXT_PUBLIC_TWITTER_EVENT_ID_LEAD`,
+      `NEXT_PUBLIC_TWITTER_EVENT_ID_SIGNUP` e `NEXT_PUBLIC_TWITTER_EVENT_ID_SUBSCRIBE` no
+      `.env.local` (cada um é um "Event ID" que você cria em Twitter Ads → Conversion Tracking,
+      formato `tw-xxxxx-yyyyy`) — achado real: o código mandava o nome interno do evento (ex.:
+      "lead") direto pro pixel, um ID que a conta do Twitter nunca reconhece, então nenhuma
+      conversão aparecia lá, silenciosamente, mesmo com `NEXT_PUBLIC_TWITTER_PIXEL_ID` preenchido.
+- [ ] Nada a fazer nos itens de segurança (chat público, RLS de conta bloqueada, corrida em
+      `admin_set_user_blocked`) — já corrigidos e aplicados no banco real. Só constam aqui pra
+      registro: se notar algum comportamento estranho em `/contato`, no widget de IA da home, ou
+      em bloqueio/desbloqueio de usuário nas próximas semanas, esse commit é o primeiro lugar pra
+      olhar.
