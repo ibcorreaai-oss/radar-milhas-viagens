@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { FormError } from '@/components/form-error';
 import { EVENT_STATUS_LABEL } from '@/lib/types';
 import type { WorldEvent, EventCategory, Destination, Source, EventSignificance, EventStatus } from '@/lib/types';
 
@@ -39,12 +40,14 @@ export function EventForm({
   destinations,
   sources,
   action,
+  error,
 }: {
   event?: WorldEvent;
   categories: EventCategory[];
   destinations: Destination[];
   sources: Source[];
   action: (formData: FormData) => void;
+  error?: string;
 }) {
   const [onceInLifetime, setOnceInLifetime] = useState(event?.once_in_a_lifetime ?? false);
   const [hiddenGem, setHiddenGem] = useState(event?.hidden_gem ?? false);
@@ -63,6 +66,7 @@ export function EventForm({
         )}
       </CardHeader>
       <CardContent>
+        <FormError message={error} />
         <form action={action} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">

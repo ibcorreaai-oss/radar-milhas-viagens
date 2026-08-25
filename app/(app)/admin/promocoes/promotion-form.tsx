@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/form-error';
 import type { Promotion, PromotionType, PromotionStatus } from '@/lib/types';
 
 const TYPE_OPTIONS: { value: PromotionType; label: string }[] = [
@@ -29,9 +30,11 @@ const STATUS_OPTIONS: { value: PromotionStatus; label: string }[] = [
 export function PromotionForm({
   promotion,
   action,
+  error,
 }: {
   promotion?: Promotion;
   action: (formData: FormData) => void;
+  error?: string;
 }) {
   return (
     <Card>
@@ -39,6 +42,7 @@ export function PromotionForm({
         <CardTitle>{promotion ? 'Editar promoção' : 'Nova promoção'}</CardTitle>
       </CardHeader>
       <CardContent>
+        <FormError message={error} />
         <form action={action} className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="title">Título</Label>

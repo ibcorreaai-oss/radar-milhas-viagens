@@ -39,13 +39,13 @@ export default async function AlertasPage({
   }
 
   const supabase = await createClient();
-  const { data: alertsData } = await supabase
-    .from('alerts')
-    .select('*')
-    .eq('user_id', ctx.userId)
-    .order('created_at', { ascending: false });
+  const [{ data: alertsData }, { data: programsData }] = await Promise.all([
+    supabase.from('alerts').select('*').eq('user_id', ctx.userId).order('created_at', { ascending: false }),
+    supabase.from('loyalty_programs').select('name').eq('active', true).order('name'),
+  ]);
 
   const alerts = (alertsData ?? []) as Alert[];
+  const programNames = ((programsData ?? []) as { name: string }[]).map((p) => p.name);
   const maxAlerts = PLANS[ctx.plan].maxAlerts;
 
   const limitReached = params.limite === '1';
@@ -86,13 +86,15 @@ export default async function AlertasPage({
         <Card className="border-destructive">
           <CardContent className="p-4 text-sm">
             {erro === 'nome_obrigatorio'
-              ? 'Dê um nome para o alerta antes de salvar.'
-              : 'Não foi possível salvar o alerta. Tente novamente.'}
+              ? 'Dê um nome para o alerta antes de salvar (e confira se os outros campos estão dentro do esperado).'
+              : erro === 'programa_invalido'
+                ? 'O programa de fidelidade selecionado não é válido. Escolha um da lista.'
+                : 'Não foi possível salvar o alerta. Tente novamente.'}
           </CardContent>
         </Card>
       )}
 
-      <AlertForm plan={ctx.plan} currentCount={alerts.length} maxAlerts={maxAlerts} />
+      <AlertForm plan={ctx.plan} currentCount={alerts.length} maxAlerts={maxAlerts} programNames={programNames} />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">

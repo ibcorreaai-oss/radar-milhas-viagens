@@ -56,20 +56,19 @@ const PROGRAM_LABEL: Record<AlertType, string> = {
   transferencia: 'Programa de origem',
 };
 
-const PROGRAM_PLACEHOLDER: Record<AlertType, string> = {
-  voo: 'Ex.: Smiles',
-  hotel: 'Ex.: Smiles',
-  transferencia: 'Ex.: Livelo',
-};
-
 export function AlertForm({
   plan,
   currentCount,
   maxAlerts,
+  programNames,
 }: {
   plan: PlanId;
   currentCount: number;
   maxAlerts: number;
+  /** Nomes dos programas ativos no catálogo — vira dropdown em vez de texto
+   * livre, pra nunca gravar um nome que não bate com nada em
+   * loyalty_programs (ver DATA_QUALITY.md). */
+  programNames: string[];
 }) {
   const [type, setType] = useState<AlertType>('voo');
   const [flexibleDates, setFlexibleDates] = useState(false);
@@ -212,12 +211,16 @@ export function AlertForm({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="loyalty_program">{PROGRAM_LABEL[type]}</Label>
-                <Input
-                  id="loyalty_program"
-                  name="loyalty_program"
-                  placeholder={PROGRAM_PLACEHOLDER[type]}
-                  maxLength={80}
-                />
+                <Select id="loyalty_program" name="loyalty_program" defaultValue="">
+                  <option value="">
+                    {type === 'transferencia' ? 'Selecione o programa de origem' : 'Qualquer programa'}
+                  </option>
+                  {programNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
 

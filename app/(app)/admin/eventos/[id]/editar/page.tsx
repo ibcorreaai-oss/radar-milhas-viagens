@@ -5,13 +5,20 @@ import { EventForm } from '../../event-form';
 import { updateEvent } from '../../actions';
 import type { EventCategory, Destination, Source, WorldEvent } from '@/lib/types';
 
-export default async function EditarEventoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditarEventoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
+}) {
   const ctx = await getUserContext();
   if (ctx?.profile?.role !== 'admin') {
     redirect('/dashboard');
   }
 
   const { id } = await params;
+  const { erro } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: event }, { data: categories }, { data: destinations }, { data: sources }] = await Promise.all([
@@ -37,6 +44,7 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
         destinations={(destinations ?? []) as Destination[]}
         sources={(sources ?? []) as Source[]}
         action={updateEvent.bind(null, id)}
+        error={erro}
       />
     </div>
   );

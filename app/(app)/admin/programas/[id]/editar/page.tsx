@@ -5,13 +5,20 @@ import { LoyaltyProgramForm } from '../../loyalty-program-form';
 import { updateLoyaltyProgram } from '../../actions';
 import type { LoyaltyProgram } from '@/lib/types';
 
-export default async function EditarProgramaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditarProgramaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
+}) {
   const ctx = await getUserContext();
   if (ctx?.profile?.role !== 'admin') {
     redirect('/dashboard');
   }
 
   const { id } = await params;
+  const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from('loyalty_programs').select('*').eq('id', id).maybeSingle();
 
@@ -27,7 +34,7 @@ export default async function EditarProgramaPage({ params }: { params: Promise<{
         <h1 className="text-2xl font-bold tracking-tight">Editar programa</h1>
         <p className="mt-1 text-muted-foreground">{program.name}</p>
       </div>
-      <LoyaltyProgramForm program={program} action={updateLoyaltyProgram.bind(null, id)} />
+      <LoyaltyProgramForm program={program} action={updateLoyaltyProgram.bind(null, id)} error={erro} />
     </div>
   );
 }

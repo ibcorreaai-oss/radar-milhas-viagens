@@ -8,8 +8,9 @@ premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original d
 `ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience Radar,
 Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore, rollback de
 deploy e recuperação de exclusão acidental de dados, `OBSERVABILITY.md` para logs
-estruturados, auditoria, monitoramento de uptime e alertas críticos, e `PERFORMANCE.md` para a
-auditoria de performance (consultas, cache por requisição, imagens, Core Web Vitals).
+estruturados, auditoria, monitoramento de uptime e alertas críticos, `PERFORMANCE.md` para a
+auditoria de performance (consultas, cache por requisição, imagens, Core Web Vitals), e
+`DATA_QUALITY.md` para validação (Zod), deduplicação e integridade referencial.
 
 ## Stack
 
@@ -77,6 +78,9 @@ Ordem sugerida:
 - [ ] Rodar `supabase/seed_world_radar.sql` depois do seed original — ver
       `MANUAL_ACTIONS.md` antes de expor a usuários reais (eventos de exemplo são
       `is_mock=true`)
+- [ ] Rodar `supabase/migrations/0003_hotel_search_flexible_dates.sql` e
+      `supabase/migrations/0004_data_quality_constraints.sql` (nessa ordem, depois da 0002) —
+      ver `DATA_QUALITY.md`
 - [ ] Copiar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` pro `.env.local`
 - [ ] Habilitar login com Google em Authentication → Providers (Client ID/Secret do Google Cloud Console)
 - [ ] Configurar Redirect URL: `https://<seu-domínio>/auth/callback`

@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/form-error';
 import type { LoyaltyProgram, LoyaltyProgramType } from '@/lib/types';
 
 const TYPE_OPTIONS: { value: LoyaltyProgramType; label: string }[] = [
@@ -20,9 +21,11 @@ const TYPE_OPTIONS: { value: LoyaltyProgramType; label: string }[] = [
 export function LoyaltyProgramForm({
   program,
   action,
+  error,
 }: {
   program?: LoyaltyProgram;
   action: (formData: FormData) => void;
+  error?: string;
 }) {
   const [active, setActive] = useState(program?.active ?? true);
 
@@ -32,6 +35,7 @@ export function LoyaltyProgramForm({
         <CardTitle>{program ? 'Editar programa' : 'Novo programa'}</CardTitle>
       </CardHeader>
       <CardContent>
+        <FormError message={error} />
         <form action={action} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">

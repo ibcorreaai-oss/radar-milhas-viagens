@@ -5,39 +5,39 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
 import { logAuditEvent } from '@/lib/audit-log';
+import { friendlyDbError } from '@/lib/db-errors';
+import { promotionSchema, firstZodError } from '@/lib/validation/admin-schemas';
 import { parseNumberOrNull } from '@/lib/utils';
-import type { PromotionType, PromotionStatus } from '@/lib/types';
 
-// Único parser de formulário reaproveitado por create/update — evita
-// duplicar a leitura de FormData em dois lugares que podem divergir.
-function parsePromotionForm(formData: FormData) {
-  const title = String(formData.get('title') ?? '').trim();
-  const type = String(formData.get('type') ?? 'passagem') as PromotionType;
-  const program = String(formData.get('program') ?? '').trim() || null;
-  const bonus_percentage = parseNumberOrNull(formData.get('bonus_percentage'));
-  const start_date = String(formData.get('start_date') ?? '').trim() || null;
-  const end_date = String(formData.get('end_date') ?? '').trim() || null;
-  const rules = String(formData.get('rules') ?? '').trim() || null;
-  const url = String(formData.get('url') ?? '').trim() || null;
-  const scoreRaw = String(formData.get('score') ?? '0').trim();
-  const score = scoreRaw ? Math.max(0, Math.min(100, Number(scoreRaw) || 0)) : 0;
-  const status = String(formData.get('status') ?? 'ativa') as PromotionStatus;
-
-  if (!title) {
-    throw new Error('Título é obrigatório.');
-  }
-
-  return { title, type, program, bonus_percentage, start_date, end_date, rules, url, score, status };
+// Monta o objeto bruto a partir do FormData — validação de verdade é feita
+// pelo Zod em promotionSchema, fonte única compartilhada por create/update.
+function rawPromotionForm(formData: FormData) {
+  return {
+    title: String(formData.get('title') ?? '').trim(),
+    type: String(formData.get('type') ?? 'passagem'),
+    program: String(formData.get('program') ?? '').trim() || null,
+    bonus_percentage: parseNumberOrNull(formData.get('bonus_percentage')),
+    start_date: String(formData.get('start_date') ?? '').trim() || null,
+    end_date: String(formData.get('end_date') ?? '').trim() || null,
+    rules: String(formData.get('rules') ?? '').trim() || null,
+    url: String(formData.get('url') ?? '').trim() || null,
+    score: parseNumberOrNull(formData.get('score')) ?? 0,
+    status: String(formData.get('status') ?? 'ativa'),
+  };
 }
 
 export async function createPromotion(formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parsePromotionForm(formData);
 
-  const { error } = await supabase.from('promotions').insert(values);
+  const parsed = promotionSchema.safeParse(rawPromotionForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/promocoes/nova?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('promotions').insert(parsed.data);
   if (error) {
-    throw new Error(`Erro ao criar promoção: ${error.message}`);
+    redirect(`/admin/promocoes/nova?erro=${encodeURIComponent(friendlyDbError(error, 'uma promoção'))}`);
   }
 
   revalidatePath('/admin/promocoes');
@@ -46,12 +46,16 @@ export async function createPromotion(formData: FormData): Promise<void> {
 
 export async function updatePromotion(id: string, formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parsePromotionForm(formData);
 
-  const { error } = await supabase.from('promotions').update(values).eq('id', id);
+  const parsed = promotionSchema.safeParse(rawPromotionForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/promocoes/${id}/editar?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('promotions').update(parsed.data).eq('id', id);
   if (error) {
-    throw new Error(`Erro ao atualizar promoção: ${error.message}`);
+    redirect(`/admin/promocoes/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'uma promoção'))}`);
   }
 
   revalidatePath('/admin/promocoes');

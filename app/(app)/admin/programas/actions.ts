@@ -5,42 +5,43 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
 import { logAuditEvent } from '@/lib/audit-log';
-import type { LoyaltyProgramType } from '@/lib/types';
+import { friendlyDbError } from '@/lib/db-errors';
+import { loyaltyProgramSchema, firstZodError } from '@/lib/validation/admin-schemas';
 
-function parseLoyaltyProgramForm(formData: FormData) {
-  const name = String(formData.get('name') ?? '').trim();
-  const type = String(formData.get('type') ?? 'companhia_aerea') as LoyaltyProgramType;
-  const country = String(formData.get('country') ?? 'BR').trim() || 'BR';
-  const averageMileValueRaw = String(formData.get('average_mile_value') ?? '0').trim();
-  const average_mile_value = averageMileValueRaw ? Number(averageMileValueRaw) || 0 : 0;
-  // Parceiros de transferência vêm de um textarea com valores separados por
-  // vírgula — convertido para array text[] no submit.
+// Monta o objeto bruto a partir do FormData — validação de verdade é feita
+// pelo Zod em loyaltyProgramSchema, fonte única compartilhada por
+// create/update.
+function rawLoyaltyProgramForm(formData: FormData) {
   const transferPartnersRaw = String(formData.get('transfer_partners') ?? '').trim();
-  const transfer_partners = transferPartnersRaw
-    ? transferPartnersRaw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-  const validity_notes = String(formData.get('validity_notes') ?? '').trim() || null;
-  const notes = String(formData.get('notes') ?? '').trim() || null;
-  const active = formData.get('active') === 'true';
 
-  if (!name) {
-    throw new Error('Nome é obrigatório.');
-  }
-
-  return { name, type, country, average_mile_value, transfer_partners, validity_notes, notes, active };
+  return {
+    name: String(formData.get('name') ?? '').trim(),
+    type: String(formData.get('type') ?? 'companhia_aerea'),
+    country: String(formData.get('country') ?? 'BR').trim() || 'BR',
+    average_mile_value: Number(String(formData.get('average_mile_value') ?? '0').trim() || '0') || 0,
+    // Parceiros de transferência vêm de um textarea com valores separados
+    // por vírgula — convertido para array text[] antes da validação.
+    transfer_partners: transferPartnersRaw
+      ? transferPartnersRaw.split(',').map((s) => s.trim()).filter(Boolean)
+      : [],
+    validity_notes: String(formData.get('validity_notes') ?? '').trim() || null,
+    notes: String(formData.get('notes') ?? '').trim() || null,
+    active: formData.get('active') === 'true',
+  };
 }
 
 export async function createLoyaltyProgram(formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parseLoyaltyProgramForm(formData);
 
-  const { error } = await supabase.from('loyalty_programs').insert(values);
+  const parsed = loyaltyProgramSchema.safeParse(rawLoyaltyProgramForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/programas/nova?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('loyalty_programs').insert(parsed.data);
   if (error) {
-    throw new Error(`Erro ao criar programa: ${error.message}`);
+    redirect(`/admin/programas/nova?erro=${encodeURIComponent(friendlyDbError(error, 'um programa'))}`);
   }
 
   revalidatePath('/admin/programas');
@@ -49,12 +50,16 @@ export async function createLoyaltyProgram(formData: FormData): Promise<void> {
 
 export async function updateLoyaltyProgram(id: string, formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parseLoyaltyProgramForm(formData);
 
-  const { error } = await supabase.from('loyalty_programs').update(values).eq('id', id);
+  const parsed = loyaltyProgramSchema.safeParse(rawLoyaltyProgramForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/programas/${id}/editar?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('loyalty_programs').update(parsed.data).eq('id', id);
   if (error) {
-    throw new Error(`Erro ao atualizar programa: ${error.message}`);
+    redirect(`/admin/programas/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'um programa'))}`);
   }
 
   revalidatePath('/admin/programas');

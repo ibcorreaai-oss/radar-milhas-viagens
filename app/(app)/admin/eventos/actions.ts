@@ -5,61 +5,41 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
 import { logAuditEvent } from '@/lib/audit-log';
+import { friendlyDbError } from '@/lib/db-errors';
+import { worldEventSchema, firstZodError, type WorldEventInput } from '@/lib/validation/admin-schemas';
 import { slugify, parseTagsList, parseNumberOrNull } from '@/lib/utils';
 import { evaluateExperience, deriveBookNowState, daysUntil } from '@/lib/scoring/event-score';
-import type { EventSignificance, EventStatus } from '@/lib/types';
 
-// Único parser de formulário reaproveitado por create/update — mesmo
-// padrão de admin/promocoes/actions.ts.
-function parseEventForm(formData: FormData) {
+// Monta o objeto bruto a partir do FormData — validação de verdade é feita
+// pelo Zod em worldEventSchema, fonte única compartilhada por create/update.
+// O slug é resolvido ANTES de validar (usa o título como fallback), pra o
+// schema receber sempre uma string, nunca vazio.
+function rawEventForm(formData: FormData) {
   const title = String(formData.get('title') ?? '').trim();
   const slugRaw = String(formData.get('slug') ?? '').trim();
-  const category_id = String(formData.get('category_id') ?? '').trim() || null;
-  const destination_id = String(formData.get('destination_id') ?? '').trim() || null;
-  const source_id = String(formData.get('source_id') ?? '').trim() || null;
-  const description = String(formData.get('description') ?? '').trim() || null;
-  const significance = (String(formData.get('significance') ?? '').trim() || null) as EventSignificance | null;
-  const start_date = String(formData.get('start_date') ?? '').trim() || null;
-  const end_date = String(formData.get('end_date') ?? '').trim() || null;
-  const status = String(formData.get('status') ?? 'em_monitoramento') as EventStatus;
-  const once_in_a_lifetime = formData.get('once_in_a_lifetime') === 'true';
-  const hidden_gem = formData.get('hidden_gem') === 'true';
-  const featured = formData.get('featured') === 'true';
-  const is_mock = formData.get('is_mock') === 'true';
-  const source_url = String(formData.get('source_url') ?? '').trim() || null;
-  const cover_image_url = String(formData.get('cover_image_url') ?? '').trim() || null;
-  const tags = parseTagsList(formData.get('tags'));
-  const confidenceRaw = parseNumberOrNull(formData.get('confidence_score')) ?? 0.5;
-  const confidence_score = Math.max(0, Math.min(1, confidenceRaw));
-
-  if (!title) {
-    throw new Error('Título é obrigatório.');
-  }
-
   const slug = slugify(slugRaw || title);
-  if (!slug) {
-    throw new Error('Não foi possível gerar um slug válido a partir do título.');
-  }
+
+  const confidenceRaw = parseNumberOrNull(formData.get('confidence_score')) ?? 0.5;
 
   return {
     title,
     slug,
-    category_id,
-    destination_id,
-    source_id,
-    description,
-    significance,
-    start_date,
-    end_date,
-    status,
-    once_in_a_lifetime,
-    hidden_gem,
-    featured,
-    is_mock,
-    source_url,
-    cover_image_url,
-    tags,
-    confidence_score,
+    category_id: String(formData.get('category_id') ?? '').trim() || null,
+    destination_id: String(formData.get('destination_id') ?? '').trim() || null,
+    source_id: String(formData.get('source_id') ?? '').trim() || null,
+    description: String(formData.get('description') ?? '').trim() || null,
+    significance: String(formData.get('significance') ?? '').trim() || null,
+    start_date: String(formData.get('start_date') ?? '').trim() || null,
+    end_date: String(formData.get('end_date') ?? '').trim() || null,
+    status: String(formData.get('status') ?? 'em_monitoramento'),
+    once_in_a_lifetime: formData.get('once_in_a_lifetime') === 'true',
+    hidden_gem: formData.get('hidden_gem') === 'true',
+    featured: formData.get('featured') === 'true',
+    is_mock: formData.get('is_mock') === 'true',
+    source_url: String(formData.get('source_url') ?? '').trim() || null,
+    cover_image_url: String(formData.get('cover_image_url') ?? '').trim() || null,
+    tags: parseTagsList(formData.get('tags')),
+    confidence_score: Math.max(0, Math.min(1, confidenceRaw)),
   };
 }
 
@@ -68,7 +48,10 @@ function parseEventForm(formData: FormData) {
 // divergir da explicação mostrada ao usuário (ver ARCHITECTURE.md #4).
 async function computeScoring(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  values: ReturnType<typeof parseEventForm>
+  values: Pick<
+    WorldEventInput,
+    'source_id' | 'significance' | 'hidden_gem' | 'once_in_a_lifetime' | 'status' | 'confidence_score' | 'start_date'
+  >
 ) {
   let sourceAuthorityLevel = 5;
   if (values.source_id) {
@@ -98,20 +81,25 @@ async function computeScoring(
 
 export async function createEvent(formData: FormData): Promise<void> {
   await requireAdmin();
+
+  const parsed = worldEventSchema.safeParse(rawEventForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/eventos/nova?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
   const supabase = await createClient();
-  const values = parseEventForm(formData);
-  const scoring = await computeScoring(supabase, values);
+  const scoring = await computeScoring(supabase, parsed.data);
   const now = new Date().toISOString();
 
   const { error } = await supabase.from('world_events').insert({
-    ...values,
+    ...parsed.data,
     ...scoring,
     last_checked_at: now,
     last_changed_at: now,
   });
 
   if (error) {
-    throw new Error(`Erro ao criar evento: ${error.message}`);
+    redirect(`/admin/eventos/nova?erro=${encodeURIComponent(friendlyDbError(error, 'um evento (verifique se o slug já existe)'))}`);
   }
 
   revalidatePath('/admin/eventos');
@@ -121,18 +109,23 @@ export async function createEvent(formData: FormData): Promise<void> {
 
 export async function updateEvent(id: string, formData: FormData): Promise<void> {
   await requireAdmin();
+
+  const parsed = worldEventSchema.safeParse(rawEventForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/eventos/${id}/editar?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
   const supabase = await createClient();
-  const values = parseEventForm(formData);
-  const scoring = await computeScoring(supabase, values);
+  const scoring = await computeScoring(supabase, parsed.data);
   const now = new Date().toISOString();
 
   const { error } = await supabase
     .from('world_events')
-    .update({ ...values, ...scoring, last_checked_at: now, last_changed_at: now })
+    .update({ ...parsed.data, ...scoring, last_checked_at: now, last_changed_at: now })
     .eq('id', id);
 
   if (error) {
-    throw new Error(`Erro ao atualizar evento: ${error.message}`);
+    redirect(`/admin/eventos/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'um evento (verifique se o slug já existe)'))}`);
   }
 
   revalidatePath('/admin/eventos');

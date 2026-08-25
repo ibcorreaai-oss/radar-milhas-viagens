@@ -5,11 +5,12 @@ import { EventForm } from '../event-form';
 import { createEvent } from '../actions';
 import type { EventCategory, Destination, Source } from '@/lib/types';
 
-export default async function NovoEventoPage() {
+export default async function NovoEventoPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const ctx = await getUserContext();
   if (ctx?.profile?.role !== 'admin') {
     redirect('/dashboard');
   }
+  const { erro } = await searchParams;
 
   const supabase = await createClient();
   const [{ data: categories }, { data: destinations }, { data: sources }] = await Promise.all([
@@ -29,6 +30,7 @@ export default async function NovoEventoPage() {
         destinations={(destinations ?? []) as Destination[]}
         sources={(sources ?? []) as Source[]}
         action={createEvent}
+        error={erro}
       />
     </div>
   );

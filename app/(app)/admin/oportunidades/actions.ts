@@ -5,67 +5,53 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
 import { logAuditEvent } from '@/lib/audit-log';
+import { friendlyDbError } from '@/lib/db-errors';
+import { opportunitySchema, firstZodError } from '@/lib/validation/admin-schemas';
 import { parseNumberOrNull } from '@/lib/utils';
-import type { OpportunityType } from '@/lib/types';
 
-function parseOpportunityForm(formData: FormData) {
-  const type = String(formData.get('type') ?? 'voo') as OpportunityType;
-  const title = String(formData.get('title') ?? '').trim();
-  const description = String(formData.get('description') ?? '').trim() || null;
-  const origin = String(formData.get('origin') ?? '').trim().toUpperCase() || null;
-  const destination = String(formData.get('destination') ?? '').trim().toUpperCase() || null;
-  const city = String(formData.get('city') ?? '').trim() || null;
-  const cash_price = parseNumberOrNull(formData.get('cash_price'));
-  const points_price = parseNumberOrNull(formData.get('points_price'));
-  const taxes = parseNumberOrNull(formData.get('taxes')) ?? 0;
-  const loyalty_program = String(formData.get('loyalty_program') ?? '').trim() || null;
-  const score = Math.max(0, Math.min(100, parseNumberOrNull(formData.get('score')) ?? 0));
-  const recommendation = String(formData.get('recommendation') ?? '').trim() || null;
-  const featured = formData.get('featured') === 'true';
-  // O client (opportunity-form.tsx) já converte o <input type="datetime-local">
-  // pra ISO/UTC antes de submeter — aqui só recebemos a string ISO pronta.
-  const expires_at = String(formData.get('expires_at') ?? '').trim() || null;
-  const source = String(formData.get('source') ?? 'manual').trim() || 'manual';
-  const affiliate_url = String(formData.get('affiliate_url') ?? '').trim() || null;
-  const affiliate_provider = String(formData.get('affiliate_provider') ?? '').trim() || null;
-  const commission_type = String(formData.get('commission_type') ?? '').trim() || null;
-  const tracking_id = String(formData.get('tracking_id') ?? '').trim() || null;
-
-  if (!title) {
-    throw new Error('Título é obrigatório.');
-  }
-
+// Monta o objeto bruto a partir do FormData (sem validar ainda — validação
+// é feita pelo Zod em opportunitySchema, uma única fonte de verdade
+// compartilhada por create/update). Números viram number|null aqui porque
+// o schema espera number de verdade, não string — FormData só entrega
+// string.
+function rawOpportunityForm(formData: FormData) {
   return {
-    type,
-    title,
-    description,
-    origin,
-    destination,
-    city,
-    cash_price,
-    points_price,
-    taxes,
-    loyalty_program,
-    score,
-    recommendation,
-    featured,
-    expires_at,
-    source,
-    affiliate_url,
-    affiliate_provider,
-    commission_type,
-    tracking_id,
+    type: String(formData.get('type') ?? 'voo'),
+    title: String(formData.get('title') ?? '').trim(),
+    description: String(formData.get('description') ?? '').trim() || null,
+    origin: String(formData.get('origin') ?? '').trim().toUpperCase() || null,
+    destination: String(formData.get('destination') ?? '').trim().toUpperCase() || null,
+    city: String(formData.get('city') ?? '').trim() || null,
+    cash_price: parseNumberOrNull(formData.get('cash_price')),
+    points_price: parseNumberOrNull(formData.get('points_price')),
+    taxes: parseNumberOrNull(formData.get('taxes')) ?? 0,
+    loyalty_program: String(formData.get('loyalty_program') ?? '').trim() || null,
+    score: parseNumberOrNull(formData.get('score')) ?? 0,
+    recommendation: String(formData.get('recommendation') ?? '').trim() || null,
+    featured: formData.get('featured') === 'true',
+    // O client (opportunity-form.tsx) já converte o <input type="datetime-local">
+    // pra ISO/UTC antes de submeter — aqui só recebemos a string ISO pronta.
+    expires_at: String(formData.get('expires_at') ?? '').trim() || null,
+    source: String(formData.get('source') ?? 'manual').trim() || 'manual',
+    affiliate_url: String(formData.get('affiliate_url') ?? '').trim() || null,
+    affiliate_provider: String(formData.get('affiliate_provider') ?? '').trim() || null,
+    commission_type: String(formData.get('commission_type') ?? '').trim() || null,
+    tracking_id: String(formData.get('tracking_id') ?? '').trim() || null,
   };
 }
 
 export async function createOpportunity(formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parseOpportunityForm(formData);
 
-  const { error } = await supabase.from('opportunities').insert(values);
+  const parsed = opportunitySchema.safeParse(rawOpportunityForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/oportunidades/nova?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('opportunities').insert(parsed.data);
   if (error) {
-    throw new Error(`Erro ao criar oportunidade: ${error.message}`);
+    redirect(`/admin/oportunidades/nova?erro=${encodeURIComponent(friendlyDbError(error, 'uma oportunidade'))}`);
   }
 
   revalidatePath('/admin/oportunidades');
@@ -74,12 +60,16 @@ export async function createOpportunity(formData: FormData): Promise<void> {
 
 export async function updateOpportunity(id: string, formData: FormData): Promise<void> {
   await requireAdmin();
-  const supabase = await createClient();
-  const values = parseOpportunityForm(formData);
 
-  const { error } = await supabase.from('opportunities').update(values).eq('id', id);
+  const parsed = opportunitySchema.safeParse(rawOpportunityForm(formData));
+  if (!parsed.success) {
+    redirect(`/admin/oportunidades/${id}/editar?erro=${encodeURIComponent(firstZodError(parsed))}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('opportunities').update(parsed.data).eq('id', id);
   if (error) {
-    throw new Error(`Erro ao atualizar oportunidade: ${error.message}`);
+    redirect(`/admin/oportunidades/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'uma oportunidade'))}`);
   }
 
   revalidatePath('/admin/oportunidades');

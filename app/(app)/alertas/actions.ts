@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
 import { PLANS, planAllowsMoreAlerts, planHasChannel } from '@/lib/plans';
-import type { AlertType } from '@/lib/types';
+import { alertSchema } from '@/lib/validation/alert-schema';
+import type { AlertType, CabinClass } from '@/lib/types';
 
 // Server Action do formulário de criação de alerta (`<form action={createAlert}>`).
 // O gate de plano (limite de alertas e canal WhatsApp) é sempre recalculado
@@ -29,12 +30,6 @@ export async function createAlert(formData: FormData): Promise<void> {
   }
 
   const type = (String(formData.get('type') ?? 'voo') || 'voo') as AlertType;
-  const name = String(formData.get('name') ?? '').trim();
-
-  if (!name) {
-    redirect('/alertas?erro=nome_obrigatorio');
-  }
-
   const originRaw = String(formData.get('origin') ?? '').trim().toUpperCase();
   const destinationRaw = String(formData.get('destination') ?? '').trim().toUpperCase();
   const cityRaw = String(formData.get('city') ?? '').trim();
@@ -47,8 +42,7 @@ export async function createAlert(formData: FormData): Promise<void> {
   const cabinClassRaw = String(formData.get('cabin_class') ?? '').trim();
   const passengersRaw = String(formData.get('passengers') ?? '1').trim();
 
-  const maxCashPrice =
-    type !== 'transferencia' && maxCashPriceRaw ? Number(maxCashPriceRaw) : NaN;
+  const maxCashPrice = type !== 'transferencia' && maxCashPriceRaw ? Number(maxCashPriceRaw) : NaN;
   const maxPointsPrice = maxPointsPriceRaw ? Number(maxPointsPriceRaw) : NaN;
 
   const wantsWhatsapp = formData.get('channel_whatsapp') === 'true';
@@ -57,10 +51,9 @@ export async function createAlert(formData: FormData): Promise<void> {
   // nisso — o plano do usuário logado (recarregado do banco) manda.
   const channelWhatsapp = wantsWhatsapp && planHasChannel(ctx.plan, 'whatsapp');
 
-  const { error } = await supabase.from('alerts').insert({
-    user_id: ctx.userId,
+  const parsed = alertSchema.safeParse({
     type,
-    name,
+    name: String(formData.get('name') ?? '').trim(),
     origin: type === 'voo' ? originRaw || null : null,
     destination: type === 'voo' ? destinationRaw || null : null,
     city: type === 'hotel' ? cityRaw || null : null,
@@ -70,10 +63,36 @@ export async function createAlert(formData: FormData): Promise<void> {
     max_cash_price: Number.isFinite(maxCashPrice) ? maxCashPrice : null,
     max_points_price: Number.isFinite(maxPointsPrice) ? maxPointsPrice : null,
     loyalty_program: loyaltyProgramRaw || null,
-    cabin_class: type === 'voo' ? cabinClassRaw || null : null,
+    cabin_class: type === 'voo' ? ((cabinClassRaw || null) as CabinClass | null) : null,
     passengers: type === 'voo' ? Math.max(1, Number(passengersRaw) || 1) : 1,
     channel_email: formData.get('channel_email') === 'true',
     channel_whatsapp: channelWhatsapp,
+  });
+
+  if (!parsed.success) {
+    redirect('/alertas?erro=nome_obrigatorio');
+  }
+
+  // Programa de fidelidade agora vem de um <Select> preenchido com o
+  // catálogo real (ver alert-form.tsx) — mesmo assim, valida server-side
+  // contra o catálogo de verdade: uma Server Action pode ser chamada
+  // diretamente (fetch), sem passar pelo <select> do formulário.
+  if (parsed.data.loyalty_program) {
+    const { data: programExists } = await supabase
+      .from('loyalty_programs')
+      .select('id')
+      .eq('name', parsed.data.loyalty_program)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (!programExists) {
+      redirect('/alertas?erro=programa_invalido');
+    }
+  }
+
+  const { error } = await supabase.from('alerts').insert({
+    user_id: ctx.userId,
+    ...parsed.data,
     active: true,
     check_frequency_hours: PLANS[ctx.plan].cronFrequencyHours,
   });

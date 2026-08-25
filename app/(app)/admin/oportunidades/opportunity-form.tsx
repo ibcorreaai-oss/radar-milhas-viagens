@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { FormError } from '@/components/form-error';
 import type { Opportunity, OpportunityType } from '@/lib/types';
 
 const TYPE_OPTIONS: { value: OpportunityType; label: string }[] = [
@@ -31,9 +32,11 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
 export function OpportunityForm({
   opportunity,
   action,
+  error,
 }: {
   opportunity?: Opportunity;
   action: (formData: FormData) => void;
+  error?: string;
 }) {
   const [featured, setFeatured] = useState(opportunity?.featured ?? false);
   // Controlado à parte do <input type="datetime-local"> (que não tem
@@ -49,6 +52,7 @@ export function OpportunityForm({
         <CardTitle>{opportunity ? 'Editar oportunidade' : 'Nova oportunidade'}</CardTitle>
       </CardHeader>
       <CardContent>
+        <FormError message={error} />
         <form action={action} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
