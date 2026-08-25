@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAdminRole, isBlocked } from '@/lib/roles';
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -91,11 +92,15 @@ export async function middleware(request: NextRequest) {
   if (isAdminRoute && user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, blocked_at')
       .eq('user_id', user.id)
       .single();
 
-    if (!profile || profile.role !== 'admin') {
+    // ETAPA 15 — super_admin herda tudo que admin já podia (nenhuma rota
+    // /admin precisa saber a diferença); ver is_admin() no banco, mesmo
+    // critério espelhado aqui (lib/roles.ts). Conta bloqueada nunca entra
+    // em /admin, mesmo que o role ainda seja admin/super_admin.
+    if (!profile || !isAdminRole(profile) || isBlocked(profile)) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
       url.search = '';

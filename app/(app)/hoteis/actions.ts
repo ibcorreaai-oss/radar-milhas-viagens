@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
+import { isBlocked } from '@/lib/roles';
 import { getHotelProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planAllowsMoreSearchesToday } from '@/lib/plans';
@@ -23,7 +24,7 @@ function nights(checkin: string | null, checkout: string | null): number {
 // o redirect ao final é que leva o usuário para a tela de resultados.
 export async function searchHotels(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 

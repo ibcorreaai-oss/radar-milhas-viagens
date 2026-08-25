@@ -12,9 +12,19 @@ import { LoginForm } from './login-form';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; message?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error, message } = await searchParams;
+
+  // ETAPA 15 — app/auth/callback/route.ts redireciona pra cá com
+  // ?error=blocked&message=... quando o login via Google é de uma conta
+  // suspensa (ver lib/auth-block.ts). `error=auth` (falha de troca de code,
+  // já existia antes desta etapa) cai no fallback genérico.
+  const errorMessage = error
+    ? message
+      ? decodeURIComponent(message)
+      : 'Não foi possível concluir o login. Tente novamente.'
+    : null;
 
   return (
     <Card>
@@ -25,6 +35,11 @@ export default async function LoginPage({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {errorMessage && (
+          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {errorMessage}
+          </p>
+        )}
         <LoginForm next={next} />
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 text-center text-sm text-muted-foreground">

@@ -5,6 +5,7 @@ import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { favoriteToggleSchema } from '@/lib/validation/auth-schemas';
+import { isBlocked } from '@/lib/roles';
 
 // ETAPA 14 (ver AUTH_AND_ADMIN.md §8) — favoritar/desfavoritar promoção ou
 // programa. Chamada direto do client (mesmo padrão de toggleFeatureFlag em
@@ -16,7 +17,11 @@ export async function toggleFavorite(
   favorited: boolean
 ): Promise<{ error?: string }> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  // ETAPA 15 (achado em revisão adversarial) — bloquear alguém só derrubava
+  // a renderização (app/(app)/layout.tsx); Server Actions que checavam só
+  // "está logado" continuavam aceitando escrita de uma conta suspensa com
+  // sessão ainda aberta. Mesmo predicado central de lib/roles.ts.
+  if (!ctx || isBlocked(ctx.profile)) {
     return { error: 'Faça login para favoritar.' };
   }
 

@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTable } from '@/components/admin-table';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +23,7 @@ const STATUS_LABEL: Record<PromotionStatus, string> = {
 };
 
 export default async function AdminPromocoesPage() {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const supabase = await createClient();
   const { data } = await supabase

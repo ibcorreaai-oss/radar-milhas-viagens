@@ -7,6 +7,7 @@ import { getUserContext } from '@/lib/auth';
 import { planHasChannel } from '@/lib/plans';
 import { logger } from '@/lib/logger';
 import { passwordSchema } from '@/lib/validation/auth-schemas';
+import { isBlocked } from '@/lib/roles';
 import type { CabinClass } from '@/lib/types';
 
 // Server Action do formulário de perfil (`<form action={updateProfile}>`).
@@ -14,7 +15,7 @@ import type { CabinClass } from '@/lib/types';
 // (ver supabase/migrations/0001_schema.sql) — "role" nunca entra aqui.
 export async function updateProfile(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -83,7 +84,7 @@ export async function updateOwnPassword(
   formData: FormData
 ): Promise<PasswordState> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -114,7 +115,7 @@ export async function updateOwnPassword(
 // Cria ou atualiza o saldo de um programa de pontos do usuário.
 export async function upsertUserLoyaltyProgram(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -152,7 +153,7 @@ export async function upsertUserLoyaltyProgram(formData: FormData): Promise<void
 // Remove um programa de pontos do usuário (id de user_loyalty_programs).
 export async function deleteUserLoyaltyProgram(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 

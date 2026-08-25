@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { passwordSchema } from '@/lib/validation/auth-schemas';
+import { checkAccountStatus, accountStatusMessage } from '@/lib/auth-block';
 
 export interface RedefinirState {
   error?: string;
@@ -37,6 +38,17 @@ export async function updatePassword(
   if (!user) {
     logger.warn('auth', 'Redefinição de senha sem sessão de recuperação válida');
     return { error: 'Sessão de recuperação expirada. Peça um novo link em "Esqueci minha senha".' };
+  }
+
+  // ETAPA 15 (defesa em profundidade — a barreira principal é
+  // app/auth/callback/route.ts, que já barra o link de recuperação de
+  // conta bloqueada antes de chegar aqui) — nunca confiar que "só chega
+  // aqui quem tem permissão" sem checar de novo na própria Server Action.
+  const { status, reason } = await checkAccountStatus(supabase, user.id);
+  if (status !== 'active') {
+    logger.warn('auth', 'Redefinição de senha negada', { userId: user.id, status });
+    await supabase.auth.signOut();
+    return { error: accountStatusMessage(status, reason) };
   }
 
   const { error } = await supabase.auth.updateUser({ password });

@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { TrendingUp, Users, Repeat, UserX, ArrowUpCircle, Layers, AlertTriangle } from 'lucide-react';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLANS, PLAN_ORDER } from '@/lib/plans';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,10 +15,7 @@ import type { PlanId } from '@/lib/types';
 // Isolado numa página só de leitura, atrás do mesmo requireAdmin implícito
 // (checagem de role) que toda página /admin já usa.
 export default async function AdminMetricasPage() {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const admin = createAdminClient();
   const now = Date.now();

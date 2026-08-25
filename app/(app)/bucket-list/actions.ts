@@ -4,10 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
 import { getOrCreateDefaultBucketList } from '@/lib/bucket-list';
+import { isBlocked } from '@/lib/roles';
 
 export async function addCustomBucketListItem(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) throw new Error('Faça login para usar a Bucket List.');
+  if (!ctx || isBlocked(ctx.profile)) throw new Error('Faça login para usar a Bucket List.');
 
   const title = String(formData.get('custom_title') ?? '').trim();
   const notes = String(formData.get('notes') ?? '').trim() || null;
@@ -29,7 +30,7 @@ export async function addCustomBucketListItem(formData: FormData): Promise<void>
 
 export async function removeBucketListItem(itemId: string): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) throw new Error('Faça login para usar a Bucket List.');
+  if (!ctx || isBlocked(ctx.profile)) throw new Error('Faça login para usar a Bucket List.');
 
   const supabase = await createClient();
   // RLS já garante que só o dono da lista consegue apagar — a policy

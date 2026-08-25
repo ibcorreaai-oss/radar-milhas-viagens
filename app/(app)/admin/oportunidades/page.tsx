@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Plus, Pencil, Trash2, Star, StarOff } from 'lucide-react';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTable } from '@/components/admin-table';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +19,7 @@ const TYPE_LABEL: Record<OpportunityType, string> = {
 };
 
 export default async function AdminOportunidadesPage() {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const supabase = await createClient();
   const { data } = await supabase.from('opportunities').select('*').order('score', { ascending: false });

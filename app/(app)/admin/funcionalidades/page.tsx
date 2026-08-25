@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FeatureFlagRow } from './feature-flag-row';
@@ -22,10 +21,7 @@ const FLAG_LABELS: Record<string, string> = {
 export default async function AdminFuncionalidadesPage() {
   // Defesa em profundidade — mesmo padrão de todo page.tsx de /admin/*
   // (o middleware já bloqueia, isto cobre renderização fora dele).
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const supabase = await createClient();
   const { data } = await supabase.from('feature_flags').select('*').order('key');

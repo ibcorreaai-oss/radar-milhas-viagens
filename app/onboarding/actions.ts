@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
 import { planHasChannel } from '@/lib/plans';
+import { isBlocked } from '@/lib/roles';
 import type { CabinClass } from '@/lib/types';
 
 export interface OnboardingState {
@@ -48,6 +49,12 @@ export async function completeOnboarding(
   // pra um canal que o plano atual não libera, mesmo que o switch do form
   // tenha vindo marcado (defesa em profundidade, não só UI).
   const ctx = await getUserContext();
+  // ETAPA 15 (ver PLATFORM_ADMIN.md) — mesmo predicado central de
+  // lib/roles.ts, aplicado aqui porque este arquivo já busca o próprio
+  // getUserContext() um pouco mais abaixo, não é uma query nova.
+  if (isBlocked(ctx?.profile)) {
+    return { error: 'Sua conta foi suspensa. Entre em contato com o suporte se acha que é um engano.' };
+  }
   const plan = ctx?.plan ?? 'free';
   const notifyEmail = formData.get('notify_email') === 'true' && planHasChannel(plan, 'email');
   const notifyWhatsapp = formData.get('notify_whatsapp') === 'true' && planHasChannel(plan, 'whatsapp');

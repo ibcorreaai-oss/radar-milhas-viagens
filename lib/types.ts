@@ -5,7 +5,13 @@
 export type CabinClass = 'economica' | 'executiva' | 'primeira' | 'qualquer';
 export type PlanId = 'free' | 'premium' | 'pro' | 'consultor';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled';
-export type UserRole = 'user' | 'admin';
+// ETAPA 15 (ver PLATFORM_ADMIN.md) — super_admin fica ACIMA de admin, nunca
+// ao lado: este produto não é multi-tenant, não existe "tenant admin" pra
+// distinguir. is_admin() no banco trata 'admin' e 'super_admin' como
+// equivalentes; só a gestão de roles/bloqueio de outro admin exige
+// especificamente 'super_admin' (ver admin_set_user_role/admin_set_user_blocked
+// em supabase/migrations/0011_super_admin_rbac.sql).
+export type UserRole = 'user' | 'admin' | 'super_admin';
 
 export interface Profile {
   id: string;
@@ -25,6 +31,8 @@ export interface Profile {
   timezone: string;
   onboarding_done: boolean;
   role: UserRole;
+  blocked_at: string | null;
+  blocked_reason: string | null;
   created_at: string;
   updated_at: string;
 }

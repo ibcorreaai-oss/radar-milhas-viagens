@@ -1,5 +1,5 @@
-import { notFound, redirect } from 'next/navigation';
-import { getUserContext } from '@/lib/auth';
+import { notFound } from 'next/navigation';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { OpportunityForm } from '../../opportunity-form';
 import { updateOpportunity } from '../../actions';
@@ -12,10 +12,7 @@ export default async function EditarOportunidadePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ erro?: string }>;
 }) {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const { id } = await params;
   const { erro } = await searchParams;

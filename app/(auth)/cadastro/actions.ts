@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
 import { welcomeEmail } from '@/lib/email/templates';
 import { emailSchema, nameSchema, otpCodeSchema } from '@/lib/validation/auth-schemas';
+import { accountStatusMessage } from '@/lib/auth-block';
 
 // ETAPA 14 (ver AUTH_AND_ADMIN.md §1) — cadastro só por OTP, sem senha.
 // Uma única Server Action cuida dos 3 sub-passos (pedir código, reenviar,
@@ -88,9 +89,20 @@ export async function handleSignupStep(
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('onboarding_done')
+      .select('onboarding_done, blocked_at, blocked_reason')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    // ETAPA 15 — alguém com conta suspensa que digita o próprio e-mail em
+    // /cadastro (achando que precisa "criar de novo") não deve conseguir
+    // uma sessão nova por essa porta lateral. Checa ANTES do erro de
+    // leitura genérico abaixo — bloqueado é um caso mais específico e
+    // precisa da mensagem certa, não do fallback genérico de "dashboard".
+    if (profile?.blocked_at) {
+      logger.warn('auth', 'Cadastro/login via OTP negado — conta bloqueada', { userId: user.id, email });
+      await supabase.auth.signOut();
+      return { step: 'verify', email, error: accountStatusMessage('blocked', profile.blocked_reason) };
+    }
 
     if (profileError) {
       // Achado em revisão adversarial: erro transiente aqui não pode ser

@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { OpportunityForm } from '../opportunity-form';
 import { createOpportunity } from '../actions';
 
@@ -8,10 +7,7 @@ export default async function NovaOportunidadePage({
 }: {
   searchParams: Promise<{ erro?: string }>;
 }) {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
   const { erro } = await searchParams;
 
   return (

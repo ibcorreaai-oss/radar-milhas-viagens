@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Users, Bell, Tag, Sparkles, Compass, ArrowRight } from 'lucide-react';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,10 +32,7 @@ export default async function AdminPage() {
   // Defesa em profundidade — o middleware já bloqueia /admin/* para
   // quem não é admin, isto cobre o caso de a página ser renderizada
   // via alguma rota interna que não passe pelo middleware.
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
 
   const supabase = await createClient();
 
@@ -67,12 +63,14 @@ export default async function AdminPage() {
   ];
 
   const quickLinks = [
+    { href: '/admin/usuarios', label: 'Usuários' },
     { href: '/admin/metricas', label: 'Métricas de negócio' },
     { href: '/admin/promocoes', label: 'Gerenciar promoções' },
     { href: '/admin/programas', label: 'Gerenciar programas' },
     { href: '/admin/oportunidades', label: 'Gerenciar oportunidades' },
     { href: '/admin/eventos', label: 'Gerenciar eventos (World Radar)' },
     { href: '/admin/funcionalidades', label: 'Funcionalidades (feature flags)' },
+    { href: '/admin/auditoria', label: 'Auditoria' },
   ];
 
   return (

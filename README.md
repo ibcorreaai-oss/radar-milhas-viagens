@@ -125,6 +125,11 @@ Ordem sugerida:
 - [ ] Configurar Redirect URL: `https://<seu-domínio>/auth/callback`
 - [ ] Testar RLS: criar 2 usuários de teste e confirmar que um não vê alertas/buscas do outro
 - [ ] Promover manualmente o 1º usuário admin: `update profiles set role='admin' where user_id='<uuid>';` direto no SQL Editor (só assim, nunca via app)
+- [ ] **ETAPA 15**: promover o Administrador Principal — criar a conta em `/cadastro` com
+      `ibcorrea@hotmail.com` e depois rodar `update profiles set role='super_admin' where
+      email='ibcorrea@hotmail.com';` no SQL Editor. A migration `0011_super_admin_rbac.sql` já
+      tenta fazer isso sozinha (idempotente), mas só surte efeito se a conta já existir na hora em
+      que a migration roda — ver `PLATFORM_ADMIN.md`.
 - [ ] (Opcional, não bloqueia nada) `get_advisors` de performance apontou ~20 policies de RLS
       que re-avaliam `auth.uid()`/`is_admin()` por linha em vez de `(select auth.uid())` —
       otimização de escala, pré-existente desde a ETAPA 1, fora do escopo da ETAPA 12. Revisar

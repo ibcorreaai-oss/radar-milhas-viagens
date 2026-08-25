@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth';
+import { isBlocked } from '@/lib/roles';
 import { stripe } from '@/lib/stripe';
 import { PLANS } from '@/lib/plans';
 import type { PlanId } from '@/lib/types';
@@ -12,7 +13,7 @@ import type { PlanId } from '@/lib/types';
 // o evento `checkout.session.completed` — aqui só iniciamos o fluxo.
 export async function startCheckout(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -76,7 +77,7 @@ export async function startCheckout(formData: FormData): Promise<void> {
 // tela nossa de edição de plano/status (isso é escrita só do webhook).
 export async function openBillingPortal(): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 

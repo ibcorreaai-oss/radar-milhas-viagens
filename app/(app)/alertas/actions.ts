@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
+import { isBlocked } from '@/lib/roles';
 import { PLANS, planAllowsMoreAlerts, planHasChannel } from '@/lib/plans';
 import { alertSchema } from '@/lib/validation/alert-schema';
 import type { AlertType, CabinClass } from '@/lib/types';
@@ -14,7 +15,7 @@ import type { AlertType, CabinClass } from '@/lib/types';
 // conveniência, nunca é a fonte de verdade.
 export async function createAlert(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -111,7 +112,7 @@ export async function createAlert(formData: FormData): Promise<void> {
 // Uso: `<form action={toggleAlert.bind(null, alert.id, !alert.active)}>`.
 export async function toggleAlert(id: string, active: boolean): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 
@@ -133,7 +134,7 @@ export async function toggleAlert(id: string, active: boolean): Promise<void> {
 // Exclui um alerta. Uso: `<form action={deleteAlert.bind(null, alert.id)}>`.
 export async function deleteAlert(id: string): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 

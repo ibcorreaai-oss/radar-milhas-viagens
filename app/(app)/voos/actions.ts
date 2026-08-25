@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
+import { isBlocked } from '@/lib/roles';
 import { getFlightProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planAllowsMoreSearchesToday } from '@/lib/plans';
@@ -13,7 +14,7 @@ import type { CabinClass } from '@/lib/types';
 // o redirect ao final é que leva o usuário para a tela de resultados.
 export async function searchFlights(formData: FormData): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     redirect('/login');
   }
 

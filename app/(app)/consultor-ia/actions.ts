@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getUserContext, type UserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { isBlocked } from '@/lib/roles';
 import type { Opportunity, UserLoyaltyProgram, LoyaltyProgram } from '@/lib/types';
 
 const ELIGIBLE_PLANS = ['pro', 'consultor'];
@@ -181,7 +182,7 @@ export async function askConsultant(
 ): Promise<AskConsultantResult> {
   const ctx = await getUserContext();
 
-  if (!ctx || !ELIGIBLE_PLANS.includes(ctx.plan)) {
+  if (!ctx || !ELIGIBLE_PLANS.includes(ctx.plan) || isBlocked(ctx.profile)) {
     return { error: 'Sem acesso' };
   }
 

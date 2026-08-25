@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { safeRedirectPath } from '@/lib/safe-redirect';
 import { logger } from '@/lib/logger';
 import { emailSchema, otpCodeSchema } from '@/lib/validation/auth-schemas';
+import { checkAccountStatus, accountStatusMessage } from '@/lib/auth-block';
 
 export interface LoginState {
   error?: string;
@@ -34,6 +35,13 @@ export async function signInWithPassword(
     // sem virar ruído nem vazar dado sensível no log.
     logger.warn('auth', 'Falha de login', { email, reason: error.message });
     return { error: 'E-mail ou senha incorretos.' };
+  }
+
+  const { status, reason } = await checkAccountStatus(supabase, data.user.id);
+  if (status !== 'active') {
+    logger.warn('auth', 'Login negado', { userId: data.user.id, email, status });
+    await supabase.auth.signOut();
+    return { error: accountStatusMessage(status, reason) };
   }
 
   logger.info('auth', 'Login bem-sucedido (senha)', { userId: data.user?.id, email });
@@ -84,7 +92,18 @@ export async function handleLoginOtpStep(
       };
     }
 
-    logger.info('auth', 'Login bem-sucedido (OTP)', { userId: data.user?.id, email });
+    if (!data.user) {
+      return { step: 'verify', email, error: 'Não foi possível confirmar o login. Tente novamente.' };
+    }
+
+    const { status, reason } = await checkAccountStatus(supabase, data.user.id);
+    if (status !== 'active') {
+      logger.warn('auth', 'Login negado', { userId: data.user.id, email, status });
+      await supabase.auth.signOut();
+      return { step: 'verify', email, error: accountStatusMessage(status, reason) };
+    }
+
+    logger.info('auth', 'Login bem-sucedido (OTP)', { userId: data.user.id, email });
     redirect(next);
   }
 

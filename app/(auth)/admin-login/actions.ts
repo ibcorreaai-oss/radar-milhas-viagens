@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { adminLoginSchema, firstZodError } from '@/lib/validation/auth-schemas';
+import { isAdminRole, isBlocked } from '@/lib/roles';
 
 // ETAPA 14 (ver AUTH_AND_ADMIN.md §3) — login de administrador é sempre por
 // e-mail+senha (nunca OTP, nunca cria conta). Checa profiles.role='admin'
@@ -37,14 +38,20 @@ export async function signInAsAdmin(
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, blocked_at')
     .eq('user_id', data.user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== 'admin') {
+  if (!profile || !isAdminRole(profile)) {
     logger.warn('auth', 'Login de admin negado — conta sem role admin', { userId: data.user.id, email });
     await supabase.auth.signOut();
     return { error: 'Esta conta não tem acesso de administrador.' };
+  }
+
+  if (isBlocked(profile)) {
+    logger.warn('auth', 'Login de admin negado — conta bloqueada', { userId: data.user.id, email });
+    await supabase.auth.signOut();
+    return { error: 'Esta conta de administrador foi suspensa.' };
   }
 
   logger.info('auth', 'Login de admin bem-sucedido', { userId: data.user.id, email });

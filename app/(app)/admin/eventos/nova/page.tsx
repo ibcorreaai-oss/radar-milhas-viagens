@@ -1,15 +1,11 @@
-import { redirect } from 'next/navigation';
-import { getUserContext } from '@/lib/auth';
+import { requireAdmin } from '@/lib/admin-guard';
 import { createClient } from '@/lib/supabase/server';
 import { EventForm } from '../event-form';
 import { createEvent } from '../actions';
 import type { EventCategory, Destination, Source } from '@/lib/types';
 
 export default async function NovoEventoPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
-  const ctx = await getUserContext();
-  if (ctx?.profile?.role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireAdmin();
   const { erro } = await searchParams;
 
   const supabase = await createClient();

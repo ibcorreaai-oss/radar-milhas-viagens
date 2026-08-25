@@ -3,11 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
+import { isBlocked } from '@/lib/roles';
 import { getOrCreateDefaultBucketList } from '@/lib/bucket-list';
 
 export async function saveEventToBucketList(worldEventId: string): Promise<void> {
   const ctx = await getUserContext();
-  if (!ctx) {
+  if (!ctx || isBlocked(ctx.profile)) {
     throw new Error('Faça login para salvar na Bucket List.');
   }
 

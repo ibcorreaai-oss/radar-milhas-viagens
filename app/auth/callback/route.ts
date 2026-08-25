@@ -4,6 +4,7 @@ import { safeRedirectPath } from '@/lib/safe-redirect';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
 import { welcomeEmail } from '@/lib/email/templates';
+import { accountStatusMessage } from '@/lib/auth-block';
 
 // Route Handler que recebe o "code" PKCE tanto do login com Google quanto do
 // link de recuperação de senha (ver app/(auth)/recuperar-senha/actions.ts,
@@ -27,12 +28,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
-  // Veio do link de recuperação de senha — manda direto pro formulário de
-  // nova senha, não faz sentido checar onboarding aqui.
-  if (type === 'recovery') {
-    return NextResponse.redirect(`${origin}/auth/redefinir`);
-  }
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -42,13 +37,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  logger.info('auth', 'Login via callback (OAuth/recovery) bem-sucedido', { userId: user.id });
-
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('onboarding_done')
+    .select('onboarding_done, blocked_at, blocked_reason')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  // ETAPA 15 (achado em revisão adversarial) — o branch de recuperação de
+  // senha retornava ANTES desta checagem, então uma conta bloqueada
+  // conseguia trocar a própria senha via /auth/redefinir mesmo suspensa
+  // (exchangeCodeForSession já estabelece sessão válida de verdade aqui,
+  // é um Route Handler — diferente do Server Component de
+  // app/(app)/layout.tsx, aqui o signOut() realmente limpa o cookie).
+  // Por isso a checagem de bloqueio vem ANTES do `if (type === 'recovery')`.
+  // Falha de leitura (profileError) é tratada como "não dá pra confirmar
+  // que está seguro" — mesmo critério de lib/auth-block.ts, fail-closed.
+  if (profileError || profile?.blocked_at) {
+    const status = profileError ? 'unknown' : 'blocked';
+    logger.warn('auth', 'Login via callback negado', { userId: user.id, type, status });
+    await supabase.auth.signOut();
+    const message = encodeURIComponent(accountStatusMessage(status, profile?.blocked_reason ?? null));
+    return NextResponse.redirect(`${origin}/login?error=blocked&message=${message}`);
+  }
+
+  // Veio do link de recuperação de senha — manda direto pro formulário de
+  // nova senha, não faz sentido checar onboarding aqui.
+  if (type === 'recovery') {
+    return NextResponse.redirect(`${origin}/auth/redefinir`);
+  }
+
+  logger.info('auth', 'Login via callback (OAuth) bem-sucedido', { userId: user.id });
 
   if (!profile || !profile.onboarding_done) {
     // ETAPA 7 (ativação): cobre o cadastro por link de confirmação de
