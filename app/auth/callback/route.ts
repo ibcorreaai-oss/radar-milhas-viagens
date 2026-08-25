@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { safeRedirectPath } from '@/lib/safe-redirect';
+import { logger } from '@/lib/logger';
 
 // Route Handler que recebe o "code" PKCE tanto do login com Google quanto do
 // link de recuperação de senha (ver app/(auth)/recuperar-senha/actions.ts,
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
   const next = safeRedirectPath(searchParams.get('next'), '/dashboard');
 
   if (!code) {
+    logger.warn('auth', 'Callback de auth chamado sem code');
     return NextResponse.redirect(`${origin}/login`);
   }
 
@@ -19,6 +21,7 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    logger.error('auth', 'Falha ao trocar code por sessão (OAuth/recovery)', { type, reason: error.message });
     return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
@@ -33,8 +36,11 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    logger.error('auth', 'Sessão trocada com sucesso mas getUser() não retornou usuário');
     return NextResponse.redirect(`${origin}/login`);
   }
+
+  logger.info('auth', 'Login via callback (OAuth/recovery) bem-sucedido', { userId: user.id });
 
   const { data: profile } = await supabase
     .from('profiles')

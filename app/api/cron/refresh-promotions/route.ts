@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 
 // Cron: /api/cron/refresh-promotions — roda 1x por dia (ver vercel.json).
 // Atualiza o status de promoções conforme a data: expira as vencidas,
@@ -34,12 +35,14 @@ export async function GET(request: NextRequest) {
       .select('id');
 
     if (expireError) {
-      console.error('[cron/refresh-promotions] erro ao expirar promoções:', expireError);
+      logger.error('cron', 'refresh-promotions: erro ao expirar promoções', { reason: expireError.message });
     } else {
       expiredCount = expired?.length ?? 0;
     }
   } catch (err) {
-    console.error('[cron/refresh-promotions] erro inesperado ao expirar promoções:', err);
+    logger.error('cron', 'refresh-promotions: erro inesperado ao expirar promoções', {
+      reason: err instanceof Error ? err.message : String(err),
+    });
   }
 
   try {
@@ -56,13 +59,16 @@ export async function GET(request: NextRequest) {
       .select('id');
 
     if (activateError) {
-      console.error('[cron/refresh-promotions] erro ao ativar promoções:', activateError);
+      logger.error('cron', 'refresh-promotions: erro ao ativar promoções', { reason: activateError.message });
     } else {
       activatedCount = activated?.length ?? 0;
     }
   } catch (err) {
-    console.error('[cron/refresh-promotions] erro inesperado ao ativar promoções:', err);
+    logger.error('cron', 'refresh-promotions: erro inesperado ao ativar promoções', {
+      reason: err instanceof Error ? err.message : String(err),
+    });
   }
 
+  logger.info('cron', 'refresh-promotions finalizado', { expired: expiredCount, activated: activatedCount });
   return NextResponse.json({ expired: expiredCount, activated: activatedCount });
 }

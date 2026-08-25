@@ -1,4 +1,5 @@
 import type { WhatsAppProvider, WhatsAppSendResult } from '@/lib/whatsapp/provider';
+import { logger } from '@/lib/logger';
 
 // Provider Z-API. Sem ZAPI_INSTANCE_ID/ZAPI_TOKEN configurados, sendText
 // devolve 'skipped' — nunca lança exceção (WhatsApp fica abstrato no MVP,
@@ -29,12 +30,17 @@ export class ZApiWhatsAppProvider implements WhatsAppProvider {
 
       if (!response.ok) {
         const body = await response.text().catch(() => '');
-        return { status: 'failed', reason: `Z-API respondeu ${response.status}: ${body}` };
+        const reason = `Z-API respondeu ${response.status}: ${body}`;
+        logger.error('integration', 'Falha ao enviar WhatsApp via Z-API', { status: response.status, reason });
+        return { status: 'failed', reason };
       }
 
+      logger.info('integration', 'WhatsApp enviado via Z-API');
       return { status: 'sent' };
     } catch (err) {
-      return { status: 'failed', reason: String(err) };
+      const reason = String(err);
+      logger.error('integration', 'Exceção ao enviar WhatsApp via Z-API', { reason });
+      return { status: 'failed', reason };
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { WhatsAppProvider, WhatsAppSendResult } from '@/lib/whatsapp/provider';
+import { logger } from '@/lib/logger';
 
 // Provider Evolution API. Sem EVOLUTION_API_URL/API_KEY/INSTANCE configurados,
 // sendText devolve 'skipped' — nunca lança exceção (WhatsApp fica abstrato
@@ -34,12 +35,17 @@ export class EvolutionWhatsAppProvider implements WhatsAppProvider {
 
       if (!response.ok) {
         const body = await response.text().catch(() => '');
-        return { status: 'failed', reason: `Evolution API respondeu ${response.status}: ${body}` };
+        const reason = `Evolution API respondeu ${response.status}: ${body}`;
+        logger.error('integration', 'Falha ao enviar WhatsApp via Evolution API', { status: response.status, reason });
+        return { status: 'failed', reason };
       }
 
+      logger.info('integration', 'WhatsApp enviado via Evolution API');
       return { status: 'sent' };
     } catch (err) {
-      return { status: 'failed', reason: String(err) };
+      const reason = String(err);
+      logger.error('integration', 'Exceção ao enviar WhatsApp via Evolution API', { reason });
+      return { status: 'failed', reason };
     }
   }
 }

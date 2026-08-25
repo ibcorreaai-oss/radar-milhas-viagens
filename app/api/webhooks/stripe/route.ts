@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 import type { PlanId, SubscriptionStatus } from '@/lib/types';
 
 // Route Handler do webhook da Stripe. É a ÚNICA superfície do app que
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature || !webhookSecret) {
-    console.error('Stripe webhook: assinatura ou STRIPE_WEBHOOK_SECRET ausente.');
+    await logger.critical('payment', 'Webhook Stripe recebido sem assinatura ou STRIPE_WEBHOOK_SECRET ausente', {
+      hasSignature: Boolean(signature),
+      hasSecret: Boolean(webhookSecret),
+    });
     return NextResponse.json({ error: 'Configuração de webhook ausente.' }, { status: 400 });
   }
 
@@ -32,9 +36,13 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'assinatura inválida';
-    console.error(`Stripe webhook: falha ao validar assinatura — ${message}`);
+    // Assinatura inválida quase sempre é STRIPE_WEBHOOK_SECRET errado (config)
+    // ou alguém tentando forjar um evento — os dois merecem atenção rápida.
+    await logger.critical('payment', 'Falha ao validar assinatura do webhook Stripe', { reason: message });
     return NextResponse.json({ error: `Webhook inválido: ${message}` }, { status: 400 });
   }
+
+  logger.info('payment', 'Webhook Stripe recebido', { eventType: event.type, eventId: event.id });
 
   try {
     const supabaseAdmin = createAdminClient();
@@ -52,7 +60,10 @@ export async function POST(request: Request) {
             : session.subscription?.id ?? null;
 
         if (!userId || !planId) {
-          console.error('Stripe webhook: checkout.session.completed sem metadata.userId/planId.');
+          await logger.critical('payment', 'checkout.session.completed sem metadata.userId/planId — assinatura não ativada', {
+            eventId: event.id,
+            sessionId: session.id,
+          });
           break;
         }
 
@@ -69,7 +80,13 @@ export async function POST(request: Request) {
         );
 
         if (error) {
-          console.error(`Stripe webhook: erro ao gravar subscription (checkout.session.completed): ${error.message}`);
+          await logger.critical('payment', 'Erro ao gravar subscription após checkout concluído', {
+            userId,
+            planId,
+            reason: error.message,
+          });
+        } else {
+          logger.info('payment', 'Assinatura ativada via checkout', { userId, planId });
         }
         break;
       }
@@ -87,7 +104,21 @@ export async function POST(request: Request) {
           .eq('stripe_subscription_id', subscription.id);
 
         if (error) {
-          console.error(`Stripe webhook: erro ao atualizar subscription (customer.subscription.updated): ${error.message}`);
+          logger.error('payment', 'Erro ao atualizar subscription (customer.subscription.updated)', {
+            stripeSubscriptionId: subscription.id,
+            reason: error.message,
+          });
+        } else if (status === 'past_due') {
+          // Sinal real de falha de pagamento (cartão recusado, sem saldo,
+          // etc.) — não precisa assinar o evento invoice.payment_failed à
+          // parte no Stripe pra detectar isto, já vem no que já está
+          // configurado.
+          await logger.critical('payment', 'Assinatura entrou em past_due — provável falha de cobrança', {
+            stripeSubscriptionId: subscription.id,
+            stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
+          });
+        } else {
+          logger.info('payment', 'Subscription atualizada', { stripeSubscriptionId: subscription.id, status });
         }
         break;
       }
@@ -101,7 +132,14 @@ export async function POST(request: Request) {
           .eq('stripe_subscription_id', subscription.id);
 
         if (error) {
-          console.error(`Stripe webhook: erro ao cancelar subscription (customer.subscription.deleted): ${error.message}`);
+          logger.error('payment', 'Erro ao cancelar subscription (customer.subscription.deleted)', {
+            stripeSubscriptionId: subscription.id,
+            reason: error.message,
+          });
+        } else {
+          logger.info('payment', 'Subscription cancelada, usuário voltou pro plano free', {
+            stripeSubscriptionId: subscription.id,
+          });
         }
         break;
       }
@@ -114,7 +152,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'erro desconhecido';
-    console.error(`Stripe webhook: erro não tratado ao processar evento ${event.type}: ${message}`);
+    await logger.critical('payment', `Erro não tratado ao processar webhook Stripe`, {
+      eventType: event.type,
+      eventId: event.id,
+      reason: message,
+    });
     return NextResponse.json({ error: 'Erro interno ao processar webhook.' }, { status: 500 });
   }
 }

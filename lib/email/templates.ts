@@ -201,3 +201,33 @@ export function opportunityExpiredEmail(params: { title: string }): EmailTemplat
     }),
   };
 }
+
+// Alerta operacional interno (lib/alerts/notify-ops.ts) — não é e-mail pra
+// usuário do clube, é pro Igor quando algo crítico acontece no sistema
+// (falha de pagamento, falha sistêmica de autenticação, erro não tratado).
+export function opsAlertEmail(params: {
+  category: string;
+  message: string;
+  fields?: Record<string, unknown>;
+}): EmailTemplate {
+  const { category, message, fields } = params;
+  const fieldsHtml =
+    fields && Object.keys(fields).length > 0
+      ? `<pre style="background:#f4f4f5;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;">${escapeHtml(
+          JSON.stringify(fields, null, 2)
+        )}</pre>`
+      : '';
+
+  return {
+    subject: `[Radar Milhas] Alerta crítico — ${category}`,
+    html: layout({
+      title: `Alerta crítico: ${escapeHtml(category)}`,
+      preheader: message,
+      bodyHtml: `
+        <p><strong>${escapeHtml(message)}</strong></p>
+        ${fieldsHtml}
+        <p style="color:${MUTED_COLOR};font-size:13px;">Categoria: ${escapeHtml(category)} · ${new Date().toLocaleString('pt-BR')}</p>
+      `,
+    }),
+  };
+}

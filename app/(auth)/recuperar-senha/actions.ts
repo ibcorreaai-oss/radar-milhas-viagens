@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface ResetState {
   error?: string;
@@ -30,9 +31,17 @@ export async function requestPasswordReset(
 
   // ?type=recovery marca o link para o /auth/callback saber que deve
   // mandar o usuário para /auth/redefinir em vez de /dashboard.
-  await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/redefinir?type=recovery`,
   });
+
+  // Log server-side só — a resposta ao usuário nunca revela se o e-mail
+  // existe na base (proteção contra enumeração de contas).
+  if (error) {
+    logger.warn('auth', 'Falha ao solicitar recuperação de senha', { email, reason: error.message });
+  } else {
+    logger.info('auth', 'Recuperação de senha solicitada', { email });
+  }
 
   // Sempre responde com sucesso — nunca revela se o e-mail existe na base.
   return {

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface SignUpState {
   error?: string;
@@ -52,10 +53,14 @@ export async function signUp(
   if (error) {
     const msg = error.message.toLowerCase();
     if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('já')) {
+      logger.info('auth', 'Cadastro rejeitado — e-mail já existe', { email });
       return { error: 'Este e-mail já está cadastrado. Faça login.' };
     }
+    logger.error('auth', 'Falha ao criar conta', { email, reason: error.message });
     return { error: 'Não foi possível criar sua conta. Tente novamente.' };
   }
+
+  logger.info('auth', 'Cadastro bem-sucedido', { userId: data.user?.id, email, hasSession: Boolean(data.session) });
 
   // Se a confirmação de e-mail estiver ativada no projeto Supabase, não
   // existe sessão ainda — o usuário precisa clicar no link recebido.

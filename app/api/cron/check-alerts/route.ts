@@ -6,6 +6,7 @@ import { planHasChannel } from '@/lib/plans';
 import { sendEmail } from '@/lib/email/send';
 import { alertFoundEmail } from '@/lib/email/templates';
 import { getWhatsAppProvider } from '@/lib/whatsapp';
+import { logger } from '@/lib/logger';
 import type { Alert, CabinClass, PlanId } from '@/lib/types';
 
 // Cron: /api/cron/check-alerts — roda a cada hora (ver vercel.json).
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
     .eq('active', true);
 
   if (alertsError) {
-    console.error('[cron/check-alerts] erro ao buscar alertas ativos:', alertsError);
+    await logger.critical('cron', 'check-alerts: erro ao buscar alertas ativos', { reason: alertsError.message });
     return NextResponse.json({ error: 'erro ao buscar alertas' }, { status: 500 });
   }
 
@@ -280,9 +281,15 @@ export async function GET(request: NextRequest) {
         }
 
         if (logs.length > 0) {
+          // Falha de envio em si já é logada na camada de integração
+          // (lib/email/send.ts, lib/whatsapp/providers/*) — aqui só cobre o
+          // caso de o INSERT em notification_logs falhar.
           const { error: logError } = await admin.from('notification_logs').insert(logs);
           if (logError) {
-            console.error('[cron/check-alerts] erro ao gravar notification_logs:', logError);
+            logger.error('integration', 'check-alerts: erro ao gravar notification_logs', {
+              alertId: alert.id,
+              reason: logError.message,
+            });
           }
         }
 
@@ -297,7 +304,10 @@ export async function GET(request: NextRequest) {
         markedChecked = true;
       }
     } catch (err) {
-      console.error(`[cron/check-alerts] erro ao processar alerta ${alert.id}:`, err);
+      logger.error('cron', 'check-alerts: erro ao processar alerta', {
+        alertId: alert.id,
+        reason: err instanceof Error ? err.message : String(err),
+      });
       if (!markedChecked) {
         // Marca como checado mesmo em erro, pra não ficar reprocessando o
         // mesmo alerta quebrado a cada execução do cron.
@@ -314,5 +324,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  logger.info('cron', 'check-alerts finalizado', { dueCount: dueAlerts.length, checked, triggered });
   return NextResponse.json({ checked, triggered });
 }

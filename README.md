@@ -7,7 +7,8 @@ premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original d
 `VISION_MASTER.md` para o norte de longo prazo (referência de UX, não muda o posicionamento) e
 `ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience Radar,
 Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore, rollback de
-deploy e recuperação de exclusão acidental de dados.
+deploy e recuperação de exclusão acidental de dados, e `OBSERVABILITY.md` para logs
+estruturados, auditoria, monitoramento de uptime e alertas críticos.
 
 ## Stack
 
@@ -92,6 +93,9 @@ Ordem sugerida:
 ### 3. Resend (e-mail)
 - [ ] Criar conta, verificar domínio de envio
 - [ ] Preencher `RESEND_API_KEY` e `RESEND_FROM_EMAIL`
+- [ ] Preencher `OPS_ALERT_EMAIL` (ver `OBSERVABILITY.md`) — sem isso, alertas críticos
+      (falha de pagamento, falha de autenticação sistêmica, erro não tratado) só ficam no log,
+      sem e-mail
 
 ### 4. WhatsApp (Evolution API ou Z-API — escolher um)
 - [ ] Subir instância Evolution API (ou criar conta Z-API)
@@ -114,6 +118,8 @@ Ordem sugerida:
 - [ ] Preencher `NEXT_PUBLIC_APP_URL` com a URL final
 - [ ] Preencher `CRON_SECRET` (qualquer string aleatória forte) e confirmar que os 3 cron jobs do `vercel.json` estão rodando (aba Cron Jobs do projeto na Vercel)
 - [ ] Conferir todas as env vars acima também na Vercel (não só no `.env.local`)
+- [ ] Apontar um serviço de uptime gratuito (UptimeRobot, Better Uptime, Freshping) para
+      `/api/health` — ver `OBSERVABILITY.md`
 
 ### 8. Testes finais ponta a ponta
 - [ ] Cadastro → onboarding → dashboard
