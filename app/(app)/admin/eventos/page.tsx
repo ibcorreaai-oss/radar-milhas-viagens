@@ -5,7 +5,8 @@ import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { AdminTable } from '@/components/admin-table';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/ui/confirm-submit-button';
 import { cn, formatDate } from '@/lib/utils';
 import { EVENT_STATUS_LABEL } from '@/lib/types';
 import { deleteEvent } from './actions';
@@ -86,10 +87,14 @@ export default async function AdminEventosPage() {
               Editar
             </Link>
             <form action={deleteEvent.bind(null, e.id)}>
-              <Button type="submit" variant="destructive" size="sm">
+              <ConfirmSubmitButton
+                variant="destructive"
+                size="sm"
+                confirmMessage={`Excluir o evento "${e.title}"? Ele some de /descobrir imediatamente — fica registrado em audit_logs, mas não tem desfazer no app.`}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
                 Excluir
-              </Button>
+              </ConfirmSubmitButton>
             </form>
           </div>
         )}

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
+import { logAuditEvent } from '@/lib/audit-log';
 import type { LoyaltyProgramType } from '@/lib/types';
 
 function parseLoyaltyProgramForm(formData: FormData) {
@@ -61,13 +62,17 @@ export async function updateLoyaltyProgram(id: string, formData: FormData): Prom
 }
 
 export async function deleteLoyaltyProgram(id: string): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   const supabase = await createClient();
+
+  const { data: before } = await supabase.from('loyalty_programs').select('*').eq('id', id).maybeSingle();
 
   const { error } = await supabase.from('loyalty_programs').delete().eq('id', id);
   if (error) {
     throw new Error(`Erro ao excluir programa: ${error.message}`);
   }
+
+  await logAuditEvent({ userId: ctx.userId, action: 'delete', entity: 'loyalty_programs', entityId: id, metadata: { deleted: before } });
 
   revalidatePath('/admin/programas');
 }

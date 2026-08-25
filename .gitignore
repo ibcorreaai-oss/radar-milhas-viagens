@@ -8,3 +8,8 @@
 npm-debug.log*
 .DS_Store
 next-env.d.ts
+
+# Dumps de backup do banco (supabase db dump) — contêm dados reais de
+# usuário, nunca versionar. Ver DISASTER_RECOVERY.md.
+/backups/
+*.dump.sql

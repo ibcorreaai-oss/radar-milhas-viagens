@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
+import { logAuditEvent } from '@/lib/audit-log';
 import { parseNumberOrNull } from '@/lib/utils';
 import type { PromotionType, PromotionStatus } from '@/lib/types';
 
@@ -58,13 +59,17 @@ export async function updatePromotion(id: string, formData: FormData): Promise<v
 }
 
 export async function deletePromotion(id: string): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   const supabase = await createClient();
+
+  const { data: before } = await supabase.from('promotions').select('*').eq('id', id).maybeSingle();
 
   const { error } = await supabase.from('promotions').delete().eq('id', id);
   if (error) {
     throw new Error(`Erro ao excluir promoção: ${error.message}`);
   }
+
+  await logAuditEvent({ userId: ctx.userId, action: 'delete', entity: 'promotions', entityId: id, metadata: { deleted: before } });
 
   revalidatePath('/admin/promocoes');
 }

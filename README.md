@@ -3,9 +3,11 @@
 SaaS de alertas e comparação de viagens (dinheiro vs pontos/milhas), evoluindo para uma
 plataforma de inteligência de oportunidades de viagem (Discover → Optimize → Plan →
 Book). MVP original completo, buildado e com typecheck limpo. Vendido como **clube
-premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original do MVP e
-`ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience
-Radar, Bucket List e o que vem depois).
+premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original do MVP,
+`VISION_MASTER.md` para o norte de longo prazo (referência de UX, não muda o posicionamento) e
+`ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience Radar,
+Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore, rollback de
+deploy e recuperação de exclusão acidental de dados.
 
 ## Stack
 

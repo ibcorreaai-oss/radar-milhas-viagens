@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/empty-state';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/ui/confirm-submit-button';
 import { formatBRL, formatPoints, formatDateTime } from '@/lib/utils';
 import type { Alert } from '@/lib/types';
 import { AlertForm } from './alert-form';
@@ -151,9 +152,13 @@ export default async function AlertasPage({
                         </Button>
                       </form>
                       <form action={deleteAlert.bind(null, alert.id)}>
-                        <Button type="submit" variant="destructive" size="sm">
+                        <ConfirmSubmitButton
+                          variant="destructive"
+                          size="sm"
+                          confirmMessage={`Excluir o alerta "${alert.name}"? Você para de ser avisado sobre essa oportunidade.`}
+                        >
                           Excluir
-                        </Button>
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </CardContent>

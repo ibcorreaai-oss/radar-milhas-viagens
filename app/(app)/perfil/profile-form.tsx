@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { ConfirmSubmitButton } from '@/components/ui/confirm-submit-button';
 import { Separator } from '@/components/ui/separator';
 import { formatPoints } from '@/lib/utils';
 import type { CabinClass, Profile } from '@/lib/types';
@@ -239,9 +240,14 @@ export function ProfileForm({ profile, userPrograms, allPrograms }: ProfileFormP
                   </form>
                   <form action={deleteUserLoyaltyProgram}>
                     <input type="hidden" name="id" value={up.id} />
-                    <Button type="submit" size="icon" variant="ghost" aria-label="Remover programa">
+                    <ConfirmSubmitButton
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Remover programa"
+                      confirmMessage={`Remover "${up.loyalty_programs?.name ?? 'este programa'}" da sua carteira? O saldo cadastrado (${formatPoints(up.points_balance)} pts) some — você pode cadastrar de novo depois.`}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </ConfirmSubmitButton>
                   </form>
                 </li>
               ))}

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin-guard';
+import { logAuditEvent } from '@/lib/audit-log';
 import { slugify, parseTagsList, parseNumberOrNull } from '@/lib/utils';
 import { evaluateExperience, deriveBookNowState, daysUntil } from '@/lib/scoring/event-score';
 import type { EventSignificance, EventStatus } from '@/lib/types';
@@ -140,13 +141,17 @@ export async function updateEvent(id: string, formData: FormData): Promise<void>
 }
 
 export async function deleteEvent(id: string): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
   const supabase = await createClient();
+
+  const { data: before } = await supabase.from('world_events').select('*').eq('id', id).maybeSingle();
 
   const { error } = await supabase.from('world_events').delete().eq('id', id);
   if (error) {
     throw new Error(`Erro ao excluir evento: ${error.message}`);
   }
+
+  await logAuditEvent({ userId: ctx.userId, action: 'delete', entity: 'world_events', entityId: id, metadata: { deleted: before } });
 
   revalidatePath('/admin/eventos');
   revalidatePath('/descobrir');
