@@ -20,10 +20,16 @@ export default async function LoginPage({
   // ?error=blocked&message=... quando o login via Google é de uma conta
   // suspensa (ver lib/auth-block.ts). `error=auth` (falha de troca de code,
   // já existia antes desta etapa) cai no fallback genérico.
+  //
+  // ETAPA 15.1 (achado revisando antes do fim da etapa): `message` já vem
+  // decodificado pelo Next.js (searchParams entrega valores decodificados
+  // de propósito) — chamar decodeURIComponent() de novo aqui é um
+  // double-decode. Se `blocked_reason` (definido livremente por um admin
+  // em /admin/usuarios) tiver um "%" sozinho (ex.: "atrasou 30% dos
+  // pagamentos"), decodeURIComponent quebra com URIError — a página
+  // /login inteira cairia em 500 pra essa pessoa específica.
   const errorMessage = error
-    ? message
-      ? decodeURIComponent(message)
-      : 'Não foi possível concluir o login. Tente novamente.'
+    ? message || 'Não foi possível concluir o login. Tente novamente.'
     : null;
 
   return (

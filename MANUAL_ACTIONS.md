@@ -160,3 +160,19 @@ real (tabela `favorites` + bucket `event-media`) — nada pra rodar manualmente 
   só via SQL direto (`update profiles set role='admin' where user_id='...'`), sem mudança aqui.
 - Bucket `event-media` é público pra leitura (as imagens aparecem em `/descobrir` pra qualquer
   visitante) e só admin escreve — nada a configurar, a policy já está na migration.
+
+## 10. ETAPA 15.1 — Resend, analytics/ads, IA+WhatsApp na home, indicação (25/08)
+
+Checklist completo com o raciocínio de cada item em `GROWTH.md` (seção da própria etapa). Resumo
+das pendências manuais:
+
+- [ ] **`RESEND_API_KEY` vazio em `.env.local`** — achado revisando a fundo: nenhum e-mail
+      transacional (boas-vindas, confirmação de assinatura, notificação de lead/contato) está
+      sendo enviado de verdade hoje. Preencher com a chave do Resend.
+- [ ] `NEXT_PUBLIC_SUPPORT_WHATSAPP_NUMBER` — sem isso, o botão de WhatsApp do widget da home
+      simplesmente não aparece (não quebra nada).
+- [ ] `NEXT_PUBLIC_GA_MEASUREMENT_ID` / `NEXT_PUBLIC_META_PIXEL_ID` / `NEXT_PUBLIC_GOOGLE_ADS_ID` /
+      `NEXT_PUBLIC_TWITTER_PIXEL_ID` / `NEXT_PUBLIC_TIKTOK_PIXEL_ID` — preencher cada um quando a
+      respectiva conta de anúncio existir.
+- [ ] Decidir se o programa de indicação (`/afiliados`) vai ter recompensa automática — hoje só
+      rastreia quem indicou quem, sem comissão/desconto.

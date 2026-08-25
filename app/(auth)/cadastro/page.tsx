@@ -9,7 +9,17 @@ import {
 } from '@/components/ui/card';
 import { CadastroForm } from './cadastro-form';
 
-export default function CadastroPage() {
+export default async function CadastroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
+  // ETAPA 15.1 (ver GROWTH.md) — programa de indicação: quem chega por
+  // /cadastro?ref=CODIGO tem a indicação resolvida no próprio trigger
+  // handle_new_user (supabase/migrations/0013), não aqui — este componente
+  // só repassa o código adiante.
+  const { ref } = await searchParams;
+
   return (
     <Card>
       <CardHeader>
@@ -20,7 +30,7 @@ export default function CadastroPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <CadastroForm />
+        <CadastroForm referredByCode={ref} />
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 text-center text-sm text-muted-foreground">
         <span>

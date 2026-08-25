@@ -33,6 +33,10 @@ export interface Profile {
   role: UserRole;
   blocked_at: string | null;
   blocked_reason: string | null;
+  // ETAPA 15.1 (ver GROWTH.md) — programa de indicação: código gerado no
+  // trigger handle_new_user, nunca escolhido pelo usuário.
+  referral_code: string;
+  referred_by_user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -471,5 +475,23 @@ export interface Favorite {
   user_id: string;
   item_type: FavoriteItemType;
   item_id: string;
+  created_at: string;
+}
+
+// =====================================================================
+// Contato / leads (ETAPA 12 + 15.1 — ver GROWTH.md)
+// Espelham supabase/migrations/0006_contact_messages.sql + 0013.
+// =====================================================================
+
+export type ContactMessageSource = 'contato' | 'home_ai_chat';
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  email_status: 'pending' | 'sent' | 'skipped' | 'failed';
+  source: ContactMessageSource;
   created_at: string;
 }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { adminLoginSchema, firstZodError } from '@/lib/validation/auth-schemas';
 import { isAdminRole, isBlocked } from '@/lib/roles';
+import { logAuditEvent } from '@/lib/audit-log';
 
 // ETAPA 14 (ver AUTH_AND_ADMIN.md §3) — login de administrador é sempre por
 // e-mail+senha (nunca OTP, nunca cria conta). Checa profiles.role='admin'
@@ -55,5 +56,11 @@ export async function signInAsAdmin(
   }
 
   logger.info('auth', 'Login de admin bem-sucedido', { userId: data.user.id, email });
+
+  // ETAPA 15.1 (ver GROWTH.md) — entrada na área administrativa é o
+  // exemplo que o próprio PLATFORM_ADMIN.md já citava (ADMIN_LOGIN) e não
+  // estava implementado; agora fica no histórico de /admin/auditoria.
+  await logAuditEvent({ userId: data.user.id, action: 'admin_login', entity: 'profiles', entityId: data.user.id });
+
   redirect('/admin');
 }

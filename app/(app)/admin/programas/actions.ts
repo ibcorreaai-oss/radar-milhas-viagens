@@ -31,7 +31,7 @@ function rawLoyaltyProgramForm(formData: FormData) {
 }
 
 export async function createLoyaltyProgram(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = loyaltyProgramSchema.safeParse(rawLoyaltyProgramForm(formData));
   if (!parsed.success) {
@@ -39,17 +39,25 @@ export async function createLoyaltyProgram(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from('loyalty_programs').insert(parsed.data);
+  const { data: created, error } = await supabase.from('loyalty_programs').insert(parsed.data).select('id').single();
   if (error) {
     redirect(`/admin/programas/nova?erro=${encodeURIComponent(friendlyDbError(error, 'um programa'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'create',
+    entity: 'loyalty_programs',
+    entityId: created.id,
+    metadata: { name: parsed.data.name },
+  });
 
   revalidatePath('/admin/programas');
   redirect('/admin/programas');
 }
 
 export async function updateLoyaltyProgram(id: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = loyaltyProgramSchema.safeParse(rawLoyaltyProgramForm(formData));
   if (!parsed.success) {
@@ -61,6 +69,14 @@ export async function updateLoyaltyProgram(id: string, formData: FormData): Prom
   if (error) {
     redirect(`/admin/programas/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'um programa'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'update',
+    entity: 'loyalty_programs',
+    entityId: id,
+    metadata: { name: parsed.data.name },
+  });
 
   revalidatePath('/admin/programas');
   redirect('/admin/programas');

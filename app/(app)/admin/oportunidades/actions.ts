@@ -41,7 +41,7 @@ function rawOpportunityForm(formData: FormData) {
 }
 
 export async function createOpportunity(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = opportunitySchema.safeParse(rawOpportunityForm(formData));
   if (!parsed.success) {
@@ -49,17 +49,25 @@ export async function createOpportunity(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from('opportunities').insert(parsed.data);
+  const { data: created, error } = await supabase.from('opportunities').insert(parsed.data).select('id').single();
   if (error) {
     redirect(`/admin/oportunidades/nova?erro=${encodeURIComponent(friendlyDbError(error, 'uma oportunidade'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'create',
+    entity: 'opportunities',
+    entityId: created.id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/oportunidades');
   redirect('/admin/oportunidades');
 }
 
 export async function updateOpportunity(id: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = opportunitySchema.safeParse(rawOpportunityForm(formData));
   if (!parsed.success) {
@@ -71,6 +79,14 @@ export async function updateOpportunity(id: string, formData: FormData): Promise
   if (error) {
     redirect(`/admin/oportunidades/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'uma oportunidade'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'update',
+    entity: 'opportunities',
+    entityId: id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/oportunidades');
   redirect('/admin/oportunidades');

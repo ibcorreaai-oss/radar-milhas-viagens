@@ -12,12 +12,15 @@ import type { AuditLog } from '@/lib/types';
 // consultar via SQL direto. Somente leitura de propósito: a auditoria
 // nunca deve ser editável pela própria UI que ela audita.
 const ACTION_LABEL: Record<string, string> = {
+  create: 'Criou',
+  update: 'Editou',
   delete: 'Excluiu',
   role_changed: 'Alterou role',
   user_blocked: 'Bloqueou usuário',
   user_unblocked: 'Desbloqueou usuário',
   enable: 'Ativou',
   disable: 'Desativou',
+  admin_login: 'Entrou no /admin-login',
 };
 
 export default async function AdminAuditoriaPage() {

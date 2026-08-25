@@ -36,7 +36,7 @@ function SubmitButton({
   );
 }
 
-export function CadastroForm() {
+export function CadastroForm({ referredByCode }: { referredByCode?: string }) {
   const [state, formAction] = useActionState(handleSignupStep, initialState);
 
   if (state.step === 'verify') {
@@ -44,6 +44,9 @@ export function CadastroForm() {
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="name" value={state.name ?? ''} />
         <input type="hidden" name="email" value={state.email ?? ''} />
+        {(state.referredByCode ?? referredByCode) && (
+          <input type="hidden" name="referred_by_code" value={state.referredByCode ?? referredByCode} />
+        )}
 
         {state.info && (
           <p className="rounded-md bg-secondary/10 px-3 py-2 text-sm text-secondary-foreground">
@@ -75,6 +78,7 @@ export function CadastroForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {referredByCode && <input type="hidden" name="referred_by_code" value={referredByCode} />}
       <div className="space-y-1.5">
         <Label htmlFor="name">Nome</Label>
         <Input

@@ -21,13 +21,18 @@ export interface SignUpState {
   email?: string;
   error?: string;
   info?: string;
+  referredByCode?: string;
 }
 
-async function sendSignupCode(email: string, name: string): Promise<{ error?: string }> {
+async function sendSignupCode(email: string, name: string, referredByCode?: string): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, data: { name } },
+    // ETAPA 15.1 (ver GROWTH.md) — raw_user_meta_data é lido pelo trigger
+    // handle_new_user (supabase/migrations/0013) pra resolver
+    // referred_by_user_id. Só afeta conta REALMENTE nova — se o e-mail já
+    // existe, o Supabase ignora `data` num signInWithOtp de login.
+    options: { shouldCreateUser: true, data: { name, referred_by_code: referredByCode } },
   });
 
   if (error) {
@@ -101,7 +106,10 @@ export async function handleSignupStep(
     if (profile?.blocked_at) {
       logger.warn('auth', 'Cadastro/login via OTP negado — conta bloqueada', { userId: user.id, email });
       await supabase.auth.signOut();
-      return { step: 'verify', email, error: accountStatusMessage('blocked', profile.blocked_reason) };
+      // `name` incluído de propósito (achado revisando antes do fim da
+      // etapa): sem ele, um "reenviar código" depois desta tela falharia
+      // a validação de nome em vez de simplesmente reenviar.
+      return { step: 'verify', name, email, error: accountStatusMessage('blocked', profile.blocked_reason) };
     }
 
     if (profileError) {
@@ -154,16 +162,18 @@ export async function handleSignupStep(
 
   const name = nameResult.data;
   const email = emailResult.data;
-  const { error } = await sendSignupCode(email, name);
+  const referredByCode = String(formData.get('referred_by_code') ?? '').trim() || undefined;
+  const { error } = await sendSignupCode(email, name, referredByCode);
 
   if (error) {
-    return { step: intent === 'resend' ? 'verify' : 'request', name, email, error };
+    return { step: intent === 'resend' ? 'verify' : 'request', name, email, referredByCode, error };
   }
 
   return {
     step: 'verify',
     name,
     email,
+    referredByCode,
     info:
       intent === 'resend'
         ? `Enviamos um novo código para ${email}.`

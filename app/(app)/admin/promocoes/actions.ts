@@ -27,7 +27,7 @@ function rawPromotionForm(formData: FormData) {
 }
 
 export async function createPromotion(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = promotionSchema.safeParse(rawPromotionForm(formData));
   if (!parsed.success) {
@@ -35,17 +35,25 @@ export async function createPromotion(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from('promotions').insert(parsed.data);
+  const { data: created, error } = await supabase.from('promotions').insert(parsed.data).select('id').single();
   if (error) {
     redirect(`/admin/promocoes/nova?erro=${encodeURIComponent(friendlyDbError(error, 'uma promoção'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'create',
+    entity: 'promotions',
+    entityId: created.id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/promocoes');
   redirect('/admin/promocoes');
 }
 
 export async function updatePromotion(id: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = promotionSchema.safeParse(rawPromotionForm(formData));
   if (!parsed.success) {
@@ -57,6 +65,14 @@ export async function updatePromotion(id: string, formData: FormData): Promise<v
   if (error) {
     redirect(`/admin/promocoes/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'uma promoção'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'update',
+    entity: 'promotions',
+    entityId: id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/promocoes');
   redirect('/admin/promocoes');

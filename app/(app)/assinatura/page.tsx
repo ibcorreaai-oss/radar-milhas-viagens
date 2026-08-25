@@ -5,6 +5,8 @@ import { SubscriptionCard } from '@/components/subscription-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { openBillingPortal } from './actions';
+import { ConversionTracker } from '@/components/conversion-tracker';
+import { ToastFromQuery } from '@/components/toast-from-query';
 
 const PLAN_RANK: Record<string, number> = { free: 0, premium: 1, pro: 2, consultor: 3 };
 
@@ -20,8 +22,6 @@ export default async function AssinaturaPage({
 
   const params = await searchParams;
   const erro = typeof params.erro === 'string' ? params.erro : null;
-  const sucesso = params.sucesso === '1';
-  const cancelado = params.cancelado === '1';
 
   const currentPlan = ctx.plan;
   const currentRank = PLAN_RANK[currentPlan] ?? 0;
@@ -35,24 +35,37 @@ export default async function AssinaturaPage({
         </p>
       </div>
 
+      {/* ETAPA 15.1 (achado revisando antes do fim da etapa): "sucesso"/
+          "cancelado" viraram toast (ToastFromQuery) em vez de banner preso
+          ao searchParams do server component — ConversionTracker precisa
+          limpar o param da URL depois de disparar a conversão de ads (senão
+          reload/compartilhar a URL reconta a mesma conversão), e um banner
+          renderizado a partir do searchParams do servidor desapareceria
+          assim que a URL fosse limpa, antes da pessoa nem ler. */}
+      <ToastFromQuery
+        rules={[
+          {
+            param: 'sucesso',
+            value: '1',
+            variant: 'success',
+            title: 'Assinatura confirmada!',
+            description: 'Pode levar alguns instantes até o plano atualizar aqui.',
+          },
+          {
+            param: 'cancelado',
+            value: '1',
+            variant: 'info',
+            title: 'Checkout cancelado',
+            description: 'Nenhuma cobrança foi feita.',
+          },
+        ]}
+      />
+      <ConversionTracker event="subscribe" param="sucesso" value="1" />
+
       {erro === 'stripe_nao_configurado' && (
         <Card className="border-destructive">
           <CardContent className="p-4 text-sm text-destructive">
             Esse plano ainda não está configurado para pagamento. Tente novamente mais tarde.
-          </CardContent>
-        </Card>
-      )}
-      {sucesso && (
-        <Card className="border-success">
-          <CardContent className="p-4 text-sm text-success">
-            Assinatura confirmada! Pode levar alguns instantes até o plano atualizar aqui.
-          </CardContent>
-        </Card>
-      )}
-      {cancelado && (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Checkout cancelado — nenhuma cobrança foi feita.
           </CardContent>
         </Card>
       )}

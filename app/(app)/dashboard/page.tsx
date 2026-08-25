@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/empty-state';
 import { DashboardStats } from '@/components/dashboard-stats';
 import { AchievementsPanel } from '@/components/achievements-panel';
 import { ToastFromQuery } from '@/components/toast-from-query';
+import { ConversionTracker } from '@/components/conversion-tracker';
 import { PLANS } from '@/lib/plans';
 import { formatBRL, formatDate, cn } from '@/lib/utils';
 import {
@@ -161,6 +162,7 @@ export default async function DashboardPage() {
           },
         ]}
       />
+      <ConversionTracker event="sign_up" param="onboarded" value="1" />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Olá, {firstName}</h1>
         <p className="mt-1 text-muted-foreground">

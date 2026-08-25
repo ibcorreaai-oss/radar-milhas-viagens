@@ -16,6 +16,7 @@ import {
   Sparkles,
   User,
   CreditCard,
+  Share2,
   ShieldCheck,
   LogOut,
   PanelLeftClose,
@@ -56,6 +57,7 @@ export const NAV_ITEMS: NavItem[] = [
 export const ACCOUNT_ITEMS: NavItem[] = [
   { href: '/perfil', label: 'Perfil', icon: User },
   { href: '/assinatura', label: 'Assinatura', icon: CreditCard },
+  { href: '/afiliados', label: 'Indique e ganhe', icon: Share2 },
 ];
 
 export function AppSidebar({

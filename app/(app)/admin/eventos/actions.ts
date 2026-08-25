@@ -80,7 +80,7 @@ async function computeScoring(
 }
 
 export async function createEvent(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = worldEventSchema.safeParse(rawEventForm(formData));
   if (!parsed.success) {
@@ -91,16 +91,26 @@ export async function createEvent(formData: FormData): Promise<void> {
   const scoring = await computeScoring(supabase, parsed.data);
   const now = new Date().toISOString();
 
-  const { error } = await supabase.from('world_events').insert({
-    ...parsed.data,
-    ...scoring,
-    last_checked_at: now,
-    last_changed_at: now,
-  });
+  const { data: created, error } = await supabase
+    .from('world_events')
+    .insert({ ...parsed.data, ...scoring, last_checked_at: now, last_changed_at: now })
+    .select('id')
+    .single();
 
   if (error) {
     redirect(`/admin/eventos/nova?erro=${encodeURIComponent(friendlyDbError(error, 'um evento (verifique se o slug já existe)'))}`);
   }
+
+  // ETAPA 15.1 (ver GROWTH.md) — só delete era auditado até aqui; create/
+  // update de conteúdo do admin ficavam fora do histórico consultável em
+  // /admin/auditoria.
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'create',
+    entity: 'world_events',
+    entityId: created.id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/eventos');
   revalidatePath('/descobrir');
@@ -108,7 +118,7 @@ export async function createEvent(formData: FormData): Promise<void> {
 }
 
 export async function updateEvent(id: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  const ctx = await requireAdmin();
 
   const parsed = worldEventSchema.safeParse(rawEventForm(formData));
   if (!parsed.success) {
@@ -127,6 +137,14 @@ export async function updateEvent(id: string, formData: FormData): Promise<void>
   if (error) {
     redirect(`/admin/eventos/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'um evento (verifique se o slug já existe)'))}`);
   }
+
+  await logAuditEvent({
+    userId: ctx.userId,
+    action: 'update',
+    entity: 'world_events',
+    entityId: id,
+    metadata: { title: parsed.data.title },
+  });
 
   revalidatePath('/admin/eventos');
   revalidatePath('/descobrir');

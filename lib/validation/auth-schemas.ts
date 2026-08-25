@@ -24,10 +24,18 @@ export const otpCodeSchema = z
 
 export const nameSchema = z.string().trim().min(1, 'Informe seu nome.').max(120);
 
+// `.max(72)` contaria caracteres JS, não bytes — o limite real é do bcrypt
+// do GoTrue, que trunca em 72 BYTES UTF-8. Uma senha com acento (é, ã, ç
+// = 2 bytes cada) podia passar no `.max(72)` contando caracteres e ainda
+// assim estourar o limite de bytes que o Supabase realmente aplica
+// (achado revisando antes do fim da etapa). `.refine()` mede bytes de
+// verdade via TextEncoder.
 export const passwordSchema = z
   .string()
   .min(8, 'A senha deve ter pelo menos 8 caracteres.')
-  .max(72, 'A senha pode ter no máximo 72 caracteres.');
+  .refine((v) => new TextEncoder().encode(v).length <= 72, {
+    message: 'A senha pode ter no máximo 72 bytes (acentos contam como 2).',
+  });
 
 export const adminLoginSchema = z.object({
   email: emailSchema,
