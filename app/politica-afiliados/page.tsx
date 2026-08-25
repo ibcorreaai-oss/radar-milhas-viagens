@@ -4,7 +4,7 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
 export const metadata: Metadata = {
-  title: 'Política de Afiliados — Radar Milhas & Viagens',
+  title: 'Política de Afiliados',
   description: 'Como funcionam os links de afiliado exibidos no Radar Milhas & Viagens.',
 };
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Wallet } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
@@ -5,6 +6,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LoyaltyProgramCard } from '@/components/loyalty-program-card';
 import { EmptyState } from '@/components/empty-state';
 import type { LoyaltyProgram, LoyaltyProgramType } from '@/lib/types';
+
+export const metadata: Metadata = {
+  title: 'Programas de pontos e milhas monitorados',
+  description:
+    'Catálogo de programas de fidelidade (Livelo, Esfera, Smiles, LATAM Pass, Azul Fidelidade e outros) com o valor médio do milheiro de cada um.',
+};
 
 const TYPE_ORDER: LoyaltyProgramType[] = ['banco', 'companhia_aerea', 'hotel', 'coalizao'];
 

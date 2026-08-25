@@ -4,7 +4,7 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
 export const metadata: Metadata = {
-  title: 'Termos de Uso — Radar Milhas & Viagens',
+  title: 'Termos de Uso',
   description: 'Termos de uso do Radar Milhas & Viagens.',
 };
 

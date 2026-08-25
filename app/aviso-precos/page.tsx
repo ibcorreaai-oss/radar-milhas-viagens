@@ -5,7 +5,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const metadata: Metadata = {
-  title: 'Aviso de Não Garantia de Preço — Radar Milhas & Viagens',
+  title: 'Aviso de Não Garantia de Preço',
   description:
     'Preços, pontos e disponibilidade podem mudar rapidamente. Entenda por que o Radar Milhas & Viagens não garante preço ou disponibilidade.',
 };

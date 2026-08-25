@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Gift } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
@@ -6,10 +7,16 @@ import { PromotionCard } from '@/components/promotion-card';
 import { EmptyState } from '@/components/empty-state';
 import type { Promotion } from '@/lib/types';
 
+export const metadata: Metadata = {
+  title: 'Promoções de milhas e pontos',
+  description:
+    'Transferências bonificadas, compra de pontos e cupons ativos — curados manualmente, atualizados continuamente.',
+};
+
 export default async function PromocoesPage() {
-  // A página funciona sem login (promoções são vitrine pública para
-  // usuário autenticado, conforme RLS) — getUserContext só é usado aqui
-  // para eventual personalização futura, não bloqueia a renderização.
+  // Vitrine pública de verdade (RLS libera leitura anônima desde a
+  // migration 0005 — ETAPA 11/SEO) — getUserContext só é usado aqui para
+  // eventual personalização futura, não bloqueia a renderização.
   const ctx = await getUserContext();
   void ctx;
 

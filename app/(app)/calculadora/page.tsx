@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PointsCalculator, type UserProgramOption } from './points-calculator';
 
 export const metadata = {
-  title: 'Calculadora de pontos — Radar Milhas & Viagens',
+  title: 'Calculadora de pontos',
 };
 
 // Formato bruto da linha retornada pelo join user_loyalty_programs + loyalty_programs.

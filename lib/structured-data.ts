@@ -1,0 +1,41 @@
+// Dados estruturados (schema.org / JSON-LD) — site-wide, injetados no
+// <head> por app/layout.tsx. Objetivo duplo: rich results no Google (SEO
+// tradicional) e contexto factual pra IA generativa citar o produto
+// corretamente (GEO — ver SEO_GEO.md). Estático de propósito (sem gerar em
+// runtime): os dados abaixo (nome, planos, preço) mudam raramente e não
+// dependem de banco — gerar em runtime seria complexidade sem ganho.
+import { PLANS, PLAN_ORDER } from '@/lib/plans';
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+export const ORGANIZATION_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Radar Milhas & Viagens',
+  url: SITE_URL,
+  description:
+    'Clube de assinatura que compara preços de passagem e hotel em dinheiro e em pontos/milhas, e avisa por e-mail ou WhatsApp quando vale a pena reservar.',
+  areaServed: 'BR',
+  availableLanguage: 'pt-BR',
+};
+
+export const SOFTWARE_APPLICATION_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Radar Milhas & Viagens',
+  applicationCategory: 'TravelApplication',
+  operatingSystem: 'Web',
+  url: SITE_URL,
+  description:
+    'Compara automaticamente o preço de passagens e hotéis pago em dinheiro contra o custo real de usar pontos/milhas de programas de fidelidade (Livelo, Esfera, Smiles, LATAM Pass, Azul Fidelidade e outros), calcula o valor do milheiro e recomenda a melhor forma de pagar. Envia alertas por e-mail ou WhatsApp quando o preço cai ou aparece uma boa oportunidade de resgate.',
+  offers: PLAN_ORDER.map((planId) => {
+    const plan = PLANS[planId];
+    return {
+      '@type': 'Offer',
+      name: `Plano ${plan.name}`,
+      price: (plan.priceCents / 100).toFixed(2),
+      priceCurrency: 'BRL',
+      description: plan.features.join(', '),
+    };
+  }),
+};

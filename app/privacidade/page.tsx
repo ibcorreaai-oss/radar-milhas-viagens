@@ -3,7 +3,7 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 
 export const metadata: Metadata = {
-  title: 'Política de Privacidade — Radar Milhas & Viagens',
+  title: 'Política de Privacidade',
   description: 'Como o Radar Milhas & Viagens coleta, usa e protege seus dados pessoais.',
 };
 
