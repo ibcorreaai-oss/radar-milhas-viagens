@@ -91,3 +91,17 @@ sessão não mexeu em nenhuma integração de pagamento/e-mail/WhatsApp/voo/hote
 - **Nenhum projeto Vercel existe ainda** — ver `README.md` item 7. Avisar se quiser que eu
   faça o primeiro deploy numa próxima etapa (depende de decidir domínio e confirmar as
   variáveis de ambiente de produção primeiro).
+
+## 7. ETAPA 12b — Collapsible Sidebar (25/08)
+
+- Sidebar do dashboard agora expande/recolhe (persistido), com Tooltip nos ícones e
+  Drawer/Sheet mobile novo — o dashboard não tinha NENHUMA navegação mobile antes disso
+  (achado real, não só melhoria pedida).
+- **Bug real encontrado ao tentar testar com um usuário real**: `/cadastro` rejeita e-mails
+  válidos (`gmail.com` incluso) com "Email address is invalid" no projeto Supabase novo
+  (`radar-milhas-viagens`). Não investiguei a fundo — o suspeito mais provável é confirmação
+  de e-mail exigida sem um provedor SMTP configurado ainda (Resend/`RESEND_API_KEY` continua
+  vazio, ver seção 3 do README), o GoTrue pode estar mascarando uma falha de envio como
+  "e-mail inválido". Testei o sidebar contornando isso com uma rota de preview temporária
+  (deletada antes do commit), mas esse bug bloqueia qualquer cadastro real de usuário até
+  ser corrigido — vale investigar antes de divulgar o app pra qualquer pessoa de fora.
