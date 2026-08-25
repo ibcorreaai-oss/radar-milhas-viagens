@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/send';
+import { welcomeEmail } from '@/lib/email/templates';
 
 export interface SignUpState {
   error?: string;
@@ -70,6 +72,10 @@ export async function signUp(
         'Quase lá! Enviamos um link de confirmação para o seu e-mail. Clique nele para ativar sua conta.',
     };
   }
+
+  // ETAPA 7 (ativação): primeiro contato pós-cadastro. Nunca bloqueia o
+  // fluxo — sendEmail() já não lança e já loga sucesso/falha sozinho.
+  await sendEmail(email, welcomeEmail(name));
 
   redirect('/onboarding');
 }

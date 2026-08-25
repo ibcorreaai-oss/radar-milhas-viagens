@@ -10,7 +10,8 @@ Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore,
 deploy e recuperação de exclusão acidental de dados, `OBSERVABILITY.md` para logs
 estruturados, auditoria, monitoramento de uptime e alertas críticos, `PERFORMANCE.md` para a
 auditoria de performance (consultas, cache por requisição, imagens, Core Web Vitals), e
-`DATA_QUALITY.md` para validação (Zod), deduplicação e integridade referencial.
+`DATA_QUALITY.md` para validação (Zod), deduplicação e integridade referencial, e
+`GROWTH.md` para ativação, retenção, conversão e métricas de negócio (`/admin/metricas`).
 
 ## Stack
 

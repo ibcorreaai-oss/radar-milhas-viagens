@@ -202,6 +202,32 @@ export function opportunityExpiredEmail(params: { title: string }): EmailTemplat
   };
 }
 
+// Disparado quando uma assinatura paga é cancelada de vez (Stripe
+// customer.subscription.deleted) — ver ETAPA 7 (comercialização) e
+// GROWTH.md. Recuperação de assinante cancelado: lembra o que ele perde e
+// convida a voltar, sem ser insistente (um e-mail só, não uma sequência).
+export function winBackEmail(params: { planName: string }): EmailTemplate {
+  const { planName } = params;
+  return {
+    subject: `Sentimos sua falta no ${planName}`,
+    html: layout({
+      title: `Sua assinatura ${escapeHtml(planName)} foi cancelada`,
+      preheader: 'Você pode voltar quando quiser — seus dados continuam aqui.',
+      bodyHtml: `
+        <p>Sua assinatura do plano <strong>${escapeHtml(planName)}</strong> foi cancelada e você
+        voltou pro plano Free.</p>
+        <p>Isso significa que você deixou de receber alertas ilimitados, comparação avançada de
+        dinheiro vs pontos e os canais extras do seu plano — mas seus alertas, favoritos e
+        histórico continuam salvos, prontos pra quando você quiser voltar.</p>
+        <p>Se cancelou por algum problema específico (preço, funcionalidade, bug), responda este
+        e-mail — a gente lê de verdade.</p>
+      `,
+      ctaLabel: 'Ver planos',
+      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/assinatura`,
+    }),
+  };
+}
+
 // Alerta operacional interno (lib/alerts/notify-ops.ts) — não é e-mail pra
 // usuário do clube, é pro Igor quando algo crítico acontece no sistema
 // (falha de pagamento, falha sistêmica de autenticação, erro não tratado).

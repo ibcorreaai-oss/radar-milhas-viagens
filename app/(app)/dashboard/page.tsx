@@ -10,6 +10,7 @@ import { OpportunityCard } from '@/components/opportunity-card';
 import { PromotionCard } from '@/components/promotion-card';
 import { EmptyState } from '@/components/empty-state';
 import { DashboardStats } from '@/components/dashboard-stats';
+import { PLANS } from '@/lib/plans';
 import { formatBRL, formatDate, cn } from '@/lib/utils';
 import {
   scoreTier,
@@ -132,6 +133,22 @@ export default async function DashboardPage() {
         featuredOpportunitiesCount={opportunities.length}
         activePromotionsCount={promotions.length}
       />
+
+      {/* Upsell no ponto de maior fricção real: usuário Free que já usou
+          todo o limite de alertas do plano — ver GROWTH.md (ETAPA 7). */}
+      {ctx.plan === 'free' && alerts.length >= PLANS.free.maxAlerts && (
+        <Card className="border-accent/40 bg-accent/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+            <p>
+              Você está usando {alerts.length} de {PLANS.free.maxAlerts} alerta{PLANS.free.maxAlerts > 1 ? 's' : ''}{' '}
+              do plano Free. O Premium libera até {PLANS.premium.maxAlerts} alertas e buscas ilimitadas.
+            </p>
+            <Link href="/assinatura" className={cn(buttonVariants({ variant: 'default', size: 'sm' }))}>
+              Ver planos
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

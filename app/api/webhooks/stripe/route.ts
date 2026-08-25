@@ -3,6 +3,9 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/send';
+import { subscriptionActiveEmail, winBackEmail } from '@/lib/email/templates';
+import { PLANS } from '@/lib/plans';
 import type { PlanId, SubscriptionStatus } from '@/lib/types';
 
 // Route Handler do webhook da Stripe. É a ÚNICA superfície do app que
@@ -87,6 +90,17 @@ export async function POST(request: Request) {
           });
         } else {
           logger.info('payment', 'Assinatura ativada via checkout', { userId, planId });
+
+          // ETAPA 7 (conversão): confirma a ativação por e-mail — reduz
+          // "paguei mas não sei se funcionou" e reforça a decisão de compra.
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('email')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (profile?.email) {
+            await sendEmail(profile.email, subscriptionActiveEmail({ planName: PLANS[planId].name }));
+          }
         }
         break;
       }
@@ -126,6 +140,15 @@ export async function POST(request: Request) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
 
+        // Busca o plano/dono ANTES de resetar pra 'free' — depois do
+        // update não dá mais pra saber o que a pessoa estava perdendo,
+        // e o e-mail de recuperação (ETAPA 7) precisa dessa informação.
+        const { data: before } = await supabaseAdmin
+          .from('subscriptions')
+          .select('user_id, plan')
+          .eq('stripe_subscription_id', subscription.id)
+          .maybeSingle();
+
         const { error } = await supabaseAdmin
           .from('subscriptions')
           .update({ status: 'canceled', plan: 'free' })
@@ -140,6 +163,17 @@ export async function POST(request: Request) {
           logger.info('payment', 'Subscription cancelada, usuário voltou pro plano free', {
             stripeSubscriptionId: subscription.id,
           });
+
+          if (before?.user_id && before.plan && before.plan !== 'free') {
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('email')
+              .eq('user_id', before.user_id)
+              .maybeSingle();
+            if (profile?.email) {
+              await sendEmail(profile.email, winBackEmail({ planName: PLANS[before.plan as PlanId].name }));
+            }
+          }
         }
         break;
       }

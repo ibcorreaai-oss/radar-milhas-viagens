@@ -67,6 +67,7 @@ export default async function AdminPage() {
   ];
 
   const quickLinks = [
+    { href: '/admin/metricas', label: 'Métricas de negócio' },
     { href: '/admin/promocoes', label: 'Gerenciar promoções' },
     { href: '/admin/programas', label: 'Gerenciar programas' },
     { href: '/admin/oportunidades', label: 'Gerenciar oportunidades' },

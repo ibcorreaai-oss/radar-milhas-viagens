@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { safeRedirectPath } from '@/lib/safe-redirect';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/send';
+import { welcomeEmail } from '@/lib/email/templates';
 
 // Route Handler que recebe o "code" PKCE tanto do login com Google quanto do
 // link de recuperação de senha (ver app/(auth)/recuperar-senha/actions.ts,
@@ -49,6 +51,15 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (!profile || !profile.onboarding_done) {
+    // ETAPA 7 (ativação): cobre o cadastro por link de confirmação de
+    // e-mail e o primeiro login via Google — o outro caminho (senha com
+    // sessão instantânea) já manda o welcomeEmail em
+    // app/(auth)/cadastro/actions.ts. Pode reenviar se o usuário voltar
+    // sem terminar o onboarding — mais seguro que nunca mandar.
+    if (user.email) {
+      const name = String(user.user_metadata?.name ?? user.user_metadata?.full_name ?? user.email.split('@')[0]);
+      await sendEmail(user.email, welcomeEmail(name));
+    }
     return NextResponse.redirect(`${origin}/onboarding`);
   }
 
