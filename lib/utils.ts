@@ -35,6 +35,17 @@ export function formatDurationMinutes(minutes: number): string {
   return `${h}h${m > 0 ? ` ${m}min` : ''}`;
 }
 
+// mm:ss (ou h:mm:ss acima de 1h) — usado pelas aulas do Mini LMS, que
+// guardam duração/posição em segundos (não minutos, como o resto do app).
+export function formatDurationSeconds(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
 // Converte string de formulário em número, ou null se vazia/inválida —
 // nunca deixa NaN vazar para um insert/update no Supabase.
 export function parseNumberOrNull(raw: FormDataEntryValue | null | undefined): number | null {

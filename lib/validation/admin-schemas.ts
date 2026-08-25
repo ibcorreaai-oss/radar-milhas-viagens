@@ -100,6 +100,61 @@ export const worldEventSchema = z.object({
 });
 export type WorldEventInput = z.infer<typeof worldEventSchema>;
 
+// --- Central de Treinamentos / Mini LMS (ETAPA 15.2 — ver TRAINING.md) ---
+export const trainingModuleSchema = z.object({
+  title: z.string().trim().min(1, 'Título é obrigatório.').max(200),
+  slug: z.string().trim().min(1, 'Não foi possível gerar um slug válido a partir do título.').max(200),
+  description: z.string().trim().max(2000).nullable(),
+  status: z.enum(['draft', 'published', 'archived']),
+});
+export type TrainingModuleInput = z.infer<typeof trainingModuleSchema>;
+
+const lessonResourceSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  url: z.string().trim().url('URL de material inválida.').max(500),
+});
+
+export const trainingLessonSchema = z
+  .object({
+    module_id: z.string().trim().uuid('Selecione um módulo.'),
+    title: z.string().trim().min(1, 'Título é obrigatório.').max(200),
+    slug: z.string().trim().min(1, 'Não foi possível gerar um slug válido a partir do título.').max(200),
+    description: z.string().trim().max(2000).nullable(),
+    content_type: z.enum(['video', 'text', 'quiz']).default('video'),
+    video_provider: z.enum(['youtube', 'vimeo', 'bunny', 'cloudflare', 'supabase', 'url']),
+    video_ref: z.string().trim().max(500).nullable(),
+    duration_seconds: z.number().int().nonnegative('Duração não pode ser negativa.').default(0),
+    is_required: z.boolean().default(true),
+    keywords: z.array(z.string().trim().min(1)).default([]),
+    resources: z.array(lessonResourceSchema).default([]),
+    thumbnail_url: z.string().trim().url('URL de thumbnail inválida.').max(500).nullable(),
+    status: z.enum(['draft', 'published', 'archived']),
+  })
+  .refine((v) => v.content_type !== 'video' || Boolean(v.video_ref), {
+    message: 'Aula em vídeo precisa de uma referência de vídeo.',
+    path: ['video_ref'],
+  });
+export type TrainingLessonInput = z.infer<typeof trainingLessonSchema>;
+
+// Parser do textarea "materiais complementares" — uma linha por material,
+// formato "Título | https://url" (mesmo espírito de transfer_partners:
+// campo de texto simples em vez de repeater de UI, ver ETAPA 15.2 §MVP).
+export function parseLessonResources(raw: string): { title: string; url: string }[] {
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [title, url] = line.split('|').map((s) => s.trim());
+      return { title: title || url || '', url: url || title || '' };
+    })
+    .filter((r) => r.title && r.url);
+}
+
+export function formatLessonResources(resources: { title: string; url: string }[]): string {
+  return resources.map((r) => `${r.title} | ${r.url}`).join('\n');
+}
+
 // Formata o primeiro erro do Zod numa string única — o suficiente pra um
 // banner de erro de formulário (não precisamos de erro por campo agora,
 // ver components/form-error.tsx).

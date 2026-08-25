@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   '/onboarding',
   '/favoritos',
   '/afiliados',
+  '/treinamentos',
   '/admin',
 ];
 

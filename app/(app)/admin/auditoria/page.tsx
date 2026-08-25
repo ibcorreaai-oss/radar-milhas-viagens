@@ -21,6 +21,10 @@ const ACTION_LABEL: Record<string, string> = {
   enable: 'Ativou',
   disable: 'Desativou',
   admin_login: 'Entrou no /admin-login',
+  publish: 'Publicou',
+  unpublish: 'Despublicou',
+  archive: 'Arquivou',
+  reorder: 'Reordenou',
 };
 
 export default async function AdminAuditoriaPage() {

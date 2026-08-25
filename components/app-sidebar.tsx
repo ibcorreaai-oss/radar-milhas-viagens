@@ -17,6 +17,7 @@ import {
   User,
   CreditCard,
   Share2,
+  SquarePlay,
   ShieldCheck,
   LogOut,
   PanelLeftClose,
@@ -58,6 +59,10 @@ export const ACCOUNT_ITEMS: NavItem[] = [
   { href: '/perfil', label: 'Perfil', icon: User },
   { href: '/assinatura', label: 'Assinatura', icon: CreditCard },
   { href: '/afiliados', label: 'Indique e ganhe', icon: Share2 },
+  // ETAPA 15.2 — perto do fim da lista de conta, antes do botão Sair
+  // (este app não tem item "Configurações" separado, Perfil cumpre esse
+  // papel — ver TRAINING.md).
+  { href: '/treinamentos', label: 'Treinamentos', icon: SquarePlay },
 ];
 
 export function AppSidebar({

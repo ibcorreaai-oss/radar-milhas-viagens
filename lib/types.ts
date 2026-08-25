@@ -495,3 +495,68 @@ export interface ContactMessage {
   source: ContactMessageSource;
   created_at: string;
 }
+
+// =====================================================================
+// Central de Treinamentos / Mini LMS (ETAPA 15.2 — ver TRAINING.md).
+// Espelham supabase/migrations/0017_training_lms.sql.
+// =====================================================================
+
+export type TrainingContentStatus = 'draft' | 'published' | 'archived';
+export type TrainingContentType = 'video' | 'text' | 'quiz';
+export type VideoProviderKey = 'youtube' | 'vimeo' | 'bunny' | 'cloudflare' | 'supabase' | 'url';
+
+export interface TrainingModule {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  order_index: number;
+  status: TrainingContentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LessonResource {
+  title: string;
+  url: string;
+}
+
+export interface TrainingLesson {
+  id: string;
+  module_id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  content_type: TrainingContentType;
+  video_provider: VideoProviderKey;
+  video_ref: string | null;
+  duration_seconds: number;
+  order_index: number;
+  is_required: boolean;
+  keywords: string[];
+  resources: LessonResource[];
+  thumbnail_url: string | null;
+  status: TrainingContentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LessonProgressStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface LessonProgress {
+  id: string;
+  user_id: string;
+  lesson_id: string;
+  status: LessonProgressStatus;
+  progress_seconds: number;
+  started_at: string | null;
+  completed_at: string | null;
+  last_accessed_at: string;
+  created_at: string;
+}
+
+export const TRAINING_STATUS_LABEL: Record<TrainingContentStatus, string> = {
+  draft: 'Rascunho',
+  published: 'Publicado',
+  archived: 'Arquivado',
+};

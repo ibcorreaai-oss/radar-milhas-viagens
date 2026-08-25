@@ -176,3 +176,35 @@ das pendências manuais:
       respectiva conta de anúncio existir.
 - [ ] Decidir se o programa de indicação (`/afiliados`) vai ter recompensa automática — hoje só
       rastreia quem indicou quem, sem comissão/desconto.
+
+## 11. RE-CONFIRMADO nesta sessão (25/08) — item 9 do MANUAL_ACTIONS ainda não resolvido
+
+Testando a ETAPA 15.2 ao vivo, precisei cadastrar uma conta de teste e confirmei que o problema
+do item 9 **continua exatamente como estava**: o e-mail de "Confirm your email address" que o
+Supabase manda hoje só tem o link mágico, sem o código de 6 dígitos em nenhum lugar do corpo —
+ninguém consegue completar `/cadastro` digitando o código na tela (que é o fluxo que o app
+mostra). Só descobri isso porque tinha acesso à caixa de entrada real; clicar no link ainda
+funciona (loga direto), mas isso não ajuda um usuário real que só vê a tela pedindo o código.
+**Ainda é só configuração de dashboard** (Authentication → Email Templates → "Confirm signup",
+adicionar `{{ .Token }}` no corpo) — continuo sem conseguir ler/editar isso por MCP.
+
+## 12. ETAPA 15.2 — Central de Treinamentos / Mini LMS (25/08)
+
+Ver `TRAINING.md` para arquitetura completa, decisões de curadoria e checklist de testes.
+
+- [ ] **Todo o conteúdo semeado está em rascunho, sem vídeo real** — 4 módulos/12 aulas com
+      títulos/descrições adaptados às funcionalidades reais do app, mas `video_ref =
+      'PENDENTE_CONFIGURAR'`. Em `/admin/treinamentos`, edite cada aula com o vídeo real
+      (YouTube/Vimeo/Bunny/Cloudflare/Supabase Storage/URL direta) e publique módulo + aulas
+      quando estiver pronto. Nada disso aparece pra usuário até você publicar.
+- [ ] Se for usar Cloudflare Stream, falta configurar
+      `NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE` no `.env.local` (o subdomínio da sua conta
+      Cloudflare Stream) — sem isso, aulas com esse provider mostram erro de configuração em vez
+      do player.
+- [ ] Testei o fluxo completo (usuário comum + admin) promovendo manualmente uma conta de teste
+      (`ibcorrea.ai+lms15_2@gmail.com`) a `super_admin` via SQL, com sua autorização explícita
+      (o classificador de segurança bloqueou a promoção de role e a navegação em `/admin` até eu
+      confirmar com você — proteção funcionando como esperado). Ao final, reverti tudo: conteúdo
+      de volta pra rascunho, progresso de teste apagado, conta de teste rebaixada pra `user`. Essa
+      conta de teste continua existindo no banco (role `user`, inofensiva) — pode excluir pelo
+      dashboard do Supabase quando quiser, ou ignorar.
