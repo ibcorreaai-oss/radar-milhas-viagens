@@ -3,15 +3,18 @@
 SaaS de alertas e comparação de viagens (dinheiro vs pontos/milhas), evoluindo para uma
 plataforma de inteligência de oportunidades de viagem (Discover → Optimize → Plan →
 Book). MVP original completo, buildado e com typecheck limpo. Vendido como **clube
-premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original do MVP,
-`VISION_MASTER.md` para o norte de longo prazo (referência de UX, não muda o posicionamento) e
-`ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience Radar,
-Bucket List e o que vem depois). Ver `DISASTER_RECOVERY.md` para backup/restore, rollback de
-deploy e recuperação de exclusão acidental de dados, `OBSERVABILITY.md` para logs
-estruturados, auditoria, monitoramento de uptime e alertas críticos, `PERFORMANCE.md` para a
-auditoria de performance (consultas, cache por requisição, imagens, Core Web Vitals), e
-`DATA_QUALITY.md` para validação (Zod), deduplicação e integridade referencial, e
-`GROWTH.md` para ativação, retenção, conversão e métricas de negócio (`/admin/metricas`).
+premium de alertas de viagem com IA**.
+
+**Comece por `SYSTEM_ARCHITECTURE.md`** — referência única de arquitetura geral (modelo de
+dados, papéis, integrações, auth, storage, logs, backup, monitoramento, escalabilidade), com
+link pro documento certo pra cada assunto. Nenhuma funcionalidade nova deve ser criada sem
+checar esse documento primeiro. Os demais, por assunto: `PROMPT.md` (spec original do MVP),
+`VISION_MASTER.md` (norte de longo prazo, referência de UX), `ARCHITECTURE.md` +
+`IMPLEMENTATION_PLAN.md` (evolução 3.0 — World Experience Radar, Bucket List),
+`DISASTER_RECOVERY.md` (backup/restore, rollback, recuperação de exclusão acidental),
+`OBSERVABILITY.md` (logs, auditoria, uptime, alertas críticos), `PERFORMANCE.md` (consultas,
+cache, imagens, Core Web Vitals), `DATA_QUALITY.md` (validação Zod, deduplicação, integridade
+referencial), `GROWTH.md` (ativação, retenção, conversão, `/admin/metricas`).
 
 ## Stack
 
