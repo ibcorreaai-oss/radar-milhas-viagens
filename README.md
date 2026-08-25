@@ -21,6 +21,19 @@ referencial), `GROWTH.md` (ativação, retenção, conversão, `/admin/metricas`
 Next.js 15 (App Router) · TypeScript · Tailwind CSS · Supabase (Auth/Postgres/RLS) · Stripe ·
 Resend · WhatsApp (Evolution API/Z-API, abstrato) · Vercel Cron.
 
+## Versionamento (GitHub)
+
+Repositório: [`ibcorreaai-oss/radar-milhas-viagens`](https://github.com/ibcorreaai-oss/radar-milhas-viagens)
+— **privado**, criado em 25/08/2026 (ETAPA 10). Fluxo adotado a partir daqui:
+
+- Toda funcionalidade nova ou correção de bug entra numa branch (`feature/*`/`fix/*`), com
+  merge pra `master` só depois de typecheck + build limpos e teste real no navegador.
+- Todo commit em `master` é enviado ao GitHub automaticamente (push normal — nunca
+  `--force`, nunca reescreve histórico já publicado).
+- Nenhuma chave/variável de ambiente é commitada — `.env.local`/`.env*.local` seguem no
+  `.gitignore`; só `.env.example` (com placeholders vazios) vai pro repositório. Ver a
+  checklist de contas externas abaixo.
+
 ## Rodando localmente
 
 ```bash
@@ -67,6 +80,23 @@ existir nenhuma policy de `insert`/`update` de usuário em `subscriptions` — s
 isso.
 
 ---
+
+## Contas externas necessárias (visão rápida)
+
+Toda integração deste projeto — os passos detalhados de cada uma estão na checklist logo
+abaixo, esta tabela é só o resumo de "o que existe e por quê":
+
+| Serviço | Para quê | Custo | Obrigatório pro MVP? |
+|---|---|---|---|
+| GitHub | Versionamento (privado) | Grátis | ✅ já configurado |
+| Supabase | Banco, Auth, RLS | Grátis pra começar; Pro (US$25/mês) quando precisar de PITR (`DISASTER_RECOVERY.md`) | ✅ sim |
+| Vercel | Deploy, Cron, Speed Insights | Grátis (Hobby) | ✅ sim |
+| Stripe | Cobrança das assinaturas | % por transação, sem mensalidade | ✅ sim (pra planos pagos) |
+| Resend | E-mail transacional | Grátis até um volume baixo | ✅ sim (alertas, welcome, etc.) |
+| Evolution API / Z-API | WhatsApp | Depende do provider escolhido | Opcional — canal WhatsApp fica indisponível sem isso, resto do app funciona |
+| Anthropic/OpenAI | Consultor IA | Por uso (tokens) | Opcional — fallback sem IA já existe |
+| UptimeRobot/Better Uptime/Freshping | Monitorar `/api/health` | Grátis nos planos básicos | Recomendado, não bloqueia nada |
+| Amadeus/Duffel/Booking | Dados reais de voo/hotel | Varia por parceiro | Fora do MVP — mock ativo até essa decisão |
 
 ## Checklist manual final (o que só o Igor pode fazer)
 
