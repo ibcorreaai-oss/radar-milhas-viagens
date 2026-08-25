@@ -162,7 +162,7 @@ export interface Alert {
   created_at: string;
 }
 
-export type OpportunityType = 'voo' | 'hotel' | 'transferencia' | 'pacote';
+export type OpportunityType = 'voo' | 'hotel' | 'transferencia' | 'pacote' | 'evento';
 
 export interface Opportunity {
   id: string;
@@ -185,6 +185,8 @@ export interface Opportunity {
   affiliate_provider: string | null;
   commission_type: string | null;
   tracking_id: string | null;
+  /** Referência opcional a um evento do World Radar — ver ARCHITECTURE.md #2. */
+  world_event_id: string | null;
   created_at: string;
 }
 
@@ -269,3 +271,180 @@ export const SCORE_TIER_LABEL: Record<ScoreTier, string> = {
   normal: 'Normal',
   nao_recomendado: 'Não vale a pena',
 };
+
+// =====================================================================
+// World Experience Radar (Radar Milhas & Viagens 3.0 — ver ARCHITECTURE.md)
+// Espelham supabase/migrations/0002_world_radar.sql.
+// =====================================================================
+
+export type FeatureFlagKey =
+  | 'worldRadar'
+  | 'bucketList'
+  | 'cruiseRadar'
+  | 'experienceRadar'
+  | 'tripBuilder'
+  | 'worldCalendar'
+  | 'conciergeAI';
+
+export interface FeatureFlag {
+  key: FeatureFlagKey;
+  enabled: boolean;
+  description: string | null;
+  updated_at: string;
+}
+
+export type SourceType =
+  | 'site_oficial'
+  | 'organizador'
+  | 'promotor'
+  | 'federacao'
+  | 'clube'
+  | 'turismo_oficial'
+  | 'companhia'
+  | 'ticketing'
+  | 'imprensa'
+  | 'agregador'
+  | 'manual';
+
+export type SourceStatus = 'active' | 'stale' | 'broken' | 'disabled';
+export type SourceHealth = 'ok' | 'degraded' | 'down' | 'unknown';
+
+export interface Source {
+  id: string;
+  source_type: SourceType;
+  name: string;
+  url: string | null;
+  authority_level: number;
+  last_checked_at: string | null;
+  status: SourceStatus;
+  health: SourceHealth;
+  created_at: string;
+}
+
+export interface Destination {
+  id: string;
+  city: string;
+  region: string | null;
+  country: string;
+  country_code: string | null;
+  continent: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+  created_at: string;
+}
+
+export type EventRadar =
+  | 'festa_tradicional'
+  | 'festival_musical'
+  | 'show'
+  | 'esporte'
+  | 'sazonal'
+  | 'fenomeno_natural'
+  | 'natureza'
+  | 'cruzeiro'
+  | 'gastronomia'
+  | 'cultural'
+  | 'trem_terrestre'
+  | 'once_in_a_lifetime'
+  | 'hidden_gem';
+
+export interface EventCategory {
+  id: string;
+  slug: string;
+  label: string;
+  radar: EventRadar;
+  icon: string | null;
+  created_at: string;
+}
+
+export type EventSignificance =
+  | 'comum'
+  | 'classico'
+  | 'derby'
+  | 'mata_mata'
+  | 'semifinal'
+  | 'final'
+  | 'evento_historico';
+
+export type EventStatus =
+  | 'confirmado'
+  | 'previsto'
+  | 'estimado'
+  | 'em_monitoramento'
+  | 'cancelado'
+  | 'adiado'
+  | 'finalizado';
+
+export type BookNowState = 'monitorar' | 'esperar' | 'boa_janela' | 'comprar' | 'comprar_agora' | 'alto_risco_esgotar';
+
+export interface WorldEvent {
+  id: string;
+  category_id: string | null;
+  destination_id: string | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  significance: EventSignificance | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: EventStatus;
+  once_in_a_lifetime: boolean;
+  hidden_gem: boolean;
+  experience_score: number;
+  book_now_state: BookNowState;
+  confidence_score: number;
+  source_id: string | null;
+  source_url: string | null;
+  cover_image_url: string | null;
+  tags: string[];
+  featured: boolean;
+  last_checked_at: string | null;
+  last_changed_at: string | null;
+  is_mock: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
+  confirmado: 'Confirmado',
+  previsto: 'Previsto',
+  estimado: 'Estimado',
+  em_monitoramento: 'Em monitoramento',
+  cancelado: 'Cancelado',
+  adiado: 'Adiado',
+  finalizado: 'Finalizado',
+};
+
+export const EVENT_RADAR_LABEL: Record<EventRadar, string> = {
+  festa_tradicional: 'Festa tradicional',
+  festival_musical: 'Festival musical',
+  show: 'Show',
+  esporte: 'Esporte',
+  sazonal: 'Sazonal',
+  fenomeno_natural: 'Fenômeno natural',
+  natureza: 'Natureza & Wildlife',
+  cruzeiro: 'Cruzeiro',
+  gastronomia: 'Gastronomia',
+  cultural: 'Cultural',
+  trem_terrestre: 'Trem & Terrestre',
+  once_in_a_lifetime: 'Once in a Lifetime',
+  hidden_gem: 'Hidden Gem',
+};
+
+export interface BucketList {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface BucketListItem {
+  id: string;
+  bucket_list_id: string;
+  world_event_id: string | null;
+  custom_title: string | null;
+  notes: string | null;
+  last_alert_sent_at: string | null;
+  created_at: string;
+}

@@ -15,6 +15,7 @@ const TYPE_LABEL: Record<OpportunityType, string> = {
   hotel: 'Hotel',
   transferencia: 'Transferência',
   pacote: 'Pacote',
+  evento: 'Evento',
 };
 
 export default async function AdminOportunidadesPage() {

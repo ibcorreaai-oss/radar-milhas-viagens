@@ -5,6 +5,7 @@ type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
+  '/bucket-list',
   '/voos',
   '/hoteis',
   '/alertas',

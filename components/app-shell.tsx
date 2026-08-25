@@ -5,14 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Plane } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { createClient } from '@/lib/supabase/client';
+import type { FeatureFlagKey } from '@/lib/types';
 
 export function AppShell({
   isLoggedIn,
   isAdmin,
+  flags = {},
   children,
 }: {
   isLoggedIn: boolean;
   isAdmin: boolean;
+  flags?: Partial<Record<FeatureFlagKey, boolean>>;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -48,7 +51,7 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar isAdmin={isAdmin} onSignOut={handleSignOut} />
+      <AppSidebar isAdmin={isAdmin} flags={flags} onSignOut={handleSignOut} />
       <main className="flex-1 overflow-x-hidden">{children}</main>
     </div>
   );

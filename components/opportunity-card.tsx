@@ -10,6 +10,7 @@ const TYPE_LABEL: Record<Opportunity['type'], string> = {
   hotel: 'Hotel',
   transferencia: 'Transferência',
   pacote: 'Pacote',
+  evento: 'Evento',
 };
 
 export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {

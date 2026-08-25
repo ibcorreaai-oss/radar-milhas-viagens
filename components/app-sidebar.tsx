@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  Compass,
   Plane,
   Hotel,
   Calculator,
+  Heart,
   Bell,
   Tag,
   Award,
@@ -17,12 +19,15 @@ import {
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { FeatureFlagKey } from '@/lib/types';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; flag?: FeatureFlagKey }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/descobrir', label: 'Descobrir', icon: Compass, flag: 'worldRadar' },
   { href: '/voos', label: 'Voos', icon: Plane },
   { href: '/hoteis', label: 'Hotéis', icon: Hotel },
   { href: '/calculadora', label: 'Calculadora', icon: Calculator },
+  { href: '/bucket-list', label: 'Bucket List', icon: Heart, flag: 'bucketList' },
   { href: '/alertas', label: 'Alertas', icon: Bell },
   { href: '/promocoes', label: 'Promoções', icon: Tag },
   { href: '/programas', label: 'Programas', icon: Award },
@@ -34,8 +39,17 @@ const ACCOUNT_ITEMS = [
   { href: '/assinatura', label: 'Assinatura', icon: CreditCard },
 ];
 
-export function AppSidebar({ isAdmin, onSignOut }: { isAdmin: boolean; onSignOut: () => void }) {
+export function AppSidebar({
+  isAdmin,
+  flags,
+  onSignOut,
+}: {
+  isAdmin: boolean;
+  flags: Partial<Record<FeatureFlagKey, boolean>>;
+  onSignOut: () => void;
+}) {
   const pathname = usePathname();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.flag || flags[item.flag]);
 
   const renderItem = (item: (typeof NAV_ITEMS)[number]) => {
     const active = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -62,7 +76,7 @@ export function AppSidebar({ isAdmin, onSignOut }: { isAdmin: boolean; onSignOut
         <span className="font-semibold">Radar Milhas</span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1">{NAV_ITEMS.map(renderItem)}</nav>
+      <nav className="flex flex-1 flex-col gap-1">{visibleNavItems.map(renderItem)}</nav>
 
       <div className="my-3 h-px bg-border" />
 

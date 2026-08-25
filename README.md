@@ -1,8 +1,11 @@
 # Radar Milhas & Viagens
 
-SaaS de alertas e comparação de viagens (dinheiro vs pontos/milhas). MVP completo, buildado e
-com typecheck limpo. Vendido como **clube premium de alertas de viagem com IA** — ver
-`PROMPT.md` para a spec completa e a justificativa do posicionamento.
+SaaS de alertas e comparação de viagens (dinheiro vs pontos/milhas), evoluindo para uma
+plataforma de inteligência de oportunidades de viagem (Discover → Optimize → Plan →
+Book). MVP original completo, buildado e com typecheck limpo. Vendido como **clube
+premium de alertas de viagem com IA** — ver `PROMPT.md` para a spec original do MVP e
+`ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` para a evolução 3.0 (World Experience
+Radar, Bucket List e o que vem depois).
 
 ## Stack
 
@@ -17,7 +20,9 @@ cp .env.example .env.local   # preencha as variáveis (ver checklist abaixo)
 npm run dev
 ```
 
-`npm run build` e `npm run typecheck` já foram validados neste MVP (33 rotas, build limpo).
+`npm run build` e `npm run typecheck` já foram validados (37 rotas, build limpo, incluindo o
+World Radar/Bucket List novos). `npm run lint` ainda não está configurado neste projeto
+(ver `EXISTING_FEATURES.md`).
 
 ## Estrutura
 
@@ -25,6 +30,13 @@ npm run dev
 - `app/onboarding` — questionário inicial (aeroporto, destinos, programas, orçamento)
 - `app/(app)/*` — dashboard, voos, hoteis, calculadora, alertas, promocoes, programas,
   consultor-ia, perfil, assinatura, admin (protegidas por `middleware.ts`)
+- `app/(app)/descobrir` — **World Experience Radar** (Discover): eventos/festivais/
+  esportes/sazonalidade com Experience Score explicável — atrás da feature flag
+  `worldRadar`, pública (mesmo padrão de `/promocoes`: RLS exige usuário autenticado)
+- `app/(app)/bucket-list` — lista de desejos monitorada, atrás da feature flag
+  `bucketList`, protegida por login
+- `app/(app)/admin/eventos` — CRUD de eventos do World Radar (mesmo padrão dos outros
+  admin CRUDs)
 - `app/api/webhooks/stripe` — único lugar que escreve `plan`/`status` em `subscriptions`
 - `app/api/cron/*` — check-alerts (a cada hora), refresh-promotions e expire-opportunities
   (diários) — protegidas por `CRON_SECRET`, agendadas em `vercel.json`
@@ -55,7 +67,12 @@ Ordem sugerida:
 ### 1. Supabase
 - [ ] Criar projeto novo no Supabase
 - [ ] Rodar `supabase/migrations/0001_schema.sql` (SQL Editor ou `supabase db push`)
+- [ ] Rodar `supabase/migrations/0002_world_radar.sql` (World Experience Radar — ver
+      `ARCHITECTURE.md`)
 - [ ] Rodar `supabase/seed.sql` depois da migration
+- [ ] Rodar `supabase/seed_world_radar.sql` depois do seed original — ver
+      `MANUAL_ACTIONS.md` antes de expor a usuários reais (eventos de exemplo são
+      `is_mock=true`)
 - [ ] Copiar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` pro `.env.local`
 - [ ] Habilitar login com Google em Authentication → Providers (Client ID/Secret do Google Cloud Console)
 - [ ] Configurar Redirect URL: `https://<seu-domínio>/auth/callback`

@@ -44,3 +44,32 @@ export function parseNumberOrNull(raw: FormDataEntryValue | null | undefined): n
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
 }
+
+// Slug simples (ascii, minúsculo, hífens) usado por world_events e outras
+// entidades que precisam de identificador legível na URL.
+export function slugify(text: string): string {
+  const withoutDiacritics = text
+    .normalize('NFD')
+    .split('')
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return code < 0x0300 || code > 0x036f; // remove combining diacritical marks
+    })
+    .join('');
+
+  return withoutDiacritics
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Converte lista separada por vírgula (input de formulário) em array de
+// strings limpo, sem entradas vazias.
+export function parseTagsList(raw: FormDataEntryValue | null | undefined): string[] {
+  if (raw == null) return [];
+  return String(raw)
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+}

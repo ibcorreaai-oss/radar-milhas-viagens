@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Users, Bell, Tag, Sparkles, ArrowRight } from 'lucide-react';
+import { Users, Bell, Tag, Sparkles, Compass, ArrowRight } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -45,12 +45,14 @@ export default async function AdminPage() {
     { count: activeAlertsCount },
     { count: activePromotionsCount },
     { count: opportunitiesCount },
+    { count: worldEventsCount },
     { data: recentLogsData },
   ] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('active', true),
     supabase.from('promotions').select('id', { count: 'exact', head: true }).eq('status', 'ativa'),
     supabase.from('opportunities').select('id', { count: 'exact', head: true }),
+    supabase.from('world_events').select('id', { count: 'exact', head: true }),
     supabase.from('notification_logs').select('*').order('sent_at', { ascending: false }).limit(10),
   ]);
 
@@ -61,12 +63,14 @@ export default async function AdminPage() {
     { label: 'Alertas ativos', value: activeAlertsCount ?? 0, icon: Bell },
     { label: 'Promoções ativas', value: activePromotionsCount ?? 0, icon: Tag },
     { label: 'Oportunidades cadastradas', value: opportunitiesCount ?? 0, icon: Sparkles },
+    { label: 'Eventos no World Radar', value: worldEventsCount ?? 0, icon: Compass },
   ];
 
   const quickLinks = [
     { href: '/admin/promocoes', label: 'Gerenciar promoções' },
     { href: '/admin/programas', label: 'Gerenciar programas' },
     { href: '/admin/oportunidades', label: 'Gerenciar oportunidades' },
+    { href: '/admin/eventos', label: 'Gerenciar eventos (World Radar)' },
   ];
 
   return (
