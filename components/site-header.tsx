@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Plane } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { SiteMobileNav } from '@/components/site-mobile-nav';
 import { cn } from '@/lib/utils';
 
 // Header público — usado na landing page e nas páginas legais (termos, privacidade, etc).
@@ -30,16 +32,18 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <ThemeToggle className="hidden md:inline-flex" />
           <Link
             href="/login"
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden md:inline-flex')}
           >
             Entrar
           </Link>
           <Link href="/cadastro" className={cn(buttonVariants({ size: 'sm' }))}>
             Criar conta grátis
           </Link>
+          <SiteMobileNav />
         </div>
       </div>
     </header>

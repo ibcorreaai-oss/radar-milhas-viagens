@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
 import type { FeatureFlagKey } from '@/lib/types';
 
@@ -79,6 +80,11 @@ export function AppSidebar({
       <nav className="flex flex-1 flex-col gap-1">{visibleNavItems.map(renderItem)}</nav>
 
       <div className="my-3 h-px bg-border" />
+
+      <div className="flex items-center justify-between px-2 pb-2">
+        <span className="text-xs font-medium text-muted-foreground">Tema</span>
+        <ThemeToggle />
+      </div>
 
       <nav className="flex flex-col gap-1">
         {ACCOUNT_ITEMS.map(renderItem)}

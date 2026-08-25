@@ -38,6 +38,44 @@
     --radius: 0.75rem;
   }
 
+  /* Dark mode — ativado via classe .dark em <html> (tailwind.config.ts
+     darkMode: 'class'), controlada por components/theme-toggle.tsx.
+     Mesma relação de matiz do tema claro, ajustada pra contraste em fundo
+     escuro (WCAG AA: texto e ícones em --foreground/--muted-foreground
+     testados contra --background). */
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 40% 12%;
+    --card-foreground: 210 40% 96%;
+
+    --primary: 217 91% 62%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 160 70% 45%;
+    --secondary-foreground: 222 47% 8%;
+
+    --accent: 45 93% 58%;
+    --accent-foreground: 26 30% 10%;
+
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 20% 68%;
+
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 152 55% 48%;
+    --success-foreground: 222 47% 8%;
+
+    --warning: 38 92% 58%;
+    --warning-foreground: 26 30% 10%;
+
+    --border: 222 25% 22%;
+    --input: 222 25% 22%;
+    --ring: 217 91% 62%;
+  }
+
   * {
     @apply border-border;
   }

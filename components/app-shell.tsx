@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plane } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { createClient } from '@/lib/supabase/client';
 import type { FeatureFlagKey } from '@/lib/types';
 
@@ -36,6 +37,7 @@ export function AppShell({
             Radar Milhas & Viagens
           </Link>
           <div className="flex items-center gap-3 text-sm">
+            <ThemeToggle />
             <Link href="/login" className="text-muted-foreground hover:text-foreground">
               Entrar
             </Link>
