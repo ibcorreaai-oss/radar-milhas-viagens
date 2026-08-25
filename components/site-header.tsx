@@ -30,6 +30,9 @@ export function SiteHeader() {
           <Link href="/termos" className="transition-colors hover:text-foreground">
             Termos
           </Link>
+          <Link href="/contato" className="transition-colors hover:text-foreground">
+            Contato
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">

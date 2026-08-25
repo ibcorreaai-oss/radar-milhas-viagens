@@ -1,4 +1,5 @@
 import { ArrowRight, Wallet, CreditCard } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScoreBadge } from '@/components/score-badge';
@@ -42,7 +43,17 @@ export function CashVsPointsTeaser() {
             </Link>
           </div>
 
-          <Card className="border-primary/20 shadow-lg">
+          <Card className="overflow-hidden border-primary/20 shadow-lg">
+            <div className="relative h-40 w-full">
+              <Image
+                src="/images/destination-fortaleza.png"
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 480px, 100vw"
+                className="object-cover"
+                priority={false}
+              />
+            </div>
             <CardContent className="space-y-4 p-6">
               <div className="flex items-center justify-between">
                 <div>

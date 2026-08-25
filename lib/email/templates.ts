@@ -228,6 +228,31 @@ export function winBackEmail(params: { planName: string }): EmailTemplate {
   };
 }
 
+// Notificação interna de nova mensagem em /contato (app/contato/actions.ts).
+// A mensagem já foi persistida em contact_messages antes deste e-mail ser
+// disparado — se o envio falhar, o dado não se perde.
+export function contactMessageEmail(params: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): EmailTemplate {
+  const { name, email, subject, message } = params;
+  return {
+    subject: `[Contato] ${subject}`,
+    html: layout({
+      title: `Nova mensagem de contato`,
+      preheader: `De ${name} — ${subject}`,
+      bodyHtml: `
+        <p><strong>Nome:</strong> ${escapeHtml(name)}</p>
+        <p><strong>E-mail:</strong> ${escapeHtml(email)}</p>
+        <p><strong>Assunto:</strong> ${escapeHtml(subject)}</p>
+        <p style="margin-top:16px;white-space:pre-wrap;border-left:3px solid ${BRAND_COLOR};padding:12px 16px;background-color:#f0fdfa;">${escapeHtml(message)}</p>
+      `,
+    }),
+  };
+}
+
 // Alerta operacional interno (lib/alerts/notify-ops.ts) — não é e-mail pra
 // usuário do clube, é pro Igor quando algo crítico acontece no sistema
 // (falha de pagamento, falha sistêmica de autenticação, erro não tratado).

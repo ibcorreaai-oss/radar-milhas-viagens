@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/cadastro', changeFrequency: 'monthly', priority: 0.6 },
     { path: '/login', changeFrequency: 'yearly', priority: 0.3 },
     { path: '/aviso-precos', changeFrequency: 'yearly', priority: 0.3 },
+    { path: '/contato', changeFrequency: 'yearly', priority: 0.3 },
     { path: '/termos', changeFrequency: 'yearly', priority: 0.3 },
     { path: '/privacidade', changeFrequency: 'yearly', priority: 0.3 },
     { path: '/politica-afiliados', changeFrequency: 'yearly', priority: 0.3 },

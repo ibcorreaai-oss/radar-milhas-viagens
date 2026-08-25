@@ -49,6 +49,13 @@ export function SiteMobileNav() {
             >
               Termos
             </Link>
+            <Link
+              href="/contato"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2 hover:bg-muted hover:text-foreground"
+            >
+              Contato
+            </Link>
             <div className="my-1 h-px bg-border" />
             <Link
               href="/login"

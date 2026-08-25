@@ -46,6 +46,11 @@ export function SiteFooter() {
                   Entrar
                 </Link>
               </li>
+              <li>
+                <Link href="/contato" className="hover:text-foreground">
+                  Contato
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -59,7 +64,7 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/privacidade" className="hover:text-foreground">
-                  Política de privacidade
+                  Privacidade e LGPD
                 </Link>
               </li>
               <li>
@@ -83,6 +88,9 @@ export function SiteFooter() {
           </p>
           <p className="mt-3 text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Radar Milhas &amp; Viagens. Todos os direitos reservados.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Desenvolvido por Cortex Tech — CNPJ 65.135.861/0001-22.
           </p>
         </div>
       </div>

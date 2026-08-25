@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import { ORGANIZATION_JSON_LD, SOFTWARE_APPLICATION_JSON_LD } from '@/lib/structured-data';
@@ -21,6 +21,11 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  // PWA (ETAPA 12): manifest gerado por app/manifest.ts é linkado
+  // automaticamente pelo Next — só o ícone da Apple precisa de metadata
+  // explícita (iOS não lê o manifest pra isso).
+  icons: { apple: '/apple-touch-icon.png' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Radar Milhas' },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
@@ -36,6 +41,10 @@ export const metadata: Metadata = {
   },
   // Meta keywords é ignorado pelo Google desde 2009 — de propósito não
   // incluído aqui (ver SEO_GEO.md sobre o que é prática atual vs. cargo cult).
+};
+
+export const viewport: Viewport = {
+  themeColor: '#1447e6',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

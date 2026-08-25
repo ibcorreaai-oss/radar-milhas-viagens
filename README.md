@@ -106,23 +106,28 @@ Nada abaixo está bloqueando o código — é infraestrutura externa que exige l
 Ordem sugerida:
 
 ### 1. Supabase
-- [ ] Criar projeto novo no Supabase
-- [ ] Rodar `supabase/migrations/0001_schema.sql` (SQL Editor ou `supabase db push`)
-- [ ] Rodar `supabase/migrations/0002_world_radar.sql` (World Experience Radar — ver
-      `ARCHITECTURE.md`)
-- [ ] Rodar `supabase/seed.sql` depois da migration
-- [ ] Rodar `supabase/seed_world_radar.sql` depois do seed original — ver
-      `MANUAL_ACTIONS.md` antes de expor a usuários reais (eventos de exemplo são
-      `is_mock=true`)
-- [ ] Rodar `supabase/migrations/0003_hotel_search_flexible_dates.sql`,
-      `supabase/migrations/0004_data_quality_constraints.sql` e
-      `supabase/migrations/0005_public_read_promotions_programs.sql` (nessa ordem, depois da
-      0002) — ver `DATA_QUALITY.md` e `SEO_GEO.md`
-- [ ] Copiar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` pro `.env.local`
+- [x] Projeto criado (ETAPA 12, 25/08) — `radar-milhas-viagens`, org Cortex Tech, região
+      `sa-east-1`, ref `gvncsfkypxcgfmifjqzh`. **Custa US$ 10/mês** (confirmado com o Igor
+      antes de criar — a org já tinha 13 outros projetos, não é mais o tier gratuito).
+- [x] Migrations `0001` a `0007` aplicadas direto no projeto real (schema completo + World
+      Radar + `contact_messages` + hardening do Security Advisor — ver `get_advisors`).
+- [x] `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` já estão no `.env.local`
+      local (o anon key não é segredo, pode ser copiado por ferramenta automática).
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` continua vazio no `.env.local` — por segurança, nenhuma
+      ferramenta automática busca esse valor. Copiar manualmente em
+      https://supabase.com/dashboard/project/gvncsfkypxcgfmifjqzh/settings/api-keys e colar
+      no `.env.local` (e depois na Vercel também, quando o deploy existir — ver item 7).
+- [ ] Rodar `supabase/seed.sql` e depois `supabase/seed_world_radar.sql` — ainda não
+      rodados no projeto novo. Ver `MANUAL_ACTIONS.md` antes de expor a usuários reais
+      (eventos de exemplo são `is_mock=true`)
 - [ ] Habilitar login com Google em Authentication → Providers (Client ID/Secret do Google Cloud Console)
 - [ ] Configurar Redirect URL: `https://<seu-domínio>/auth/callback`
 - [ ] Testar RLS: criar 2 usuários de teste e confirmar que um não vê alertas/buscas do outro
 - [ ] Promover manualmente o 1º usuário admin: `update profiles set role='admin' where user_id='<uuid>';` direto no SQL Editor (só assim, nunca via app)
+- [ ] (Opcional, não bloqueia nada) `get_advisors` de performance apontou ~20 policies de RLS
+      que re-avaliam `auth.uid()`/`is_admin()` por linha em vez de `(select auth.uid())` —
+      otimização de escala, pré-existente desde a ETAPA 1, fora do escopo da ETAPA 12. Revisar
+      numa etapa dedicada se o volume de dados crescer.
 
 ### 2. Stripe
 - [ ] Criar conta/produto no Stripe, criar 3 Prices recorrentes (Premium R$29,90, Pro R$79,90, Consultor R$199)
@@ -155,7 +160,9 @@ Ordem sugerida:
 - [ ] Implementar de fato as chamadas em `lib/providers/amadeus-provider.ts` / `duffel-provider.ts` / `booking-provider.ts` (hoje são stubs que caem no mock)
 
 ### 7. Domínio e deploy
-- [ ] Deploy na Vercel (importar o repo)
+- [ ] **Nenhum projeto Vercel existe ainda** (confirmado na ETAPA 12, 25/08 — só o repositório
+      GitHub `ibcorreaai-oss/radar-milhas-viagens` é real; todo trabalho até aqui rodou local
+      via `npm run dev`/`npm run build`). Deploy na Vercel (importar o repo)
 - [ ] Configurar domínio próprio
 - [ ] Preencher `NEXT_PUBLIC_APP_URL` com a URL final
 - [ ] Preencher `CRON_SECRET` (qualquer string aleatória forte) e confirmar que os 3 cron jobs do `vercel.json` estão rodando (aba Cron Jobs do projeto na Vercel)

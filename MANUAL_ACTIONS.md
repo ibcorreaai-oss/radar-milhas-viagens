@@ -6,11 +6,13 @@ produto ou dinheiro).
 
 ## 1. Rodar as migrations novas no Supabase real
 
-Além do checklist já existente no `README.md` (seção "Supabase"):
-- [ ] Rodar `supabase/migrations/0002_world_radar.sql` (depois da `0001_schema.sql`)
-- [ ] Rodar `supabase/seed_world_radar.sql` (depois do `seed.sql` original) — popula
-      `feature_flags`, `event_categories`, `destinations`, `sources` e ~8 eventos de
+**ATUALIZADO ETAPA 12 (25/08):** o projeto Supabase real (`radar-milhas-viagens`) foi criado
+nesta sessão e as migrations `0001` a `0007` já foram aplicadas direto nele — nada abaixo
+precisa mais ser feito manualmente para o schema. Só falta:
+- [ ] Rodar `supabase/seed.sql` e `supabase/seed_world_radar.sql` (ver README.md item 1) —
+      popula `feature_flags`, `event_categories`, `destinations`, `sources` e ~8 eventos de
       exemplo marcados `is_mock=true`
+- [ ] Copiar `SUPABASE_SERVICE_ROLE_KEY` do dashboard pro `.env.local` (ver README.md item 1)
 
 ## 2. Decidir sobre o World Radar antes de abrir para usuários reais
 
@@ -47,3 +49,45 @@ sessão não mexeu em nenhuma integração de pagamento/e-mail/WhatsApp/voo/hote
 - [ ] Salvar um evento na Bucket List → conferir em `/bucket-list`
 - [ ] Como admin, criar/editar/excluir um evento em `/admin/eventos` e conferir que o
       score muda ao trocar status/relevância/data
+
+## 6. ETAPA 12 (25/08) — decisões e pendências novas
+
+- **Tauri → PWA por decisão do Igor.** Pedido original era "usar Tauri" pra instalar em
+  celular/tablet/desktop; expliquei que Tauri exige toolchain nativo (Rust) e build/deploy
+  separado do modelo web atual, e o Igor escolheu PWA em vez disso (Recomendado). Implementado:
+  `app/manifest.ts` + ícones em `public/icons/` + `public/apple-touch-icon.png` + metadata em
+  `app/layout.tsx`. "Adicionar à tela inicial" funciona no Chrome/Edge/Safari sem loja de app.
+  Se realmente quiser apps nativos nas lojas (App Store/Play Store) depois, Tauri fica registrado
+  aqui como decisão futura — é um projeto separado.
+- **"Pasta Pages" era mal-entendido.** O pedido de "criar uma pasta Pages e organizar o código
+  lá" descrevia exatamente o que o App Router (`app/`) já faz — cada rota já é uma pasta com
+  `page.tsx`. Confirmado com o Igor que não é pra migrar pro Pages Router antigo (isso seria
+  retrabalho destrutivo, perderia Server Components). Nenhuma mudança feita.
+- **LGPD: não criei página separada.** `/privacidade` já cobre LGPD de forma substantiva desde
+  a ETAPA 11 (cita a Lei 13.709/2018 explicitamente, direitos do titular, exclusão de dados,
+  canal de contato). Uma `/lgpd` separada seria conteúdo duplicado. Em vez disso, o link do
+  rodapé foi renomeado de "Política de privacidade" pra "Privacidade e LGPD", deixando claro
+  que o assunto está coberto ali.
+- **Fotos com IA — aprovado e gerado.** 3 imagens via Higgsfield (`marketing_studio_image`,
+  6 créditos no total, aprovado pelo Igor antes do gasto): `public/images/hero-airport.png`
+  (banner do hero), `public/images/destination-fortaleza.png` (card de exemplo dinheiro vs
+  pontos) e `public/images/consultor-ia.png` (card "Consultor IA" na grade de funcionalidades).
+- **Idioma da home (EN/FR/ES) — escopo limitado à home, por decisão de risco.** Traduzido:
+  hero, "Como funciona", pergunta central, funcionalidades, textos ao redor dos planos (não o
+  texto dos planos em si, que vem de `lib/plans.ts` e é reaproveitado em checkout/dashboard),
+  confiança, CTA final, aviso legal. **Não traduzido**: SiteHeader/SiteFooter (compartilhados
+  com as outras 30+ telas — traduzir só ali criaria inconsistência ao navegar), o buscador
+  embutido (`HeroSearchBox`) e o card de exemplo (`CashVsPointsTeaser`). Full i18n de rotas
+  (next-intl ou similar, cobrindo o site logado inteiro) é um projeto à parte — sinalizar se
+  o Igor quiser isso de verdade no futuro. Troca de idioma é só client-side (Context +
+  localStorage, `components/language-provider.tsx`); a renderização inicial que o Google vê
+  continua sempre em pt-BR, então não há impacto de SEO/GEO.
+- **Banco de dados real criado nesta sessão** — ver seção 1 acima e `README.md`. Achado
+  importante: o projeto Supabase do Radar nunca tinha sido criado de fato (nem aparecia na
+  org Cortex Tech, nem havia projeto Vercel correspondente) — só o repositório GitHub era
+  real. Etapas anteriores (1-11) descreveram testes via Playwright contra um servidor local,
+  mas o histórico de sessões anteriores não deixa claro contra qual banco isso rodava. A partir
+  de agora, `radar-milhas-viagens` (ref `gvncsfkypxcgfmifjqzh`) é o banco real e único.
+- **Nenhum projeto Vercel existe ainda** — ver `README.md` item 7. Avisar se quiser que eu
+  faça o primeiro deploy numa próxima etapa (depende de decidir domínio e confirmar as
+  variáveis de ambiente de produção primeiro).
