@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { FavoriteButton } from '@/components/favorite-button';
 import { formatBRL } from '@/lib/utils';
 import type { LoyaltyProgram } from '@/lib/types';
 
@@ -13,9 +14,11 @@ const TYPE_LABEL: Record<LoyaltyProgram['type'], string> = {
 export function LoyaltyProgramCard({
   program,
   userBalance,
+  isFavorited,
 }: {
   program: LoyaltyProgram;
   userBalance?: number | null;
+  isFavorited?: boolean;
 }) {
   return (
     <Card>
@@ -26,9 +29,14 @@ export function LoyaltyProgramCard({
           </Badge>
           <CardTitle className="text-base">{program.name}</CardTitle>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Milheiro médio</p>
-          <p className="font-semibold">{formatBRL(program.average_mile_value)}</p>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Milheiro médio</p>
+            <p className="font-semibold">{formatBRL(program.average_mile_value)}</p>
+          </div>
+          {isFavorited !== undefined && (
+            <FavoriteButton itemType="loyalty_program" itemId={program.id} initialFavorited={isFavorited} />
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">

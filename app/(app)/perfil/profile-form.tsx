@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { updateProfile, upsertUserLoyaltyProgram, deleteUserLoyaltyProgram } from './actions';
+import { PasswordForm } from './password-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +55,34 @@ export function ProfileForm({ profile, userPrograms, allPrograms }: ProfileFormP
 
   return (
     <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Conta</CardTitle>
+          <CardDescription>Seu e-mail de acesso e a senha (opcional) do clube.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-1.5">
+            <Label>E-mail</Label>
+            <p className="text-sm text-foreground">{profile?.email ?? '—'}</p>
+            <p className="text-xs text-muted-foreground">
+              Usado para entrar no clube (código de acesso ou senha). Trocar de e-mail ainda não
+              está disponível aqui.
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Senha</p>
+            <p className="text-xs text-muted-foreground">
+              Opcional — você também pode sempre entrar com um código de 6 dígitos enviado por
+              e-mail. Definir uma senha só te dá uma segunda forma de acesso.
+            </p>
+          </div>
+          <PasswordForm />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Dados pessoais</CardTitle>

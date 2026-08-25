@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { FormError } from '@/components/form-error';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 import { EVENT_STATUS_LABEL } from '@/lib/types';
 import type { WorldEvent, EventCategory, Destination, Source, EventSignificance, EventStatus } from '@/lib/types';
 
@@ -173,14 +174,13 @@ export function EventForm({
               <Label htmlFor="source_url">URL da fonte</Label>
               <Input id="source_url" name="source_url" type="url" defaultValue={event?.source_url ?? ''} placeholder="https://..." />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cover_image_url">URL da imagem de capa</Label>
-              <Input id="cover_image_url" name="cover_image_url" type="url" defaultValue={event?.cover_image_url ?? ''} placeholder="https://..." />
-              <p className="text-xs text-muted-foreground">
-                Otimizada automaticamente se vier de Unsplash, Wikimedia, Cloudinary ou Pexels — de
-                qualquer outro site, a imagem ainda aparece, só sem otimização.
-              </p>
-            </div>
+            <ImageUploadField
+              id="cover_image_url"
+              name="cover_image_url"
+              label="Imagem de capa"
+              defaultValue={event?.cover_image_url}
+              hint="Envie um arquivo (JPG/PNG/WEBP/GIF, até 5MB) ou cole uma URL — otimizada automaticamente se vier de Unsplash, Wikimedia, Cloudinary, Pexels ou do próprio Storage do Radar."
+            />
           </div>
 
           <div className="space-y-1.5">

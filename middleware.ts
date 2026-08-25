@@ -13,10 +13,19 @@ const PROTECTED_PREFIXES = [
   '/perfil',
   '/assinatura',
   '/onboarding',
+  '/favoritos',
   '/admin',
 ];
 
 const ADMIN_PREFIXES = ['/admin'];
+
+// `pathname.startsWith(prefix)` sozinho combina de mais: "/admin-login".
+// startsWith("/admin") é true, então a rota pública de login de admin caía
+// dentro do prefixo protegido "/admin" (bug real achado testando ao vivo
+// nesta etapa). Exige que o próximo caractere seja "/" ou fim de string.
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
@@ -62,7 +71,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  const isProtected = PROTECTED_PREFIXES.some((p) => matchesPrefix(pathname, p));
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
@@ -71,14 +80,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname === '/login' || pathname === '/cadastro')) {
+  if (user && (pathname === '/login' || pathname === '/cadastro' || pathname === '/admin-login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
-  const isAdminRoute = ADMIN_PREFIXES.some((p) => pathname.startsWith(p));
+  const isAdminRoute = ADMIN_PREFIXES.some((p) => matchesPrefix(pathname, p));
   if (isAdminRoute && user) {
     const { data: profile } = await supabase
       .from('profiles')

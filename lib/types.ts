@@ -450,3 +450,18 @@ export interface BucketListItem {
   last_alert_sent_at: string | null;
   created_at: string;
 }
+
+// =====================================================================
+// Favoritos (ETAPA 14 — ver AUTH_AND_ADMIN.md §8)
+// Espelham supabase/migrations/0009_favorites_and_media_storage.sql.
+// =====================================================================
+
+export type FavoriteItemType = 'promotion' | 'loyalty_program';
+
+export interface Favorite {
+  id: string;
+  user_id: string;
+  item_type: FavoriteItemType;
+  item_id: string;
+  created_at: string;
+}

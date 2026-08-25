@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { FavoriteButton } from '@/components/favorite-button';
 import { formatDate } from '@/lib/utils';
 import type { Promotion } from '@/lib/types';
 
@@ -28,7 +29,13 @@ const TYPE_LABEL: Record<Promotion['type'], string> = {
   cupom: 'Cupom',
 };
 
-export function PromotionCard({ promotion }: { promotion: Promotion }) {
+export function PromotionCard({
+  promotion,
+  isFavorited,
+}: {
+  promotion: Promotion;
+  isFavorited?: boolean;
+}) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
@@ -40,11 +47,16 @@ export function PromotionCard({ promotion }: { promotion: Promotion }) {
           </div>
           <CardTitle className="text-base">{promotion.title}</CardTitle>
         </div>
-        {promotion.bonus_percentage != null && (
-          <div className="rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">
-            +{promotion.bonus_percentage}%
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {promotion.bonus_percentage != null && (
+            <div className="rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">
+              +{promotion.bonus_percentage}%
+            </div>
+          )}
+          {isFavorited !== undefined && (
+            <FavoriteButton itemType="promotion" itemId={promotion.id} initialFavorited={isFavorited} />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         {promotion.rules && <p className="text-sm text-muted-foreground">{promotion.rules}</p>}

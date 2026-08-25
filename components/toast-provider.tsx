@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { CheckCircle2, Info, X } from 'lucide-react';
+import { CheckCircle2, Info, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Sistema de notificação global (ETAPA 13 — NeuroUX: "feedback imediato" e
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 // vezes (actions.ts) sem nada consumir o parâmetro — a pessoa salvava o
 // perfil e não via confirmação nenhuma. Ver components/toast-from-query.tsx
 // pra como isso foi corrigido.
-export type ToastVariant = 'success' | 'info' | 'celebration';
+export type ToastVariant = 'success' | 'info' | 'celebration' | 'error';
 
 interface ToastItem {
   id: string;
@@ -30,12 +30,14 @@ const VARIANT_ICON: Record<ToastVariant, typeof CheckCircle2> = {
   success: CheckCircle2,
   info: Info,
   celebration: CheckCircle2,
+  error: AlertCircle,
 };
 
 const VARIANT_STYLE: Record<ToastVariant, string> = {
   success: 'border-success/30 bg-success/10 text-foreground',
   info: 'border-border bg-card text-foreground',
   celebration: 'border-primary/30 bg-primary/10 text-foreground',
+  error: 'border-destructive/30 bg-destructive/10 text-foreground',
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

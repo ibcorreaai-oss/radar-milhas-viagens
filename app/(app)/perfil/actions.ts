@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
 import { planHasChannel } from '@/lib/plans';
+import { logger } from '@/lib/logger';
+import { passwordSchema } from '@/lib/validation/auth-schemas';
 import type { CabinClass } from '@/lib/types';
 
 // Server Action do formulário de perfil (`<form action={updateProfile}>`).
@@ -66,6 +68,47 @@ export async function updateProfile(formData: FormData): Promise<void> {
 
   revalidatePath('/perfil');
   redirect('/perfil?sucesso=1');
+}
+
+// ETAPA 14 (ver AUTH_AND_ADMIN.md §2) — define/altera senha do próprio
+// usuário. Diferente de app/auth/redefinir/actions.ts (fluxo de
+// recuperação, que desloga e força novo login): aqui a pessoa já está
+// logada e só ganha uma segunda forma de entrar (ou troca a que já tinha).
+export interface PasswordState {
+  error?: string;
+}
+
+export async function updateOwnPassword(
+  _prevState: PasswordState,
+  formData: FormData
+): Promise<PasswordState> {
+  const ctx = await getUserContext();
+  if (!ctx) {
+    redirect('/login');
+  }
+
+  const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('confirm') ?? '');
+
+  const result = passwordSchema.safeParse(password);
+  if (!result.success) {
+    return { error: result.error.issues[0]?.message ?? 'Senha inválida.' };
+  }
+  if (password !== confirm) {
+    return { error: 'As senhas não coincidem.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: result.data });
+
+  if (error) {
+    logger.error('auth', 'Falha ao definir senha em /perfil', { userId: ctx.userId, reason: error.message });
+    return { error: 'Não foi possível salvar a senha. Tente novamente.' };
+  }
+
+  logger.info('auth', 'Senha definida/alterada em /perfil', { userId: ctx.userId });
+  revalidatePath('/perfil');
+  redirect('/perfil?senha=1');
 }
 
 // Cria ou atualiza o saldo de um programa de pontos do usuário.

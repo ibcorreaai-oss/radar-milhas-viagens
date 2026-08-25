@@ -41,6 +41,7 @@ export default async function PerfilPage() {
       <ToastFromQuery
         rules={[
           { param: 'sucesso', value: '1', variant: 'success', title: 'Perfil atualizado com sucesso.' },
+          { param: 'senha', value: '1', variant: 'success', title: 'Senha salva com sucesso.' },
         ]}
       />
       <div>

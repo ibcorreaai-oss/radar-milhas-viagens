@@ -77,6 +77,7 @@ export default async function DashboardPage() {
     { count: searchesLast7Days },
     { count: hotelSearchesLast7Days },
     achievements,
+    { data: favoritePromotionsData },
   ] = await Promise.all([
     supabase.from('opportunities').select('*').order('score', { ascending: false }).limit(6),
     supabase.from('promotions').select('*').eq('status', 'ativa').order('score', { ascending: false }).limit(4),
@@ -96,10 +97,17 @@ export default async function DashboardPage() {
       .eq('user_id', ctx.userId)
       .gte('created_at', sevenDaysAgo),
     flags.achievementsPanel ? computeAchievements(supabase, ctx.userId, ctx.profile) : Promise.resolve(null),
+    // ETAPA 14 — mesma promoção aparece aqui e em /promocoes; sem isso a
+    // estrela de favorito simplesmente não aparecia no dashboard (achado em
+    // revisão adversarial), inconsistente com o resto do produto.
+    supabase.from('favorites').select('item_id').eq('user_id', ctx.userId).eq('item_type', 'promotion'),
   ]);
 
   const opportunities = (topOpportunitiesData ?? []) as Opportunity[];
   const promotions = (activePromotionsData ?? []) as Promotion[];
+  const favoritedPromotionIds = new Set(
+    ((favoritePromotionsData ?? []) as { item_id: string }[]).map((f) => f.item_id)
+  );
   const alerts = (activeAlertsData ?? []) as Alert[];
   const userPrograms = (userProgramsData ?? []) as UserLoyaltyProgramWithProgram[];
   const searchesThisWeek = (searchesLast7Days ?? 0) + (hotelSearchesLast7Days ?? 0);
@@ -251,7 +259,11 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {promotions.map((promotion) => (
-              <PromotionCard key={promotion.id} promotion={promotion} />
+              <PromotionCard
+                key={promotion.id}
+                promotion={promotion}
+                isFavorited={favoritedPromotionIds.has(promotion.id)}
+              />
             ))}
           </div>
         )}

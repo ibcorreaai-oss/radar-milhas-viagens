@@ -15,10 +15,9 @@ export const metadata: Metadata = {
 
 export default async function PromocoesPage() {
   // Vitrine pública de verdade (RLS libera leitura anônima desde a
-  // migration 0005 — ETAPA 11/SEO) — getUserContext só é usado aqui para
-  // eventual personalização futura, não bloqueia a renderização.
+  // migration 0005 — ETAPA 11/SEO) — getUserContext é usado agora também
+  // pra saber quais promoções o usuário já favoritou (ETAPA 14).
   const ctx = await getUserContext();
-  void ctx;
 
   if (!isSupabaseConfigured()) {
     return (
@@ -33,13 +32,17 @@ export default async function PromocoesPage() {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('promotions')
-    .select('*')
-    .order('status')
-    .order('score', { ascending: false });
+  const [{ data }, favoritesResult] = await Promise.all([
+    supabase.from('promotions').select('*').order('status').order('score', { ascending: false }),
+    ctx
+      ? supabase.from('favorites').select('item_id').eq('user_id', ctx.userId).eq('item_type', 'promotion')
+      : Promise.resolve({ data: null }),
+  ]);
 
   const promotions = (data ?? []) as Promotion[];
+  const favoritedIds = ctx
+    ? new Set(((favoritesResult.data ?? []) as { item_id: string }[]).map((f) => f.item_id))
+    : null;
 
   const ativas = promotions.filter((p) => p.status === 'ativa');
   const futuras = promotions.filter((p) => p.status === 'futura');
@@ -71,7 +74,11 @@ export default async function PromocoesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {ativas.map((promotion) => (
-                <PromotionCard key={promotion.id} promotion={promotion} />
+                <PromotionCard
+                  key={promotion.id}
+                  promotion={promotion}
+                  isFavorited={favoritedIds ? favoritedIds.has(promotion.id) : undefined}
+                />
               ))}
             </div>
           )}
@@ -87,7 +94,11 @@ export default async function PromocoesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {futuras.map((promotion) => (
-                <PromotionCard key={promotion.id} promotion={promotion} />
+                <PromotionCard
+                  key={promotion.id}
+                  promotion={promotion}
+                  isFavorited={favoritedIds ? favoritedIds.has(promotion.id) : undefined}
+                />
               ))}
             </div>
           )}
@@ -103,7 +114,11 @@ export default async function PromocoesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {expiradas.map((promotion) => (
-                <PromotionCard key={promotion.id} promotion={promotion} />
+                <PromotionCard
+                  key={promotion.id}
+                  promotion={promotion}
+                  isFavorited={favoritedIds ? favoritedIds.has(promotion.id) : undefined}
+                />
               ))}
             </div>
           )}

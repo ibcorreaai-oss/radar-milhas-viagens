@@ -5,27 +5,71 @@ import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signUp, type SignUpState } from './actions';
+import { OtpCodeInput } from '@/components/otp-code-input';
+import { handleSignupStep, type SignUpState } from './actions';
 
-const initialState: SignUpState = {};
+const initialState: SignUpState = { step: 'request' };
 
-function SubmitButton() {
+function SubmitButton({
+  intent,
+  label,
+  pendingLabel,
+  variant = 'default',
+}: {
+  intent: string;
+  label: string;
+  pendingLabel: string;
+  variant?: 'default' | 'ghost';
+}) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? 'Criando conta...' : 'Criar conta grátis'}
+    <Button
+      type="submit"
+      name="intent"
+      value={intent}
+      variant={variant}
+      className={variant === 'default' ? 'w-full' : 'w-full text-xs text-muted-foreground'}
+      disabled={pending}
+    >
+      {pending ? pendingLabel : label}
     </Button>
   );
 }
 
 export function CadastroForm() {
-  const [state, formAction] = useActionState(signUp, initialState);
+  const [state, formAction] = useActionState(handleSignupStep, initialState);
 
-  if (state.success) {
+  if (state.step === 'verify') {
     return (
-      <p className="rounded-md bg-secondary/10 px-3 py-3 text-sm text-secondary-foreground">
-        {state.success}
-      </p>
+      <form action={formAction} className="space-y-4">
+        <input type="hidden" name="name" value={state.name ?? ''} />
+        <input type="hidden" name="email" value={state.email ?? ''} />
+
+        {state.info && (
+          <p className="rounded-md bg-secondary/10 px-3 py-2 text-sm text-secondary-foreground">
+            {state.info}
+          </p>
+        )}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="code">Código de 6 dígitos</Label>
+          <OtpCodeInput id="code" />
+        </div>
+
+        {state.error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {state.error}
+          </p>
+        )}
+
+        <SubmitButton intent="verify" label="Confirmar código" pendingLabel="Confirmando..." />
+        <SubmitButton
+          intent="resend"
+          label="Não recebeu? Reenviar código"
+          pendingLabel="Reenviando..."
+          variant="ghost"
+        />
+      </form>
     );
   }
 
@@ -33,7 +77,15 @@ export function CadastroForm() {
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="name">Nome</Label>
-        <Input id="name" name="name" type="text" placeholder="Seu nome" autoComplete="name" required />
+        <Input
+          id="name"
+          name="name"
+          type="text"
+          placeholder="Seu nome"
+          autoComplete="name"
+          defaultValue={state.name ?? ''}
+          required
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -44,32 +96,7 @@ export function CadastroForm() {
           type="email"
           placeholder="voce@email.com"
           autoComplete="email"
-          required
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="password">Senha</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="Mínimo 8 caracteres"
-          autoComplete="new-password"
-          minLength={8}
-          required
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="confirm">Confirmar senha</Label>
-        <Input
-          id="confirm"
-          name="confirm"
-          type="password"
-          placeholder="Repita a senha"
-          autoComplete="new-password"
-          minLength={8}
+          defaultValue={state.email ?? ''}
           required
         />
       </div>
@@ -80,10 +107,11 @@ export function CadastroForm() {
         </p>
       )}
 
-      <SubmitButton />
+      <SubmitButton intent="request" label="Enviar código de confirmação" pendingLabel="Enviando..." />
 
       <p className="text-center text-xs text-muted-foreground">
-        Ao criar a conta, você concorda com os{' '}
+        Sem senha — enviamos um código de 6 dígitos para o seu e-mail. Ao continuar, você
+        concorda com os{' '}
         <a href="/termos" className="underline hover:text-foreground">
           Termos de Uso
         </a>{' '}

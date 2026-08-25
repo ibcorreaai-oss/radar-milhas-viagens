@@ -136,3 +136,27 @@ engajamento) tinha se perdido. **Nada se perdeu** — o commit `a0a2d95` já est
       Assim que o SMTP for configurado, uma sessão futura pode criar um usuário de teste real
       e validar visualmente barra de progresso, toasts, celebração de onboarding, painel de
       conquistas etc.
+
+## 9. ETAPA 14 — Autenticação por OTP, admin, favoritos (25/08)
+
+Ver `AUTH_AND_ADMIN.md` para o raciocínio completo (decisão Stack Auth × Supabase Auth × OTP,
+curadoria do resto do pedido). Migration `0009_favorites_and_media_storage` já aplicada no banco
+real (tabela `favorites` + bucket `event-media`) — nada pra rodar manualmente aí.
+
+- [ ] **Verificar o template de e-mail "Magic Link" no Supabase (Authentication → Email
+      Templates)** — o cadastro/login por OTP (`/cadastro`, `/login`) espera que a pessoa digite
+      um código de 6 dígitos, mas o template padrão do Supabase às vezes só mostra o botão/link
+      de confirmação, sem o código visível. Confirme que o template inclui a variável
+      `{{ .Token }}` em algum texto visível (ex.: "Ou digite este código: {{ .Token }}") — sem
+      isso, quem receber o e-mail só vê um link pra clicar, não um código pra digitar, e a tela
+      de "Confirmar código" fica sem serventia (clicar no link ainda funciona por baixo, mas cai
+      num fluxo diferente do que a tela pede). Não consigo ler nem editar esse template por MCP
+      — é configuração só de dashboard.
+- [ ] Igual ao item 6/8: sem SMTP próprio, o envio de código por OTP esbarra no mesmo
+      `email rate limit exceeded` do mailer padrão — resolve junto com a mesma pendência de SMTP.
+- **Login de admin (`/admin-login`)**: continua exigindo senha (nunca OTP) — se algum admin foi
+  criado só via `/cadastro` (OTP, sem senha) ou só via Google, ele precisa passar por
+  "Esqueci minha senha" uma vez pra conseguir usar `/admin-login`. Promover a role continua sendo
+  só via SQL direto (`update profiles set role='admin' where user_id='...'`), sem mudança aqui.
+- Bucket `event-media` é público pra leitura (as imagens aparecem em `/descobrir` pra qualquer
+  visitante) e só admin escreve — nada a configurar, a policy já está na migration.

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { passwordSchema } from '@/lib/validation/auth-schemas';
 
 export interface RedefinirState {
   error?: string;
@@ -15,8 +16,14 @@ export async function updatePassword(
   const password = String(formData.get('password') || '');
   const confirm = String(formData.get('confirm') || '');
 
-  if (password.length < 8) {
-    return { error: 'A senha deve ter pelo menos 8 caracteres.' };
+  // Mesmo passwordSchema de app/(app)/perfil/actions.ts (ETAPA 14) — antes
+  // esta tela só checava `length < 8`, sem o teto de 72 (limite real do
+  // bcrypt no GoTrue), então uma senha muito longa passava aqui e falhava
+  // só lá dentro do Supabase, com as duas telas de senha da conta aplicando
+  // regras diferentes pro mesmo usuário.
+  const result = passwordSchema.safeParse(password);
+  if (!result.success) {
+    return { error: result.error.issues[0]?.message ?? 'Senha inválida.' };
   }
   if (password !== confirm) {
     return { error: 'As senhas não coincidem.' };

@@ -1,81 +1,160 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
 import { welcomeEmail } from '@/lib/email/templates';
+import { emailSchema, nameSchema, otpCodeSchema } from '@/lib/validation/auth-schemas';
 
+// ETAPA 14 (ver AUTH_AND_ADMIN.md §1) — cadastro só por OTP, sem senha.
+// Uma única Server Action cuida dos 3 sub-passos (pedir código, reenviar,
+// verificar), diferenciados pelo campo oculto/botão "intent" — assim o
+// formulário inteiro roda em cima de um único useActionState no client,
+// com um `state` contínuo entre os passos (duas Server Actions separadas
+// exigiriam dois useActionState com estado independente, perdendo o nome/
+// e-mail ao trocar de passo).
 export interface SignUpState {
+  step: 'request' | 'verify';
+  name?: string;
+  email?: string;
   error?: string;
-  success?: string;
+  info?: string;
 }
 
-async function getOrigin() {
-  const h = await headers();
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  const host = h.get('host');
-  return `${proto}://${host}`;
-}
-
-export async function signUp(
-  _prevState: SignUpState,
-  formData: FormData
-): Promise<SignUpState> {
-  const name = String(formData.get('name') || '').trim();
-  const email = String(formData.get('email') || '').trim();
-  const password = String(formData.get('password') || '');
-  const confirm = String(formData.get('confirm') || '');
-
-  if (!name || !email || !password) {
-    return { error: 'Preencha todos os campos.' };
-  }
-  if (password.length < 8) {
-    return { error: 'A senha deve ter pelo menos 8 caracteres.' };
-  }
-  if (password !== confirm) {
-    return { error: 'As senhas não coincidem.' };
-  }
-
+async function sendSignupCode(email: string, name: string): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const origin = await getOrigin();
-
-  // O trigger handle_new_user (supabase/migrations/0001_schema.sql) cria
-  // profile + subscription free automaticamente ao inserir em auth.users.
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signInWithOtp({
     email,
-    password,
-    options: {
-      data: { name },
-      emailRedirectTo: `${origin}/auth/callback`,
-    },
+    options: { shouldCreateUser: true, data: { name } },
   });
 
   if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('já')) {
-      logger.info('auth', 'Cadastro rejeitado — e-mail já existe', { email });
-      return { error: 'Este e-mail já está cadastrado. Faça login.' };
-    }
-    logger.error('auth', 'Falha ao criar conta', { email, reason: error.message });
-    return { error: 'Não foi possível criar sua conta. Tente novamente.' };
+    logger.error('auth', 'Falha ao enviar código de cadastro', { email, reason: error.message });
+    return { error: 'Não foi possível enviar o código agora. Tente novamente em alguns instantes.' };
   }
 
-  logger.info('auth', 'Cadastro bem-sucedido', { userId: data.user?.id, email, hasSession: Boolean(data.session) });
+  logger.info('auth', 'Código de cadastro enviado', { email });
+  return {};
+}
 
-  // Se a confirmação de e-mail estiver ativada no projeto Supabase, não
-  // existe sessão ainda — o usuário precisa clicar no link recebido.
-  if (!data.session) {
+export async function handleSignupStep(
+  prevState: SignUpState,
+  formData: FormData
+): Promise<SignUpState> {
+  const intent = String(formData.get('intent') ?? 'request');
+
+  if (intent === 'verify') {
+    const name = String(formData.get('name') ?? '').trim();
+    const emailResult = emailSchema.safeParse(formData.get('email'));
+    if (!emailResult.success) {
+      return { step: 'request', error: 'Sessão de cadastro expirada. Comece de novo.' };
+    }
+    const email = emailResult.data;
+
+    const codeResult = otpCodeSchema.safeParse(formData.get('code'));
+    if (!codeResult.success) {
+      return {
+        step: 'verify',
+        name,
+        email,
+        error: codeResult.error.issues[0]?.message ?? 'Código inválido.',
+      };
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: codeResult.data,
+      type: 'email',
+    });
+
+    if (error) {
+      logger.warn('auth', 'Falha ao verificar código de cadastro', { email, reason: error.message });
+      return {
+        step: 'verify',
+        name,
+        email,
+        error: 'Código inválido ou expirado. Confira e tente de novo, ou peça um novo código.',
+      };
+    }
+
+    const user = data.user;
+    if (!user) {
+      return { step: 'verify', name, email, error: 'Não foi possível confirmar sua conta. Tente novamente.' };
+    }
+
+    logger.info('auth', 'Cadastro confirmado via OTP', { userId: user.id, email });
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('onboarding_done')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      // Achado em revisão adversarial: erro transiente aqui não pode ser
+      // tratado como "conta nova" (mandaria e-mail de boas-vindas e
+      // devolveria pro onboarding um usuário antigo de verdade). Sem saber
+      // o estado real, o destino mais seguro é o dashboard — pior caso é
+      // essa pessoa ter que reabrir o onboarding manualmente depois, não
+      // ficar presa nem levar e-mail duplicado.
+      logger.error('auth', 'Falha ao ler profile após confirmar OTP de cadastro', {
+        userId: user.id,
+        reason: profileError.message,
+      });
+      redirect('/dashboard');
+    }
+
+    // "Conta nova de verdade" não pode depender só de onboarding_done=false
+    // — um usuário já existente que digita o e-mail em /cadastro por engano
+    // também bateria nessa condição a cada tentativa, reenviando boas-vindas
+    // toda vez (achado em revisão adversarial). auth.users.created_at é
+    // fixado na criação e nunca muda; se foi há poucos minutos, é sinal
+    // confiável de que o handle_new_user trigger acabou de rodar agora.
+    const createdRecently = Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+
+    if (!profile || !profile.onboarding_done) {
+      if (createdRecently) {
+        await sendEmail(email, welcomeEmail(name || email.split('@')[0]));
+      }
+      redirect('/onboarding');
+    }
+
+    redirect('/dashboard');
+  }
+
+  // intent === 'request' (primeiro pedido) ou 'resend' (reenvio) — mesma
+  // operação, só muda a mensagem de retorno.
+  const nameResult = nameSchema.safeParse(formData.get('name'));
+  const emailResult = emailSchema.safeParse(formData.get('email'));
+
+  if (!nameResult.success) {
+    return { step: 'request', error: nameResult.error.issues[0]?.message ?? 'Nome inválido.' };
+  }
+  if (!emailResult.success) {
     return {
-      success:
-        'Quase lá! Enviamos um link de confirmação para o seu e-mail. Clique nele para ativar sua conta.',
+      step: 'request',
+      name: nameResult.data,
+      error: emailResult.error.issues[0]?.message ?? 'E-mail inválido.',
     };
   }
 
-  // ETAPA 7 (ativação): primeiro contato pós-cadastro. Nunca bloqueia o
-  // fluxo — sendEmail() já não lança e já loga sucesso/falha sozinho.
-  await sendEmail(email, welcomeEmail(name));
+  const name = nameResult.data;
+  const email = emailResult.data;
+  const { error } = await sendSignupCode(email, name);
 
-  redirect('/onboarding');
+  if (error) {
+    return { step: intent === 'resend' ? 'verify' : 'request', name, email, error };
+  }
+
+  return {
+    step: 'verify',
+    name,
+    email,
+    info:
+      intent === 'resend'
+        ? `Enviamos um novo código para ${email}.`
+        : `Enviamos um código de 6 dígitos para ${email}. Confira sua caixa de entrada (e o spam).`,
+  };
 }
