@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useMemo, useState, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { Select } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { ProfileCompletenessBar } from '@/components/profile-completeness-bar';
+import { computeProfileCompleteness } from '@/lib/profile-completeness';
 import type { CabinClass, LoyaltyProgram, Profile, UserLoyaltyProgram } from '@/lib/types';
 import { completeOnboarding, type OnboardingState } from './actions';
 
@@ -56,6 +58,30 @@ export function OnboardingForm({
   const [notifyEmail, setNotifyEmail] = useState(profile?.notify_email ?? true);
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(profile?.notify_whatsapp ?? false);
 
+  // Só pra alimentar a barra de progresso ao vivo (ETAPA 13) — os campos
+  // continuam não-controlados (defaultValue) pro resto, esses states só
+  // espelham o que a pessoa digitou pra recalcular a completude a cada
+  // tecla, sem precisar controlar o Input inteiro.
+  const [homeAirportValue, setHomeAirportValue] = useState(profile?.home_airport ?? '');
+  const [destinationsValue, setDestinationsValue] = useState(
+    profile?.favorite_destinations?.join(', ') ?? ''
+  );
+  const [monthlyBudgetValue, setMonthlyBudgetValue] = useState(
+    profile?.monthly_budget != null ? String(profile.monthly_budget) : ''
+  );
+
+  const completeness = useMemo(
+    () =>
+      computeProfileCompleteness({
+        homeAirport: homeAirportValue,
+        hasFavoriteDestinations: destinationsValue.trim().length > 0,
+        hasLoyaltyProgram: selectedPrograms.size > 0,
+        hasNotificationChannel: notifyEmail || notifyWhatsapp,
+        hasMonthlyBudget: monthlyBudgetValue.trim().length > 0,
+      }),
+    [homeAirportValue, destinationsValue, selectedPrograms, notifyEmail, notifyWhatsapp, monthlyBudgetValue]
+  );
+
   const balanceByProgram = Object.fromEntries(
     userPrograms.map((up) => [up.program_id, up.points_balance])
   );
@@ -81,6 +107,8 @@ export function OnboardingForm({
         <input key={id} type="hidden" name="programs" value={id} />
       ))}
 
+      <ProfileCompletenessBar percent={completeness.percent} items={completeness.items} compact />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">De onde você viaja</CardTitle>
@@ -94,6 +122,7 @@ export function OnboardingForm({
               name="home_airport"
               placeholder="Ex: Fortaleza (FOR) ou GRU"
               defaultValue={profile?.home_airport ?? ''}
+              onChange={(e) => setHomeAirportValue(e.target.value)}
               required
             />
           </div>
@@ -107,6 +136,7 @@ export function OnboardingForm({
               name="favorite_destinations"
               placeholder="Ex: Lisboa, Nova York, Buenos Aires"
               defaultValue={profile?.favorite_destinations?.join(', ') ?? ''}
+              onChange={(e) => setDestinationsValue(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">Separe os destinos por vírgula.</p>
           </div>
@@ -215,6 +245,7 @@ export function OnboardingForm({
               min={0}
               placeholder="Ex: 800"
               defaultValue={profile?.monthly_budget ?? ''}
+              onChange={(e) => setMonthlyBudgetValue(e.target.value)}
             />
           </div>
         </CardContent>

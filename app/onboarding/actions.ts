@@ -107,5 +107,5 @@ export async function completeOnboarding(
     }
   }
 
-  redirect('/dashboard');
+  redirect('/dashboard?onboarded=1');
 }

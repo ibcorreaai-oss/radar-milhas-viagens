@@ -50,6 +50,7 @@ export default async function AlertasPage({
 
   const limitReached = params.limite === '1';
   const success = params.sucesso === '1';
+  const isFirstAlert = params.primeiro === '1';
   const erro = typeof params.erro === 'string' ? params.erro : undefined;
 
   return (
@@ -78,7 +79,11 @@ export default async function AlertasPage({
 
       {success && (
         <Card className="border-success">
-          <CardContent className="p-4 text-sm">Alerta criado com sucesso.</CardContent>
+          <CardContent className="p-4 text-sm">
+            {isFirstAlert
+              ? '🎉 Primeiro alerta criado! A partir de agora, o Radar vigia esse preço por você.'
+              : 'Alerta criado com sucesso.'}
+          </CardContent>
         </Card>
       )}
 

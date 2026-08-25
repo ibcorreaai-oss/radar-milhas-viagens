@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PlaneTakeoff, TriangleAlert } from 'lucide-react';
+import { PlaneTakeoff, TriangleAlert, Bell } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDateTime, formatDurationMinutes } from '@/lib/utils';
@@ -63,6 +63,27 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
 
   const flightResults = (results ?? []) as FlightResult[];
 
+  // Nudge (ETAPA 13 — NeuroUX: "descoberta gradual"/"fluxo contínuo"): se a
+  // pessoa já buscou essa rota mais de uma vez e ainda não tem alerta pra
+  // ela, sugere criar um — é o próximo passo natural, calculado sob
+  // demanda a partir do que já existe (sem tabela nova).
+  const [{ count: sameRouteSearches }, { count: existingAlertsForRoute }] = await Promise.all([
+    supabase
+      .from('flight_searches')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .eq('origin', typedSearch.origin)
+      .eq('destination', typedSearch.destination),
+    supabase
+      .from('alerts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .eq('origin', typedSearch.origin)
+      .eq('destination', typedSearch.destination)
+      .eq('active', true),
+  ]);
+  const suggestAlert = (sameRouteSearches ?? 0) >= 2 && (existingAlertsForRoute ?? 0) === 0;
+
   if (flightResults.length === 0) {
     return (
       <EmptyState
@@ -84,6 +105,21 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
           Preços e disponibilidade podem mudar — confirme no site oficial antes de comprar.
         </p>
       </div>
+
+      {suggestAlert && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+            <p className="flex items-center gap-2">
+              <Bell className="h-4 w-4 shrink-0 text-primary" />
+              Você já buscou {typedSearch.origin} → {typedSearch.destination} algumas vezes. Que tal
+              criar um alerta pra não precisar buscar de novo?
+            </p>
+            <Link href="/alertas">
+              <Button size="sm">Criar alerta</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {flightResults.map((result) => (

@@ -102,7 +102,9 @@ export async function createAlert(formData: FormData): Promise<void> {
   }
 
   revalidatePath('/alertas');
-  redirect('/alertas?sucesso=1');
+  // count veio da checagem de limite de plano acima — se era 0, este é o
+  // primeiro alerta da pessoa (ETAPA 13: microvitória, ver alertas/page.tsx).
+  redirect(count === 0 ? '/alertas?sucesso=1&primeiro=1' : '/alertas?sucesso=1');
 }
 
 // Ativa/desativa um alerta existente.

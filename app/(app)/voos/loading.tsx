@@ -1,5 +1,14 @@
-import { LoadingState } from '@/components/loading-state';
+import { SmartLoading } from '@/components/smart-loading';
 
 export default function Loading() {
-  return <LoadingState label="Carregando voos…" />;
+  return (
+    <SmartLoading
+      messages={[
+        'Buscando voos…',
+        'Comparando preço em dinheiro e em pontos…',
+        'Calculando o valor do seu milheiro…',
+        'Quase pronto…',
+      ]}
+    />
+  );
 }

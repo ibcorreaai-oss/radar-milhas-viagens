@@ -15,6 +15,7 @@ checar esse documento primeiro. Os demais, por assunto: `PROMPT.md` (spec origin
 `OBSERVABILITY.md` (logs, auditoria, uptime, alertas críticos), `PERFORMANCE.md` (consultas,
 cache, imagens, Core Web Vitals), `DATA_QUALITY.md` (validação Zod, deduplicação, integridade
 referencial), `GROWTH.md` (ativação, retenção, conversão, `/admin/metricas`),
+`ENGAGEMENT_UX.md` (progresso, microvitórias, feedback imediato, conquistas opcionais),
 `REQUIREMENTS.md` (requisitos funcionais/não funcionais), `SCREENS.md` (inventário das 34
 telas) e `SEO_GEO.md` (SEO, Open Graph, GEO/IA generativa).
 

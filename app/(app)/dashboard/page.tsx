@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Bell, Clock, Gift, Plane, Search } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
+import { getFeatureFlags } from '@/lib/feature-flags';
+import { computeAchievements } from '@/lib/achievements';
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +12,8 @@ import { OpportunityCard } from '@/components/opportunity-card';
 import { PromotionCard } from '@/components/promotion-card';
 import { EmptyState } from '@/components/empty-state';
 import { DashboardStats } from '@/components/dashboard-stats';
+import { AchievementsPanel } from '@/components/achievements-panel';
+import { ToastFromQuery } from '@/components/toast-from-query';
 import { PLANS } from '@/lib/plans';
 import { formatBRL, formatDate, cn } from '@/lib/utils';
 import {
@@ -61,12 +65,18 @@ export default async function DashboardPage() {
   }
 
   const supabase = await createClient();
+  const flags = await getFeatureFlags();
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
     { data: topOpportunitiesData },
     { data: activePromotionsData },
     { data: activeAlertsData },
     { data: userProgramsData },
+    { count: searchesLast7Days },
+    { count: hotelSearchesLast7Days },
+    achievements,
   ] = await Promise.all([
     supabase.from('opportunities').select('*').order('score', { ascending: false }).limit(6),
     supabase.from('promotions').select('*').eq('status', 'ativa').order('score', { ascending: false }).limit(4),
@@ -75,12 +85,24 @@ export default async function DashboardPage() {
       .from('user_loyalty_programs')
       .select('*, loyalty_programs(name, average_mile_value)')
       .eq('user_id', ctx.userId),
+    supabase
+      .from('flight_searches')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .gte('created_at', sevenDaysAgo),
+    supabase
+      .from('hotel_searches')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .gte('created_at', sevenDaysAgo),
+    flags.achievementsPanel ? computeAchievements(supabase, ctx.userId, ctx.profile) : Promise.resolve(null),
   ]);
 
   const opportunities = (topOpportunitiesData ?? []) as Opportunity[];
   const promotions = (activePromotionsData ?? []) as Promotion[];
   const alerts = (activeAlertsData ?? []) as Alert[];
   const userPrograms = (userProgramsData ?? []) as UserLoyaltyProgramWithProgram[];
+  const searchesThisWeek = (searchesLast7Days ?? 0) + (hotelSearchesLast7Days ?? 0);
 
   // Valor estimado dos pontos do usuário: soma, por programa, de
   // (saldo / 1000) * milheiro médio do programa.
@@ -120,10 +142,22 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 p-6">
+      <ToastFromQuery
+        rules={[
+          {
+            param: 'onboarded',
+            value: '1',
+            variant: 'celebration',
+            title: '🎉 Perfil configurado!',
+            description: 'Agora seus alertas já saem personalizados pro seu jeito de viajar.',
+          },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Olá, {firstName}</h1>
         <p className="mt-1 text-muted-foreground">
           Aqui está o resumo de hoje: seus pontos, alertas e as melhores oportunidades do clube.
+          {searchesThisWeek > 0 && ` Você já fez ${searchesThisWeek} busca${searchesThisWeek > 1 ? 's' : ''} nos últimos 7 dias.`}
         </p>
       </div>
 
@@ -133,6 +167,8 @@ export default async function DashboardPage() {
         featuredOpportunitiesCount={opportunities.length}
         activePromotionsCount={promotions.length}
       />
+
+      {achievements && <AchievementsPanel achievements={achievements} />}
 
       {/* Upsell no ponto de maior fricção real: usuário Free que já usou
           todo o limite de alertas do plano — ver GROWTH.md (ETAPA 7). */}

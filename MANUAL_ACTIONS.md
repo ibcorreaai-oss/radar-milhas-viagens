@@ -97,11 +97,16 @@ sessão não mexeu em nenhuma integração de pagamento/e-mail/WhatsApp/voo/hote
 - Sidebar do dashboard agora expande/recolhe (persistido), com Tooltip nos ícones e
   Drawer/Sheet mobile novo — o dashboard não tinha NENHUMA navegação mobile antes disso
   (achado real, não só melhoria pedida).
-- **Bug real encontrado ao tentar testar com um usuário real**: `/cadastro` rejeita e-mails
-  válidos (`gmail.com` incluso) com "Email address is invalid" no projeto Supabase novo
-  (`radar-milhas-viagens`). Não investiguei a fundo — o suspeito mais provável é confirmação
-  de e-mail exigida sem um provedor SMTP configurado ainda (Resend/`RESEND_API_KEY` continua
-  vazio, ver seção 3 do README), o GoTrue pode estar mascarando uma falha de envio como
-  "e-mail inválido". Testei o sidebar contornando isso com uma rota de preview temporária
-  (deletada antes do commit), mas esse bug bloqueia qualquer cadastro real de usuário até
-  ser corrigido — vale investigar antes de divulgar o app pra qualquer pessoa de fora.
+- **Bug real encontrado ao tentar testar com um usuário real, causa raiz confirmada na ETAPA
+  13**: `/cadastro` rejeitava e-mails válidos (`gmail.com` incluso) com "Email address is
+  invalid". Chamei o endpoint `/auth/v1/signup` do GoTrue direto (curl, sem passar pelo app)
+  pra ver o erro real, e veio `over_email_send_rate_limit` — o mailer padrão/compartilhado do
+  Supabase (usado enquanto não há SMTP próprio configurado) tem um limite baixíssimo de
+  e-mails por hora, e os meus próprios testes da ETAPA 12b já tinham esgotado a cota; a
+  mensagem "Email address is invalid" que o app mostrava era só a forma como o
+  `cadastro/actions.ts` traduz qualquer erro do GoTrue que não bate com "already registered"
+  (ver `error.message.toLowerCase()` em `app/(auth)/cadastro/actions.ts`) — não é um bug de
+  validação de e-mail de verdade, é limite de envio de e-mail de projeto novo sem SMTP.
+  **Resolve sozinho** configurando `RESEND_API_KEY` (seção 3 do README) e trocando o mailer
+  padrão do Supabase por SMTP próprio em Authentication → Settings → SMTP Settings — sem
+  isso, qualquer projeto novo do Supabase esbarra nesse limite rápido demais pra uso real.

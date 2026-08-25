@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BedDouble, TriangleAlert } from 'lucide-react';
+import { BedDouble, TriangleAlert, Bell } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
@@ -68,6 +68,24 @@ async function HotelResultsSection({ searchId }: { searchId: string }) {
 
   const hotelResults = (results ?? []) as HotelResult[];
 
+  // Nudge (ETAPA 13 — NeuroUX), mesma lógica de app/(app)/voos/page.tsx —
+  // se a pessoa já buscou essa cidade mais de uma vez sem ter alerta pra
+  // ela, sugere criar um.
+  const [{ count: sameCitySearches }, { count: existingAlertsForCity }] = await Promise.all([
+    supabase
+      .from('hotel_searches')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .eq('city', typedSearch.city),
+    supabase
+      .from('alerts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', ctx.userId)
+      .eq('city', typedSearch.city)
+      .eq('active', true),
+  ]);
+  const suggestAlert = (sameCitySearches ?? 0) >= 2 && (existingAlertsForCity ?? 0) === 0;
+
   if (hotelResults.length === 0) {
     return (
       <EmptyState
@@ -99,6 +117,21 @@ async function HotelResultsSection({ searchId }: { searchId: string }) {
           Preços e disponibilidade podem mudar — confirme no site oficial antes de reservar.
         </p>
       </div>
+
+      {suggestAlert && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+            <p className="flex items-center gap-2">
+              <Bell className="h-4 w-4 shrink-0 text-primary" />
+              Você já buscou hotéis em {typedSearch.city} algumas vezes. Que tal criar um alerta pra
+              não precisar buscar de novo?
+            </p>
+            <Link href="/alertas">
+              <Button size="sm">Criar alerta</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {hotelResults.map((result) => (

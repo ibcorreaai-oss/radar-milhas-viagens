@@ -285,7 +285,8 @@ export type FeatureFlagKey =
   | 'experienceRadar'
   | 'tripBuilder'
   | 'worldCalendar'
-  | 'conciergeAI';
+  | 'conciergeAI'
+  | 'achievementsPanel';
 
 export interface FeatureFlag {
   key: FeatureFlagKey;
