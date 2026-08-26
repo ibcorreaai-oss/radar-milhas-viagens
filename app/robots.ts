@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
+import { getSiteUrl } from '@/lib/site-url';
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const SITE_URL = getSiteUrl();
 
 // Espelha middleware.ts PROTECTED_PREFIXES — tudo que exige login vira
 // disallow aqui também. Não é a barreira de segurança (a RLS + middleware

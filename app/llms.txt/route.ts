@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
+import { getSiteUrl } from '@/lib/site-url';
 
 // GEO (Generative Engine Optimization): /llms.txt segue o formato proposto
 // em llmstxt.org — H1, resumo em blockquote, seções H2 com links markdown
 // + uma frase cada. Ajuda ChatGPT/Gemini/Perplexity/Claude a entender e
 // citar o produto corretamente, sem custo (é um arquivo de texto, não um
 // serviço). Route Handler em vez de arquivo estático em public/ porque a
-// URL do site depende de NEXT_PUBLIC_APP_URL (domínio ainda não definido
-// em produção — ver README.md checklist) e não pode ficar hardcoded
-// errado até lá. Ver SEO_GEO.md.
+// URL do site depende de getSiteUrl() (ver lib/site-url.ts — domínio ainda
+// não definido em produção, ver README.md checklist) e não pode ficar
+// hardcoded errado até lá. Ver SEO_GEO.md.
 export const dynamic = 'force-static';
 
 function buildLlmsTxt(siteUrl: string): string {
@@ -58,7 +59,7 @@ function buildLlmsTxt(siteUrl: string): string {
 }
 
 export function GET() {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const siteUrl = getSiteUrl();
   return new NextResponse(buildLlmsTxt(siteUrl), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });

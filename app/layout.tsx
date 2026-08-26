@@ -4,9 +4,10 @@ import { ToastProvider } from '@/components/toast-provider';
 import { AnalyticsScripts } from '@/components/analytics-scripts';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import { ORGANIZATION_JSON_LD, SOFTWARE_APPLICATION_JSON_LD } from '@/lib/structured-data';
+import { getSiteUrl } from '@/lib/site-url';
 import './globals.css';
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const SITE_URL = getSiteUrl();
 const SITE_NAME = 'Radar Milhas & Viagens';
 const SITE_DESCRIPTION =
   'Assinatura que vigia preços de passagem e hotel — em dinheiro ou em pontos — e avisa só quando vale a pena. Compare dinheiro vs pontos e milhas automaticamente.';

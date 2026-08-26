@@ -197,18 +197,38 @@ Ordem sugerida:
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`
 - [ ] Implementar de fato as chamadas em `lib/providers/amadeus-provider.ts` / `duffel-provider.ts` / `booking-provider.ts` (hoje são stubs que caem no mock)
 
-### 8. Domínio e deploy
-- [ ] **Nenhum projeto Vercel existe ainda** (confirmado na ETAPA 12, 25/08 — só o repositório
-      GitHub `ibcorreaai-oss/radar-milhas-viagens` é real; todo trabalho até aqui rodou local
-      via `npm run dev`/`npm run build`). Deploy na Vercel (importar o repo)
-- [ ] Configurar domínio próprio
-- [ ] Preencher `NEXT_PUBLIC_APP_URL` com a URL final
-- [ ] Preencher `CRON_SECRET` (qualquer string aleatória forte) e confirmar que os 4 cron jobs do `vercel.json` estão rodando (aba Cron Jobs do projeto na Vercel)
+### 8. Domínio e deploy (ETAPA 19 — 26/08/2026)
+- [x] Projeto Vercel criado e ligado ao repositório GitHub
+      `ibcorreaai-oss/radar-milhas-viagens` (`radar-milhas-viagens`, time `ibcorreas-projects`,
+      plano Hobby) — todo push em `master` já dispara deploy automático de produção.
+- [ ] **Env vars ainda precisam ser coladas no dashboard da Vercel** (Project → Settings →
+      Environment Variables) — nada disso foi feito automaticamente, o `.env.local` só existe
+      nesta máquina. Sem isso, o site sobe (build passa mesmo sem credencial — arquitetura já
+      tolera isso) mas com Supabase/Stripe/e-mail/IA todos desligados. Cole pelo menos:
+      `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+      `STRIPE_SECRET_KEY` + os 6 `STRIPE_PRICE_*` (já tem valor real em `.env.local`),
+      `N8N_ALERT_WEBHOOK_URL`/`N8N_ALERT_WEBHOOK_SECRET` (idem), `CRON_SECRET` (gerar novo,
+      string aleatória forte), `NEXT_PUBLIC_APP_URL` (a URL da Vercel por enquanto, trocar
+      quando o domínio próprio existir).
+- [x] Confirmado ao vivo: o plano Hobby só permite cron **1x/dia** — `check-alerts` era de hora
+      em hora, bloqueou o primeiro deploy ("Hobby accounts are limited to daily cron jobs"),
+      corrigido pra rodar às 09h. Se quiser alertas mais frequentes que 1x/dia, precisa upgrade
+      pra Vercel Pro (decisão de custo sua) — sem isso, ficam 1x/dia mesmo, funcional mas menos
+      em tempo real do que o produto originalmente prometia.
+- [ ] Comprar e configurar domínio próprio (seu passo, depois disso eu aponto o domínio no
+      projeto da Vercel) — **HTTPS vem de graça**: a Vercel emite certificado SSL automático
+      pra qualquer domínio (próprio ou `.vercel.app`), não precisa configurar nada à parte.
+- [ ] Depois do domínio: atualizar `NEXT_PUBLIC_APP_URL` na Vercel pra URL final, e só aí criar
+      o webhook da Stripe (`STRIPE_WEBHOOK_SECRET`) — a Stripe precisa de uma URL pública de
+      verdade pra entregar o webhook, não alcança `.vercel.app` de preview nem `localhost`.
 - [ ] Conferir todas as env vars acima também na Vercel (não só no `.env.local`)
 - [ ] Apontar um serviço de uptime gratuito (UptimeRobot, Better Uptime, Freshping) para
       `/api/health` — ver `OBSERVABILITY.md`
 - [ ] Habilitar o Vercel Speed Insights (gratuito no plano Hobby) para medir Core Web Vitals
       de campo com tráfego real — ver `PERFORMANCE.md`
+- [ ] (Opcional, achado em auditoria pré-deploy) Supabase → Authentication → Policies → ativar
+      "Leaked password protection" (gratuito, checa senha vazada contra HaveIBeenPwned) — não
+      dá pra ligar por SQL/migration, é config do serviço de Auth.
 
 ### 9. Testes finais ponta a ponta
 - [ ] Cadastro → onboarding → dashboard

@@ -5,6 +5,7 @@ import { getUserContext } from '@/lib/auth';
 import { isBlocked } from '@/lib/roles';
 import { stripe } from '@/lib/stripe';
 import { PLANS, planPriceForInterval, type BillingInterval } from '@/lib/plans';
+import { getSiteUrl } from '@/lib/site-url';
 import type { PlanId } from '@/lib/types';
 
 // Server Action do botão "Assinar {plano}" (<form action={startCheckout}>).
@@ -48,7 +49,7 @@ export async function startCheckout(formData: FormData): Promise<void> {
     redirect('/assinatura?erro=stripe_nao_configurado');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const appUrl = getSiteUrl();
   // Reaproveita o Customer da Stripe já existente (se houver, de uma
   // assinatura anterior cancelada) em vez de deixar o Checkout criar um
   // Customer novo por e-mail — evita duplicar o cadastro de cliente na Stripe.
@@ -101,7 +102,7 @@ export async function openBillingPortal(): Promise<void> {
     redirect('/assinatura');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const appUrl = getSiteUrl();
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,

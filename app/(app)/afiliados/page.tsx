@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { Gift, Users } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { getSiteUrl } from '@/lib/site-url';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CopyReferralLink } from './copy-referral-link';
 
@@ -24,7 +25,7 @@ export default async function AfiliadosPage() {
   // supabase/migrations/0014_referral_count_rpc.sql.
   const { data: referredCount } = await supabase.rpc('count_my_referrals');
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getSiteUrl();
   const referralLink = `${appUrl}/cadastro?ref=${ctx.profile?.referral_code ?? ''}`;
 
   return (

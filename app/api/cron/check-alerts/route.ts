@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email/send';
 import { alertFoundEmail } from '@/lib/email/templates';
 import { getWhatsAppProvider } from '@/lib/whatsapp';
 import { logger } from '@/lib/logger';
+import { getSiteUrl } from '@/lib/site-url';
 import type { Alert, CabinClass, PlanId } from '@/lib/types';
 
 // Cron: /api/cron/check-alerts — roda 1x/dia, 09h (ver vercel.json). Era de
@@ -212,7 +213,7 @@ export async function GET(request: NextRequest) {
             ? `${alert.origin ?? '?'} → ${alert.destination ?? '?'}`
             : alert.city ?? '';
 
-        const detailsUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/alertas`;
+        const detailsUrl = `${getSiteUrl()}/alertas`;
         const emailTemplate = alertFoundEmail({
           alertName: alert.name,
           routeOrCity,

@@ -1,6 +1,7 @@
 // Templates de e-mail — funções puras que devolvem { subject, html } em
 // pt-BR. HTML simples com estilos inline (sem framework de e-mail), sempre
 // com o rodapé padrão de aviso de preços.
+import { getSiteUrl } from '@/lib/site-url';
 
 export interface EmailTemplate {
   subject: string;
@@ -89,7 +90,7 @@ export function welcomeEmail(name: string): EmailTemplate {
         <p>Para começar, configure um alerta com sua rota ou destino favorito e deixe o resto com a gente.</p>
       `,
       ctaLabel: 'Criar meu primeiro alerta',
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/alertas`,
+      ctaUrl: `${getSiteUrl()}/alertas`,
     }),
   };
 }
@@ -164,7 +165,7 @@ export function subscriptionActiveEmail(params: { planName: string }): EmailTemp
         <p>Agora você tem acesso a todos os benefícios do plano, incluindo alertas e buscas ampliadas.</p>
       `,
       ctaLabel: 'Ir para o painel',
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard`,
+      ctaUrl: `${getSiteUrl()}/dashboard`,
     }),
   };
 }
@@ -181,7 +182,7 @@ export function trialEndingEmail(params: { daysLeft: number }): EmailTemplate {
         <p>Para continuar recebendo alertas e usando os recursos do plano, confirme sua forma de pagamento.</p>
       `,
       ctaLabel: 'Gerenciar assinatura',
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/assinatura`,
+      ctaUrl: `${getSiteUrl()}/assinatura`,
     }),
   };
 }
@@ -197,7 +198,7 @@ export function opportunityExpiredEmail(params: { title: string }): EmailTemplat
         <p>Fique de olho — sempre há novas oportunidades chegando.</p>
       `,
       ctaLabel: 'Ver outras oportunidades',
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard`,
+      ctaUrl: `${getSiteUrl()}/dashboard`,
     }),
   };
 }
@@ -223,7 +224,7 @@ export function winBackEmail(params: { planName: string }): EmailTemplate {
         e-mail — a gente lê de verdade.</p>
       `,
       ctaLabel: 'Ver planos',
-      ctaUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/assinatura`,
+      ctaUrl: `${getSiteUrl()}/assinatura`,
     }),
   };
 }

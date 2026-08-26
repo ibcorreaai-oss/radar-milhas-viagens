@@ -5,8 +5,9 @@
 // runtime): os dados abaixo (nome, planos, preço) mudam raramente e não
 // dependem de banco — gerar em runtime seria complexidade sem ganho.
 import { PLANS, PLAN_ORDER } from '@/lib/plans';
+import { getSiteUrl } from '@/lib/site-url';
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const SITE_URL = getSiteUrl();
 
 export const ORGANIZATION_JSON_LD = {
   '@context': 'https://schema.org',
