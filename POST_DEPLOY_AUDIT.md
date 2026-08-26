@@ -7,7 +7,7 @@
 > Este documento é o resumo executivo point-in-time. Detalhe técnico completo de cada área já
 > vive em documento próprio (não duplicado aqui, só referenciado): `MONETIZATION.md`,
 > `AUTOMATIONS.md`, `ENGAGEMENT_UX.md`, `OBSERVABILITY.md`, `SEO_GEO.md`, `PERFORMANCE.md`,
-> `PLATFORM_ADMIN.md`, `AUTH_AND_ADMIN.md`, `TRAINING.md`, `GROWTH.md`.
+> `SECURITY_REPORT.md`, `PLATFORM_ADMIN.md`, `AUTH_AND_ADMIN.md`, `TRAINING.md`, `GROWTH.md`.
 
 ## 0. O que mudou entre o deploy (ETAPA 19) e esta auditoria (ETAPA 20)
 
@@ -94,7 +94,9 @@ defesa em profundidade (só existia no middleware — agora tem 2 camadas), form
 sem rate limit real (agora tem, RPC atômica por e-mail/dia), zero header HTTP de segurança
 (agora tem X-Frame-Options/X-Content-Type-Options/Referrer-Policy/Permissions-Policy). Zero
 segredo exposto no repositório (histórico do git + working tree, checado; `.env.local` nunca
-commitado). Detalhe completo em `OBSERVABILITY.md`/commits da ETAPA 19.
+commitado). Detalhe completo, com tabelas de RBAC/pagamentos/rate-limit/headers e a lista
+verificada do que só você resolve, em `SECURITY_REPORT.md` — este é o relatório de segurança
+pedido explicitamente na ETAPA 20.
 
 **Confirmado ao vivo em produção nesta etapa**: headers de segurança presentes em toda resposta
 (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:

@@ -104,9 +104,9 @@ melhoresdestinos.com.br/flypass.ai (concorrência direta de conteúdo).
 ## Checklist manual
 
 - [ ] Rodar a migration `0005_public_read_promotions_programs.sql` (depois de 0001→0004).
-- [ ] Definir e configurar o domínio de produção — `NEXT_PUBLIC_APP_URL` alimenta
-      `metadataBase`, sitemap, robots e `llms.txt`; sem isso, tudo aponta pra
-      `localhost:3000` (fallback seguro, mas errado em produção).
+- [x] ~~Definir domínio de produção — sem isso, tudo aponta pra localhost:3000~~ — **resolvido
+      na ETAPA 20** (`lib/site-url.ts`, ver seção abaixo). Continua valendo definir um domínio
+      próprio quando você comprar um, mas não é mais bloqueador de SEO.
 - [ ] Registrar o site no Google Search Console e submeter `/sitemap.xml` depois do deploy.
 - [ ] Decidir se vale investir em páginas de conteúdo por programa (`/milheiro/[programa]`)
       — maior oportunidade de SEO orgânico identificada na pesquisa, não implementada.
@@ -115,3 +115,19 @@ melhoresdestinos.com.br/flypass.ai (concorrência direta de conteúdo).
 
 Nenhum novo — sitemap, robots, OG image e llms.txt rodam na própria infraestrutura Vercel/
 Next.js. Google Search Console é gratuito.
+
+## ETAPA 19+20 (26/08/2026) — auditoria pré e pós-deploy
+
+**ETAPA 19** (antes do deploy): `/descobrir` estava sendo bloqueado em `robots.ts` por engano
+mesmo sendo público de verdade; `/login`/`/cadastro` sem metadata própria (título duplicado com
+a home); nenhuma página tinha `alternates.canonical`; JSON-LD só listava o preço mensal (faltava
+o anual da ETAPA 16). Todos corrigidos e testados antes do deploy.
+
+**ETAPA 20** (depois do deploy, checando o site real): achado real e mais sério —
+`sitemap.xml`, `robots.txt`, JSON-LD e `llms.txt` estavam todos apontando pra
+`http://localhost:3000` em produção, porque `NEXT_PUBLIC_APP_URL` nunca foi configurada na
+Vercel (não existe ferramenta MCP pra fazer isso — só o Igor consegue colar no dashboard).
+Resolvido sem depender disso: `lib/site-url.ts` usa `VERCEL_PROJECT_PRODUCTION_URL`/
+`VERCEL_URL` (variáveis que a própria Vercel expõe automaticamente) como fallback antes de
+`localhost`, então o site se autocorrige mesmo sem nenhuma configuração manual. Confirmado ao
+vivo no domínio publicado depois do redeploy.

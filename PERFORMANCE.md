@@ -113,6 +113,17 @@ dimensão reservada (bom pro CLS, corrigido no item 5), sem JS de terceiro carre
 além do estritamente necessário (bundle da home ficou em ~120kB First Load JS depois do hero de
 busca da Landing — dentro do razoável pra uma search box interativa completa).
 
+## ETAPA 19+20 (26/08/2026) — auditoria pré e pós-deploy
+
+Nenhum bloqueador novo achado (dois auditores independentes, ETAPA 19 pré-deploy e revisão
+pós-deploy). Único custo real introduzido desde a ETAPA 5: o gate de assinatura/trial (ETAPA 16)
+soma 2 queries (`profiles`+`subscriptions`, paralelizadas via `Promise.all`) em toda navegação de
+rota protegida não-admin, rodando no Edge a cada request — aceitável no volume atual (mesmo
+trade-off já formalizado neste documento pra situação equivalente, não é regressão nova).
+`getUserContext()` (`cache()` do React) continua cobrindo corretamente todos os novos
+chamadores. Bundle do `/onboarding` cresceu ~2kB reais com o mascote SVG + wrapper de Web Speech
+API da ETAPA 18 — sem dependência nova, dentro do esperado.
+
 ## Checklist manual
 
 - [ ] Depois que o projeto Supabase real existir e tiver tráfego, habilitar o Vercel Speed
