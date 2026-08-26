@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   description:
     'Catálogo de programas de fidelidade (Livelo, Esfera, Smiles, LATAM Pass, Azul Fidelidade e outros) com o valor médio do milheiro de cada um.',
   alternates: { canonical: '/programas' },
+  openGraph: {
+    title: 'Programas de pontos e milhas monitorados — Radar Milhas & Viagens',
+    description:
+      'Catálogo de programas de fidelidade (Livelo, Esfera, Smiles, LATAM Pass, Azul Fidelidade e outros) com o valor médio do milheiro de cada um.',
+    url: '/programas',
+  },
 };
 
 const TYPE_ORDER: LoyaltyProgramType[] = ['banco', 'companhia_aerea', 'hotel', 'coalizao'];

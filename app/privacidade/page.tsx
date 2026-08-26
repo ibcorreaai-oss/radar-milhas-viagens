@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: 'Política de Privacidade',
   description: 'Como o Radar Milhas & Viagens coleta, usa e protege seus dados pessoais.',
   alternates: { canonical: '/privacidade' },
+  openGraph: {
+    title: 'Política de Privacidade — Radar Milhas & Viagens',
+    description: 'Como o Radar Milhas & Viagens coleta, usa e protege seus dados pessoais.',
+    url: '/privacidade',
+  },
 };
 
 export default function PrivacidadePage() {

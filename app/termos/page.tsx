@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Termos de Uso',
   description: 'Termos de uso do Radar Milhas & Viagens.',
   alternates: { canonical: '/termos' },
+  openGraph: {
+    title: 'Termos de Uso — Radar Milhas & Viagens',
+    description: 'Termos de uso do Radar Milhas & Viagens.',
+    url: '/termos',
+  },
 };
 
 export default function TermosPage() {

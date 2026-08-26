@@ -50,6 +50,33 @@ export async function POST(request: Request) {
   try {
     const supabaseAdmin = createAdminClient();
 
+    // Idempotência: a Stripe pode reentregar o mesmo evento (retry por
+    // timeout, reenvio manual no dashboard). Registra o event.id ANTES de
+    // processar — se já existir (conflito de PK), é reentrega: responde
+    // 200 sem reprocessar, pra não duplicar o e-mail de ativação/cancelamento
+    // nem o log de "past_due". Achado em auditoria ETAPA 20.
+    const { error: dedupeError } = await supabaseAdmin
+      .from('stripe_webhook_events')
+      .insert({ event_id: event.id, event_type: event.type });
+
+    if (dedupeError) {
+      if (dedupeError.code === '23505') {
+        logger.info('payment', 'Webhook Stripe reentregue, ignorando (já processado)', {
+          eventType: event.type,
+          eventId: event.id,
+        });
+        return NextResponse.json({ received: true, deduped: true });
+      }
+      // Falha inesperada ao gravar o guard de idempotência (não é
+      // duplicata) — segue processando em vez de bloquear o evento por
+      // um problema no logging de idempotência.
+      logger.error('payment', 'Erro ao gravar stripe_webhook_events (seguindo mesmo assim)', {
+        eventType: event.type,
+        eventId: event.id,
+        reason: dedupeError.message,
+      });
+    }
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;

@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   description:
     'Transferências bonificadas, compra de pontos e cupons ativos — curados manualmente, atualizados continuamente.',
   alternates: { canonical: '/promocoes' },
+  openGraph: {
+    title: 'Promoções de milhas e pontos — Radar Milhas & Viagens',
+    description:
+      'Transferências bonificadas, compra de pontos e cupons ativos — curados manualmente, atualizados continuamente.',
+    url: '/promocoes',
+  },
 };
 
 export default async function PromocoesPage() {

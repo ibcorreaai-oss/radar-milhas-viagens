@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   title: 'Descobrir — Radar de eventos e experiências pelo mundo',
   description:
     'Festivais, esportes, fenômenos naturais e eventos únicos ao redor do mundo, com recomendação de quando comprar.',
+  openGraph: {
+    title: 'Descobrir — Radar de eventos e experiências pelo mundo — Radar Milhas & Viagens',
+    description:
+      'Festivais, esportes, fenômenos naturais e eventos únicos ao redor do mundo, com recomendação de quando comprar.',
+    url: '/descobrir',
+  },
   alternates: { canonical: '/descobrir' },
 };
 

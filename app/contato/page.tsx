@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   description:
     'Fale com o Radar Milhas & Viagens — tire dúvidas, envie sugestões ou relate um problema.',
   alternates: { canonical: '/contato' },
+  openGraph: {
+    title: 'Contato — Radar Milhas & Viagens',
+    description:
+      'Fale com o Radar Milhas & Viagens — tire dúvidas, envie sugestões ou relate um problema.',
+    url: '/contato',
+  },
 };
 
 export default function ContatoPage() {

@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Política de Afiliados',
   description: 'Como funcionam os links de afiliado exibidos no Radar Milhas & Viagens.',
   alternates: { canonical: '/politica-afiliados' },
+  openGraph: {
+    title: 'Política de Afiliados — Radar Milhas & Viagens',
+    description: 'Como funcionam os links de afiliado exibidos no Radar Milhas & Viagens.',
+    url: '/politica-afiliados',
+  },
 };
 
 export default function PoliticaAfiliadosPage() {

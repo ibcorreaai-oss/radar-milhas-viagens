@@ -2,9 +2,18 @@ import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PointsCalculator, type UserProgramOption } from './points-calculator';
 
+const CALCULADORA_DESCRIPTION =
+  'Calcule quantos pontos ou milhas você precisa pra uma viagem e compare com o custo em dinheiro, usando o valor médio real de cada programa.';
+
 export const metadata = {
   title: 'Calculadora de pontos',
+  description: CALCULADORA_DESCRIPTION,
   alternates: { canonical: '/calculadora' },
+  openGraph: {
+    title: 'Calculadora de pontos — Radar Milhas & Viagens',
+    description: CALCULADORA_DESCRIPTION,
+    url: '/calculadora',
+  },
 };
 
 // Formato bruto da linha retornada pelo join user_loyalty_programs + loyalty_programs.

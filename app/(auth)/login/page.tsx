@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   title: 'Entrar',
   description: 'Entre no Radar Milhas & Viagens com código por e-mail ou senha.',
   alternates: { canonical: '/login' },
+  openGraph: {
+    title: 'Entrar — Radar Milhas & Viagens',
+    description: 'Entre no Radar Milhas & Viagens com código por e-mail ou senha.',
+    url: '/login',
+  },
 };
 
 export default async function LoginPage({

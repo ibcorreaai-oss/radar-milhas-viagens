@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   description:
     '5 dias de teste grátis no Radar Milhas & Viagens. Cadastre-se com e-mail e comece a receber alertas de voos e hotéis em dinheiro ou pontos.',
   alternates: { canonical: '/cadastro' },
+  openGraph: {
+    title: 'Criar conta grátis — Radar Milhas & Viagens',
+    description:
+      '5 dias de teste grátis no Radar Milhas & Viagens. Cadastre-se com e-mail e comece a receber alertas de voos e hotéis em dinheiro ou pontos.',
+    url: '/cadastro',
+  },
 };
 
 export default async function CadastroPage({
