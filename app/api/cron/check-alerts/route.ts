@@ -9,7 +9,11 @@ import { getWhatsAppProvider } from '@/lib/whatsapp';
 import { logger } from '@/lib/logger';
 import type { Alert, CabinClass, PlanId } from '@/lib/types';
 
-// Cron: /api/cron/check-alerts — roda a cada hora (ver vercel.json).
+// Cron: /api/cron/check-alerts — roda 1x/dia, 09h (ver vercel.json). Era de
+// hora em hora até a ETAPA 19: o plano Hobby da Vercel só permite cron
+// diário (achado só na hora do deploy — "Hobby accounts are limited to
+// daily cron jobs"). Rodar mais de 1x/dia exige upgrade pra Pro — decisão
+// de custo que fica com o Igor, documentada em MANUAL_ACTIONS.md.
 // Percorre alertas ativos vencidos (last_checked_at nulo ou mais antigo que
 // check_frequency_hours), busca preços via provider (mock ou real), roda o
 // OpportunityEngine e dispara notificações por e-mail/WhatsApp quando o

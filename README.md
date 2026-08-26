@@ -64,8 +64,9 @@ World Radar/Bucket List novos). `npm run lint` ainda não está configurado nest
 - `app/(app)/admin/eventos` — CRUD de eventos do World Radar (mesmo padrão dos outros
   admin CRUDs)
 - `app/api/webhooks/stripe` — único lugar que escreve `plan`/`status` em `subscriptions`
-- `app/api/cron/*` — check-alerts (a cada hora), refresh-promotions e expire-opportunities
-  (diários) — protegidas por `CRON_SECRET`, agendadas em `vercel.json`
+- `app/api/cron/*` — check-alerts, refresh-promotions, expire-opportunities e check-trials,
+  todos 1x/dia (limite do plano Hobby da Vercel — ver `MANUAL_ACTIONS.md`) — protegidas por
+  `CRON_SECRET`, agendadas em `vercel.json`
 - `lib/providers/*` — `MockFlightProvider`/`MockHotelProvider` ativos no MVP; `AmadeusProvider`,
   `DuffelProvider`, `BookingProvider` preparados (a factory em `lib/providers/index.ts` cai pro
   mock automaticamente se a env var da API paga não existir — nunca quebra por falta de

@@ -64,7 +64,8 @@ Formulário (origem/datas/orçamento/milhas/interesses) → ranking usando
 
 ## FASE 7 — Alertas de Bucket List (não iniciada)
 
-Estende `app/api/cron/check-alerts/route.ts` (já existe, já roda de hora em hora) para
+Estende `app/api/cron/check-alerts/route.ts` (já existe, roda 1x/dia — limite do plano Hobby da
+Vercel, ver ETAPA 19) para
 também varrer `bucket_list_items` e cruzar com `world_events` atualizados. Reaproveita o
 cron existente — não cria worker novo.
 
