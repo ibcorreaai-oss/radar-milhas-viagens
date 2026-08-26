@@ -102,11 +102,13 @@ implementado neste código porque é uma conta externa, não uma linha de códig
 
 ## 8. Alertas críticos (erros/pagamento/autenticação)
 
-`lib/alerts/notify-ops.ts` — `notifyOps()` manda um e-mail pro Igor via o Resend já configurado
-(reaproveitado, zero canal novo). Disparado automaticamente por `logger.critical(...)` — nunca
-chamado direto pelo resto do código, sempre através do logger, pra manter uma única porta de
-entrada. Sem `OPS_ALERT_EMAIL` definido no ambiente, só fica registrado no log estruturado (não
-trava nada, não lança erro).
+`lib/alerts/notify-ops.ts` — `notifyOps()` manda um alerta pro Igor por **dois canais em
+paralelo** (ver `AUTOMATIONS.md` — ETAPA 17): e-mail via Resend (ainda não configurado neste
+projeto) e webhook n8n → Telegram (**configurado e ativo**, é hoje o único canal que realmente
+avisa alguém). Disparado automaticamente por `logger.critical(...)` — nunca chamado direto pelo
+resto do código, sempre através do logger, pra manter uma única porta de entrada. Cada canal é
+independente (`Promise.allSettled`): falta de configuração ou falha de um nunca afeta o outro nem
+trava quem chamou.
 
 **Auth:** nesta etapa, falha de autenticação vira só `logger.warn`/`error`, não `critical` — uma
 senha errada isolada é normal demais pra virar e-mail. Se no futuro entrar uma exigência de

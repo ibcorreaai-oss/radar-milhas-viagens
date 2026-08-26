@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/site-footer';
 export const metadata: Metadata = {
   title: 'Política de Afiliados',
   description: 'Como funcionam os links de afiliado exibidos no Radar Milhas & Viagens.',
+  alternates: { canonical: '/politica-afiliados' },
 };
 
 export default function PoliticaAfiliadosPage() {

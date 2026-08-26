@@ -23,9 +23,16 @@ export default function robots(): MetadataRoute.Robots {
         '/voos',
         '/bucket-list',
         '/consultor-ia',
-        '/descobrir',
+        '/favoritos',
+        '/afiliados',
+        '/treinamentos',
         '/auth',
       ],
+      // '/descobrir' NÃO entra aqui de propósito (achado em auditoria pré-
+      // deploy, ETAPA 19): é conteúdo público de verdade (World Radar, só
+      // atrás de feature flag, não de login — não está em
+      // middleware.ts PROTECTED_PREFIXES). Bloquear indexação dele seria
+      // um erro, não um ganho de crawl budget.
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

@@ -25,7 +25,11 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 152 60% 36%;
+    /* ETAPA 19 (auditoria de acessibilidade pré-deploy): L=36% media 3.70:1
+       contra --success-foreground branco, abaixo do WCAG AA (4.5:1) —
+       escurecido pra 30% (5.07:1). Afeta o badge "Imperdível"
+       (components/score-badge.tsx), o selo mais importante do produto. */
+    --success: 152 60% 30%;
     --success-foreground: 210 40% 98%;
 
     --warning: 38 92% 50%;
@@ -62,7 +66,11 @@
     --muted: 222 30% 16%;
     --muted-foreground: 215 20% 68%;
 
-    --destructive: 0 72% 60%;
+    /* ETAPA 19 (auditoria de acessibilidade pré-deploy): L=60% media
+       3.65:1 contra --destructive-foreground branco, abaixo do WCAG AA —
+       escurecido pra 50% (4.68:1). Afeta botões/badges destrutivos
+       (excluir promoção/módulo/etc.) nos painéis admin. */
+    --destructive: 0 72% 50%;
     --destructive-foreground: 210 40% 98%;
 
     --success: 152 55% 48%;

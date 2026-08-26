@@ -1,11 +1,23 @@
 import type { PlanId } from '@/lib/types';
 
+export type BillingInterval = 'month' | 'year';
+
 export interface PlanDefinition {
   id: PlanId;
   name: string;
+  // Preço mensal — mantido nos mesmos campos de sempre (priceLabel/
+  // priceCents/stripeEnvVar) de propósito: home-content.tsx e
+  // lib/structured-data.ts (schema.org da home pública) já consomem esses
+  // três campos e continuam funcionando sem alteração nenhuma.
   priceLabel: string;
   priceCents: number;
   stripeEnvVar: string;
+  // ETAPA 16 (ver MONETIZATION.md) — preço anual, opcional (null no free).
+  // Exemplo de desconto adotado: ~2 meses grátis (10x o valor mensal),
+  // regra de negócio ajustável — ver MONETIZATION.md.
+  annualPriceLabel: string | null;
+  annualPriceCents: number | null;
+  annualStripeEnvVar: string | null;
   searchesPerDay: number | null; // null = ilimitado
   maxAlerts: number;
   channels: ('email' | 'whatsapp')[];
@@ -20,6 +32,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     priceLabel: 'R$ 0',
     priceCents: 0,
     stripeEnvVar: '',
+    annualPriceLabel: null,
+    annualPriceCents: null,
+    annualStripeEnvVar: null,
     searchesPerDay: 3,
     maxAlerts: 1,
     channels: [],
@@ -32,6 +47,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     priceLabel: 'R$ 29,90/mês',
     priceCents: 2990,
     stripeEnvVar: 'STRIPE_PRICE_PREMIUM',
+    annualPriceLabel: 'R$ 299/ano',
+    annualPriceCents: 29900,
+    annualStripeEnvVar: 'STRIPE_PRICE_PREMIUM_ANNUAL',
     searchesPerDay: null,
     maxAlerts: 10,
     channels: ['email'],
@@ -51,6 +69,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     priceLabel: 'R$ 79,90/mês',
     priceCents: 7990,
     stripeEnvVar: 'STRIPE_PRICE_PRO',
+    annualPriceLabel: 'R$ 799/ano',
+    annualPriceCents: 79900,
+    annualStripeEnvVar: 'STRIPE_PRICE_PRO_ANNUAL',
     searchesPerDay: null,
     maxAlerts: 50,
     channels: ['email', 'whatsapp'],
@@ -72,6 +93,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     priceLabel: 'R$ 199/mês',
     priceCents: 19900,
     stripeEnvVar: 'STRIPE_PRICE_CONSULTOR',
+    annualPriceLabel: 'R$ 1.990/ano',
+    annualPriceCents: 199000,
+    annualStripeEnvVar: 'STRIPE_PRICE_CONSULTOR_ANNUAL',
     searchesPerDay: null,
     maxAlerts: 50,
     channels: ['email', 'whatsapp'],
@@ -91,6 +115,23 @@ export const PLAN_ORDER: PlanId[] = ['free', 'premium', 'pro', 'consultor'];
 
 export function planHasChannel(plan: PlanId, channel: 'email' | 'whatsapp'): boolean {
   return PLANS[plan].channels.includes(channel);
+}
+
+// ETAPA 16 — um lugar só pra resolver "qual preço/env var usar", em vez de
+// repetir `interval === 'year' ? plan.annual... : plan...` em cada
+// componente/action que precisa disso (checkout, card de plano).
+export function planPriceForInterval(
+  plan: PlanDefinition,
+  interval: BillingInterval
+): { label: string; cents: number; stripeEnvVar: string } | null {
+  if (interval === 'year') {
+    if (!plan.annualStripeEnvVar || plan.annualPriceLabel == null || plan.annualPriceCents == null) {
+      return null;
+    }
+    return { label: plan.annualPriceLabel, cents: plan.annualPriceCents, stripeEnvVar: plan.annualStripeEnvVar };
+  }
+  if (!plan.stripeEnvVar) return null;
+  return { label: plan.priceLabel, cents: plan.priceCents, stripeEnvVar: plan.stripeEnvVar };
 }
 
 export function planAllowsMoreAlerts(plan: PlanId, currentCount: number): boolean {

@@ -32,12 +32,17 @@ function buildLlmsTxt(siteUrl: string): string {
   de pontos e cupons ativos, curados manualmente.
 - [Programas de pontos monitorados](${siteUrl}/programas): catálogo de programas de
   fidelidade com o valor médio do milheiro de cada um.
+- [Descobrir](${siteUrl}/descobrir): radar de festivais, esportes, fenômenos naturais e
+  eventos únicos pelo mundo, com recomendação de quando comprar.
 
 ## Planos
 
+- Todo cadastro novo tem 5 dias de teste grátis, sem cartão de crédito, antes de precisar
+  assinar.
 - [Preços e planos](${siteUrl}/#precos): Free (buscas limitadas, 1 alerta), Premium (buscas
   ilimitadas, 10 alertas, e-mail), Pro (WhatsApp, IA consultora, 50 alertas), Consultor/
-  Agência (múltiplos clientes).
+  Agência (múltiplos clientes). Cobrança mensal ou anual (com desconto) em todos os planos
+  pagos.
 
 ## Legal
 

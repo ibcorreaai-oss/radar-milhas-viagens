@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   Card,
@@ -8,6 +9,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { LoginForm } from './login-form';
+
+// ETAPA 19 (achado em auditoria de SEO pré-deploy) — ver mesmo comentário
+// em app/(auth)/cadastro/page.tsx.
+export const metadata: Metadata = {
+  title: 'Entrar',
+  description: 'Entre no Radar Milhas & Viagens com código por e-mail ou senha.',
+  alternates: { canonical: '/login' },
+};
 
 export default async function LoginPage({
   searchParams,

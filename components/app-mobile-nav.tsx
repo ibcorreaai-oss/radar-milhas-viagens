@@ -58,7 +58,7 @@ export function AppMobileNav({
         <span className="font-semibold">Radar Milhas</span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3">{visibleNavItems.map(renderItem)}</nav>
+      <nav aria-label="Navegação principal" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3">{visibleNavItems.map(renderItem)}</nav>
 
       <div className="mx-3 my-3 h-px bg-border" />
 
@@ -67,7 +67,7 @@ export function AppMobileNav({
         <ThemeToggle />
       </div>
 
-      <nav className="flex flex-col gap-1 px-3 pb-5">
+      <nav aria-label="Conta" className="flex flex-col gap-1 px-3 pb-5">
         {ACCOUNT_ITEMS.map(renderItem)}
         {isAdmin && (
           <Link

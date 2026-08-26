@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminRole } from '@/lib/roles';
 import { ToastFromQuery } from '@/components/toast-from-query';
 import { ProfileCompletenessBar } from '@/components/profile-completeness-bar';
+import { SubscriptionStatusCard } from '@/components/subscription-status-card';
 import { computeProfileCompleteness } from '@/lib/profile-completeness';
 import { ProfileForm, type UserProgramRow, type AllProgramOption } from './profile-form';
 
@@ -52,6 +54,8 @@ export default async function PerfilPage() {
       </div>
 
       <ProfileCompletenessBar percent={percent} items={items} />
+
+      <SubscriptionStatusCard subscription={ctx.subscription} isAdmin={isAdminRole(ctx.profile)} />
 
       <ProfileForm profile={ctx.profile} userPrograms={userPrograms} allPrograms={allPrograms} />
     </div>

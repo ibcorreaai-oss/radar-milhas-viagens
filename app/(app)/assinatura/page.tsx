@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth';
-import { PLANS, PLAN_ORDER } from '@/lib/plans';
+import { PLANS, PLAN_ORDER, type BillingInterval } from '@/lib/plans';
+import { trialDaysLeft } from '@/lib/subscription-access';
 import { SubscriptionCard } from '@/components/subscription-card';
+import { BillingIntervalToggle } from '@/components/billing-interval-toggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { openBillingPortal } from './actions';
@@ -22,9 +24,13 @@ export default async function AssinaturaPage({
 
   const params = await searchParams;
   const erro = typeof params.erro === 'string' ? params.erro : null;
+  const trialExpirado = params.trial_expirado === '1';
+  const interval: BillingInterval = params.interval === 'year' ? 'year' : 'month';
 
   const currentPlan = ctx.plan;
   const currentRank = PLAN_RANK[currentPlan] ?? 0;
+  const isPaidActive = ctx.subscription?.status === 'active';
+  const daysLeft = trialDaysLeft(ctx.subscription);
 
   return (
     <div className="space-y-6 p-6">
@@ -70,12 +76,53 @@ export default async function AssinaturaPage({
         </Card>
       )}
 
+      {/* ETAPA 16 (ver MONETIZATION.md) — "tela de renovação de assinatura"
+          pedida pelo Igor: em vez de criar uma página nova, o middleware
+          redireciona pra cá com ?trial_expirado=1 (reaproveita a página de
+          planos que já existe — a pessoa já está exatamente onde precisa
+          estar pra resolver: escolher um plano e pagar). Banner fixo (não
+          toast) de propósito — é a mensagem mais importante da página
+          nesse estado, não pode desaparecer sozinha antes de ser lida. */}
+      {trialExpirado && !isPaidActive && (
+        <Card className="border-primary">
+          <CardContent className="p-4 text-sm">
+            <p className="font-medium text-foreground">Seu período de teste gratuito acabou.</p>
+            <p className="mt-1 text-muted-foreground">
+              Escolha um plano abaixo para continuar vendo os detalhes das oportunidades e usando
+              seus favoritos.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!trialExpirado && !isPaidActive && daysLeft != null && (
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            Você está no período de teste gratuito —{' '}
+            <span className="font-medium text-foreground">
+              {daysLeft === 1 ? 'falta 1 dia' : `faltam ${daysLeft} dias`}
+            </span>{' '}
+            para assinar e manter o acesso.
+          </CardContent>
+        </Card>
+      )}
+
+      <BillingIntervalToggle interval={interval} />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {PLAN_ORDER.map((planId) => {
           const plan = PLANS[planId];
           const isCurrent = plan.id === currentPlan;
           const isDowngrade = (PLAN_RANK[plan.id] ?? 0) < currentRank;
-          return <SubscriptionCard key={plan.id} plan={plan} isCurrent={isCurrent} isDowngrade={isDowngrade} />;
+          return (
+            <SubscriptionCard
+              key={plan.id}
+              plan={plan}
+              isCurrent={isCurrent}
+              isDowngrade={isDowngrade}
+              interval={interval}
+            />
+          );
         })}
       </div>
 

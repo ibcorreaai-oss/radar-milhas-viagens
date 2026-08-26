@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Compass, Heart } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -8,6 +9,17 @@ import { WorldEventCard, type WorldEventCardData } from '@/components/world-even
 import { WorldRadarFilters } from './world-radar-filters';
 import { saveEventToBucketList } from './actions';
 import type { EventCategory, WorldEvent } from '@/lib/types';
+
+// ETAPA 19 (achado em auditoria de SEO pré-deploy) — página pública de
+// verdade (não exige login, só a feature flag worldRadar), nunca teve
+// metadata própria. Canonical fixo em /descobrir (sem os query params de
+// filtro) pra não espalhar o mesmo conteúdo em várias URLs indexáveis.
+export const metadata: Metadata = {
+  title: 'Descobrir — Radar de eventos e experiências pelo mundo',
+  description:
+    'Festivais, esportes, fenômenos naturais e eventos únicos ao redor do mundo, com recomendação de quando comprar.',
+  alternates: { canonical: '/descobrir' },
+};
 
 type WorldEventRow = WorldEvent & {
   event_categories: Pick<EventCategory, 'label' | 'radar'> | null;

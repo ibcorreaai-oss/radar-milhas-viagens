@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isBlocked } from '@/lib/roles';
 import { BlockedAccountScreen } from '@/components/blocked-account-screen';
 import type { LoyaltyProgram, UserLoyaltyProgram } from '@/lib/types';
-import { OnboardingForm } from './onboarding-form';
+import { OnboardingWizard } from './onboarding-wizard';
 
 // Fica solto em app/onboarding (fora do grupo (app)) — não usa a sidebar do
 // AppShell, é um passo único guiado antes do usuário entrar no produto.
@@ -37,14 +37,14 @@ export default async function OnboardingPage() {
     <div className="min-h-screen bg-muted/40 px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold">Vamos personalizar seus alertas</h1>
+          <h1 className="text-2xl font-semibold">Bem-vindo ao Radar Milhas & Viagens</h1>
           <p className="mt-2 text-muted-foreground">
-            Leva menos de 2 minutos. Quanto mais completo, mais precisos ficam os alertas de
-            viagem que o Radar te manda.
+            A Rada te mostra rapidinho como funciona por aqui. Pode pular qualquer etapa quando
+            quiser.
           </p>
         </div>
 
-        <OnboardingForm
+        <OnboardingWizard
           profile={ctx.profile}
           programs={(programs as LoyaltyProgram[]) ?? []}
           userPrograms={(userPrograms as UserLoyaltyProgram[]) ?? []}

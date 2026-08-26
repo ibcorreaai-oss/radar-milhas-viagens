@@ -149,7 +149,7 @@ export function AppSidebar({
         </Tooltip>
       )}
 
-      <nav className="flex flex-1 flex-col gap-1">{visibleNavItems.map(renderItem)}</nav>
+      <nav aria-label="Navegação principal" className="flex flex-1 flex-col gap-1">{visibleNavItems.map(renderItem)}</nav>
 
       <div className="my-3 h-px bg-border" />
 
@@ -158,7 +158,7 @@ export function AppSidebar({
         <ThemeToggle compact={collapsed} />
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav aria-label="Conta" className="flex flex-col gap-1">
         {ACCOUNT_ITEMS.map(renderItem)}
         {isAdmin &&
           (() => {

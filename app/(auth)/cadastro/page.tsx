@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   Card,
@@ -8,6 +9,16 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { CadastroForm } from './cadastro-form';
+
+// ETAPA 19 (achado em auditoria de SEO pré-deploy) — sem isso, /login e
+// /cadastro caíam no title default do layout raiz (idêntico ao da home),
+// título duplicado entre páginas indexadas no sitemap.
+export const metadata: Metadata = {
+  title: 'Criar conta grátis',
+  description:
+    '5 dias de teste grátis no Radar Milhas & Viagens. Cadastre-se com e-mail e comece a receber alertas de voos e hotéis em dinheiro ou pontos.',
+  alternates: { canonical: '/cadastro' },
+};
 
 export default async function CadastroPage({
   searchParams,

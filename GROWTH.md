@@ -24,12 +24,11 @@ Todos passam por `sendEmail()` (`lib/email/send.ts`), que nunca lança exceção
 sucesso/falha (ETAPA 4) — nenhum desses disparos pode derrubar o fluxo principal (cadastro,
 checkout, cancelamento) se o Resend falhar ou não estiver configurado.
 
-**Decisão de produto pendente, não implementada:** `trialEndingEmail` continua sem gatilho — o
-Stripe Checkout atual (`assinatura/actions.ts`) não cria um período de teste
-(`trial_period_days`), então "trial terminando" nunca acontece de verdade hoje. Só faz sentido
-ligar esse e-mail se/quando o Igor decidir oferecer trial gratuito nos planos pagos — infra
-pronta (`SubscriptionStatus` já tem `'trialing'`, o template já existe), só falta a decisão de
-negócio + um cron que verifique `subscriptions.trial_ends_at` (coluna já existe no schema).
+**Resolvido na ETAPA 16 (26/08) — ver `MONETIZATION.md`:** o Igor decidiu o trial gratuito (5
+dias, sem cartão, controlado pelo nosso banco em vez de `trial_period_days` da Stripe — ver
+`MONETIZATION.md` #2 pro raciocínio). `trialEndingEmail` agora tem gatilho de verdade: cron novo
+`app/api/cron/check-trials`, roda 1x/dia, dispara pra quem tem `trial_ends_at` nas próximas 24h
+(dedupe via `notification_logs`, sem coluna nova).
 
 ## 2. Pontos de abandono identificados
 
@@ -101,8 +100,9 @@ policy de admin-lê-tudo. Em vez de afrouxar essa RLS pra todo lugar, a página 
 
 ## Checklist manual
 
-- [ ] Decidir se o produto vai oferecer trial gratuito nos planos pagos — se sim, eu implemento
-      `trial_period_days` no Checkout + o cron que dispara `trialEndingEmail`.
+- [x] ~~Decidir se o produto vai oferecer trial gratuito nos planos pagos~~ — feito na ETAPA 16
+      (5 dias, controlado pelo nosso banco, não via `trial_period_days` da Stripe — ver
+      `MONETIZATION.md`).
 - [ ] Definir se cross-sell (hotel↔voo) vira nudge automático na UI ou fica só como métrica pra
       decisão manual por enquanto.
 - [ ] Revisar o copy dos e-mails novos (`welcomeEmail`, `subscriptionActiveEmail`,

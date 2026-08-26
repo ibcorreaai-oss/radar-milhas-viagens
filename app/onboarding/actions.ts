@@ -26,10 +26,11 @@ export async function completeOnboarding(
     return { error: 'Sessão expirada. Faça login novamente.' };
   }
 
+  // ETAPA 18 (ver ENGAGEMENT_UX.md) — "o usuário deve conseguir pular
+  // qualquer etapa": nenhum campo do onboarding é mais obrigatório, nem
+  // este. Mesmo padrão que app/(app)/perfil/actions.ts já usa pra este
+  // mesmo campo (home_airport || null) — só ficava inconsistente aqui.
   const homeAirport = String(formData.get('home_airport') || '').trim().toUpperCase();
-  if (!homeAirport) {
-    return { error: 'Informe sua cidade ou aeroporto de origem.' };
-  }
 
   const destinationsRaw = String(formData.get('favorite_destinations') || '');
   const favoriteDestinations = destinationsRaw
@@ -56,8 +57,15 @@ export async function completeOnboarding(
     return { error: 'Sua conta foi suspensa. Entre em contato com o suporte se acha que é um engano.' };
   }
   const plan = ctx?.plan ?? 'free';
+  // ETAPA 18 — botão "Pular tudo" manda intent=skip: além de dispensar a
+  // validação HTML5 do navegador (formNoValidate no botão), a própria
+  // Server Action também não pode barrar em "informe o WhatsApp" — pular
+  // tudo precisa funcionar mesmo que o usuário tenha ligado o switch de
+  // WhatsApp sem preencher o número numa etapa que nem chegou a visitar.
+  const skippedAll = formData.get('intent') === 'skip';
   const notifyEmail = formData.get('notify_email') === 'true' && planHasChannel(plan, 'email');
-  const notifyWhatsapp = formData.get('notify_whatsapp') === 'true' && planHasChannel(plan, 'whatsapp');
+  const notifyWhatsapp =
+    !skippedAll && formData.get('notify_whatsapp') === 'true' && planHasChannel(plan, 'whatsapp');
 
   const monthlyBudgetRaw = String(formData.get('monthly_budget') || '').trim();
   const monthlyBudgetNumber = monthlyBudgetRaw ? Number(monthlyBudgetRaw) : null;
@@ -77,7 +85,7 @@ export async function completeOnboarding(
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
-      home_airport: homeAirport,
+      home_airport: homeAirport || null,
       favorite_destinations: favoriteDestinations,
       cabin_class_preference: cabinClass,
       flexible_dates: flexibleDates,

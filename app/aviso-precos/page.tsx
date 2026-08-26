@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'Aviso de Não Garantia de Preço',
   description:
     'Preços, pontos e disponibilidade podem mudar rapidamente. Entenda por que o Radar Milhas & Viagens não garante preço ou disponibilidade.',
+  alternates: { canonical: '/aviso-precos' },
 };
 
 export default function AvisoPrecosPage() {

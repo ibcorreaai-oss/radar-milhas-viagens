@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/check-alerts", "schedule": "0 * * * *" },
     { "path": "/api/cron/refresh-promotions", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/expire-opportunities", "schedule": "0 7 * * *" }
+    { "path": "/api/cron/expire-opportunities", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/check-trials", "schedule": "0 8 * * *" }
   ]
 }

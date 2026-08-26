@@ -101,12 +101,13 @@ inteira — é uma decisão de arquitetura que precisa do Igor antes de qualquer
 
 | Integração | Papel | Estado |
 |---|---|---|
-| Supabase | Banco, Auth, RLS | Interface pronta, projeto real ainda não criado (ver README) |
-| Stripe | Assinaturas | Interface pronta, produtos/preços reais pendentes |
+| Supabase | Banco, Auth, RLS | Projeto real criado (ETAPA 12), falta só `SUPABASE_SERVICE_ROLE_KEY` (ver README) |
+| Stripe | Assinaturas + teste de 5 dias | Checkout/webhook/gate de acesso prontos (ETAPA 16, ver `MONETIZATION.md`), produtos/preços/chaves reais pendentes |
 | Resend | E-mail transacional | Interface pronta (`lib/email/*`), conta pendente |
 | Evolution API / Z-API | WhatsApp | Abstrato — `lib/whatsapp/*`, nunca trava sem credencial |
 | Anthropic / OpenAI | Consultor IA | Fallback sem IA se `ANTHROPIC_API_KEY` ausente |
 | Amadeus / Duffel / Booking | Voo/hotel reais | `lib/providers/*` — só stub, cai no mock sem credencial |
+| n8n | Alerta crítico → Telegram | Workflow real, ativo e testado (ETAPA 17, ver `AUTOMATIONS.md`) |
 
 Padrão obrigatório pra qualquer integração nova: nunca travar o app por falta de credencial
 (sempre um fallback/mock), nunca colocar segredo no client, sempre logar via `lib/logger.ts`

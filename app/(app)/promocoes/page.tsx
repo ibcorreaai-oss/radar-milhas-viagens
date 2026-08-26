@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: 'Promoções de milhas e pontos',
   description:
     'Transferências bonificadas, compra de pontos e cupons ativos — curados manualmente, atualizados continuamente.',
+  alternates: { canonical: '/promocoes' },
 };
 
 export default async function PromocoesPage() {

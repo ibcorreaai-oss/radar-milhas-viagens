@@ -50,11 +50,11 @@ aumenta valor percebido). Aplicando isso:
   dependendo da abordagem, custo de API novo — o Igor tem regra de gasto zero em API nova sem
   aprovar antes. O nudge de "busca repetida → sugerir alerta" (implementado) é a versão
   barata e regrada da mesma ideia, sem custo novo.
-- **Wizard multi-etapa pro onboarding** (uma tela por seção, com "Próximo"/"Voltar"). O form
-  de uma página só com 4 seções + barra de progresso já resolve "nunca deixar o usuário
-  perdido" com risco bem menor — reescrever o fluxo inteiro (state machine de steps, mudar a
-  Server Action) seria retrabalho grande pra um ganho de UX marginal frente ao que já foi
-  feito.
+- ~~Wizard multi-etapa pro onboarding~~ — **revertido na ETAPA 18**, ver seção própria abaixo.
+  O Igor pediu explicitamente um onboarding com avatar, texto e voz, com toda etapa pulável —
+  isso só faz sentido como fluxo passo a passo. A razão original (risco/retrabalho frente a
+  ganho marginal) deixou de valer quando virou pedido explícito, não uma ideia genérica de
+  gamificação.
 - **Descoberta gradual agressiva** (esconder menus até o usuário "evoluir"). A sidebar já
   lista tudo (ver ETAPA 12b) — esconder itens de navegação reais atrás de um sistema de
   progressão tornaria o produto mais confuso pra quem já sabe o que quer, não menos. O produto
@@ -63,6 +63,58 @@ aumenta valor percebido). Aplicando isso:
   Fica para uma etapa dedicada — `GROWTH.md`/`/admin/metricas` já cobre ativação/conversão/
   churn/abandono; adicionar retenção por coorte é uma extensão real mas que merece atenção
   própria em vez de ser espremida no fim desta etapa.
+
+## ETAPA 18 (26/08/2026) — Onboarding com avatar ("Rada")
+
+Pedido do Igor: reduzir dúvida/aumentar ativação, toda etapa pulável, e um avatar que explica o
+app por texto E voz, tailorizado pra este app específico. Virou um wizard de 8 passos —
+`app/onboarding/onboarding-wizard.tsx` (substituiu `onboarding-form.tsx`, removido):
+
+1-4. **Passos do avatar** (`components/onboarding/mascot-avatar.tsx` +
+`components/onboarding/avatar-message.tsx`) — a "Rada", mascote SVG puro (sem imagem/vídeo
+gerado por IA — zero custo de API nova, ver [[feedback_gasto_zero_api_novas]]), explica em 4
+telas curtas: quem ela é, o que o app faz (dinheiro vs pontos), quais recursos existem
+(alertas/consultor IA/favoritos) e o teste de 5 dias (ETAPA 16). Texto com efeito de "digitando"
++ botão opcional "Ouvir em voz alta" via Web Speech API nativa do navegador (síntese de voz
+começa desligada — alguns navegadores restringem/estranham áudio sem gesto do usuário — e uma
+vez ligada pelo usuário continua ligada nas telas seguintes). "Pular apresentação" pula direto
+pra personalização; "Continuar" avança uma tela.
+
+5-8. **Passos de dados** — as mesmas 4 seções que já existiam (origem/destinos, programas de
+pontos, preferências, notificações), uma por tela agora, cada uma com "Pular esta etapa" (avança
+sem exigir nada) e "Continuar". Nenhum campo é mais obrigatório (`home_airport` era `required`
+antes, bloqueava pular a etapa inteira — removido, mesmo padrão que `app/(app)/perfil/actions.ts`
+já usava pra esse campo).
+
+**"Pular tudo"**: botão fixo no topo, em qualquer etapa (inclusive nas de avatar), submete o que
+já foi preenchido até ali e marca `onboarding_done=true`.
+
+### Dois bugs reais achados testando ao vivo (não apareceriam em `tsc`/`build`)
+
+1. **"Pular tudo" ficava preso pela validação nativa do campo de telefone** — mesmo bug já
+   corrigido na ETAPA 15.1 pro botão "Reenviar código" (`app/(auth)/login/login-form.tsx`):
+   um campo `required` (telefone, só quando WhatsApp está ligado) em qualquer lugar do `<form>`
+   bloqueia TODO botão de submit dentro dele, mesmo um que devesse ignorar essa regra. Fix:
+   `formNoValidate` no botão "Pular tudo" + a própria Server Action também passou a forçar
+   `notify_whatsapp=false` quando o intent é "skip" (bypassar só a validação do navegador não
+   bastava — a Server Action tinha a mesma checagem).
+2. **Perda de dado real ao navegar entre etapas antes de concluir** (o mais sério dos dois):
+   `home_airport`, `favorite_destinations`, `monthly_budget` e o saldo de cada programa de
+   pontos eram campos `<input name="...">` dentro do Card de cada etapa, renderizado
+   condicionalmente (só a etapa atual existe no DOM). Ao navegar pra outra etapa, o input some do
+   DOM — e no submit final, `FormData` só inclui o que existe no `<form>` NAQUELE momento, então
+   o valor digitado se perdia mesmo com o estado React ainda correto (achado preenchendo
+   "aeroporto de origem", avançando 3 telas e concluindo — salvava em branco). Fix: os 4 campos
+   viraram `<input type="hidden">` fixos no nível do `<form>` (mesmo padrão que
+   `phone`/`cabin_class_preference` já usavam corretamente), os campos visíveis dentro de cada
+   Card ficaram sem `name`, só espelham o valor. Confirmado corrigido testando o mesmo cenário de
+   novo (preencher 3 campos em etapas diferentes, concluir, conferir em `/perfil`).
+
+Testado ao vivo (Playwright + conta de teste `ibcorrea.ai+lms15_2@gmail.com`): avançar/voltar
+entre os 8 passos, "Pular apresentação", "Pular esta etapa" em cada uma, "Ouvir em voz alta",
+"Pular tudo" com WhatsApp ligado e telefone vazio, conclusão normal preenchendo dados reais —
+zero erro de console em qualquer cenário. `tsc`/`build` limpos. Conta de teste devolvida a um
+estado limpo (via "Pular tudo") ao final.
 
 ## Onde estão as peças novas
 
@@ -77,6 +129,9 @@ aumenta valor percebido). Aplicando isso:
 - Nudge de alerta: lógica embutida direto em `voos/page.tsx` e `hoteis/page.tsx` (não virou
   componente próprio — é só uma contagem + card condicional, específico o suficiente pra não
   precisar de abstração).
+- `app/onboarding/onboarding-wizard.tsx` + `components/onboarding/mascot-avatar.tsx` +
+  `components/onboarding/avatar-message.tsx` — onboarding com avatar (ETAPA 18, ver seção
+  própria acima).
 
 ## Pendência manual
 

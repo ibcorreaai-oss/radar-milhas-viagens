@@ -49,6 +49,26 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      keyframes: {
+        // ETAPA 18 — avatar do onboarding (components/onboarding/mascot-avatar.tsx).
+        'mascot-float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
+        },
+        'mascot-talk': {
+          '0%, 100%': { transform: 'scaleY(1)' },
+          '50%': { transform: 'scaleY(0.35)' },
+        },
+        'mascot-sweep': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+      },
+      animation: {
+        'mascot-float': 'mascot-float 3s ease-in-out infinite',
+        'mascot-talk': 'mascot-talk 0.35s ease-in-out infinite',
+        'mascot-sweep': 'mascot-sweep 4s linear infinite',
+      },
     },
   },
   plugins: [],

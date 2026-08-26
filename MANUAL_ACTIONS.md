@@ -35,10 +35,14 @@ de organizadores oficiais, ou continuar 100% manual via `/admin/eventos`), eu im
 o `WorldDiscoveryAgent` de verdade — o schema (`sources`, `world_events.source_id`,
 `confidence_score`, `last_checked_at`) já está pronto para isso.
 
-## 4. Nada novo em Stripe/Resend/WhatsApp/Amadeus/Duffel/Booking/domínio/deploy
+## 4. Nada novo em Resend/WhatsApp/Amadeus/Duffel/Booking/domínio/deploy
 
-Essas pendências continuam exatamente como estavam no `README.md` original — esta
-sessão não mexeu em nenhuma integração de pagamento/e-mail/WhatsApp/voo/hotel.
+Essas pendências continuam exatamente como estavam no `README.md` original.
+
+**Atualizado ETAPA 16 (26/08) — Stripe deixou de estar nesta lista de "nada novo":** teste
+gratuito de 5 dias, gate de acesso, checkout com CPF/telefone e opção mensal/anual foram
+implementados. Checklist completo e atualizado agora vive só em `README.md` §2 (não duplicado
+aqui) — ver `MONETIZATION.md` para as regras de negócio.
 
 ## 5. Teste manual sugerido depois de rodar as migrations
 

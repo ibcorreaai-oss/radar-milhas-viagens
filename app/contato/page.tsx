@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: 'Contato',
   description:
     'Fale com o Radar Milhas & Viagens — tire dúvidas, envie sugestões ou relate um problema.',
+  alternates: { canonical: '/contato' },
 };
 
 export default function ContatoPage() {

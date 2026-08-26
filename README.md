@@ -22,7 +22,8 @@ telas) e `SEO_GEO.md` (SEO, Open Graph, GEO/IA generativa).
 ## Stack
 
 Next.js 15 (App Router) · TypeScript · Tailwind CSS · Supabase (Auth/Postgres/RLS) · Stripe ·
-Resend · WhatsApp (Evolution API/Z-API, abstrato) · Vercel Cron.
+Resend · WhatsApp (Evolution API/Z-API, abstrato) · Vercel Cron · n8n (alerta crítico → Telegram,
+ver `AUTOMATIONS.md`).
 
 ## Versionamento (GitHub)
 
@@ -135,13 +136,36 @@ Ordem sugerida:
       otimização de escala, pré-existente desde a ETAPA 1, fora do escopo da ETAPA 12. Revisar
       numa etapa dedicada se o volume de dados crescer.
 
-### 2. Stripe
-- [ ] Criar conta/produto no Stripe, criar 3 Prices recorrentes (Premium R$29,90, Pro R$79,90, Consultor R$199)
-- [ ] Preencher `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_CONSULTOR`
-- [ ] Criar webhook apontando para `https://<seu-domínio>/api/webhooks/stripe`, eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-- [ ] Copiar `STRIPE_WEBHOOK_SECRET`
-- [ ] Ativar o Billing Portal do Stripe (Settings → Billing → Customer portal) e habilitar a opção "Update subscription" (permitir trocar de plano) apontando pros 3 Prices pagos — o app manda quem já assina pro Billing Portal em vez de abrir um Checkout novo, justamente pra nunca criar uma segunda assinatura cobrando em paralelo
-- [ ] Testar uma assinatura ponta a ponta em modo teste
+### 2. Stripe (ver `MONETIZATION.md` para as regras de negócio completas — ETAPA 16)
+- [x] Conta Stripe já conectada (modo Teste, `livemode:false`) — a mesma conta que você já usa
+      pra outros apps (ErgoFácil, Perícia Médica Pro etc.)
+- [x] Criados os 3 produtos com 2 Prices cada (mensal + anual) via API em modo Teste: Premium
+      (R$29,90/mês · R$299/ano), Pro (R$79,90/mês · R$799/ano), Consultor (R$199/mês ·
+      R$1.990/ano) — valores de exemplo, ver `MONETIZATION.md` #3 pra ajustar. Cada preço virou
+      um produto próprio (`Radar Milhas & Viagens — <plano>` e `— <plano> (anual)`), marcado
+      `metadata.app='radar_milhas'` pra não confundir com os produtos dos outros apps na mesma
+      conta.
+- [x] Preenchidos os 6 Price IDs em `.env.local` (`STRIPE_PRICE_PREMIUM`,
+      `STRIPE_PRICE_PREMIUM_ANNUAL`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_PRO_ANNUAL`,
+      `STRIPE_PRICE_CONSULTOR`, `STRIPE_PRICE_CONSULTOR_ANNUAL`)
+- [x] Validado ao vivo, via API, contra a Stripe de teste real: criei uma assinatura de teste no
+      Price Premium mensal (`trial_period_days`, sem precisar de cartão) e confirmei
+      `status='trialing'`, depois cancelei e confirmei `status='canceled'` — prova que os Price
+      IDs acima funcionam de verdade pra criar/cancelar assinatura. Cliente de teste
+      (`cus_V91lhjp4AllO6o`, metadata `purpose='teste_automatizado_etapa16'`) ficou no Dashboard,
+      sem custo — pode apagar quando quiser.
+- [ ] **Ainda falta**: `STRIPE_SECRET_KEY` (chave secreta do modo Teste) — a integração usada
+      acima roda com uma chave restrita (sem permissão de conta/preço avulso/cartão), então não
+      dá pra extrair ou gerar essa chave por ela; precisa copiar em Developers → API keys →
+      "Reveal test key" e colar em `.env.local`. Sem isso, o Checkout do próprio app
+      (`app/(app)/assinatura/actions.ts`) não roda.
+- [ ] Criar webhook apontando para `https://<seu-domínio>/api/webhooks/stripe`, eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted` — só depois de ter um domínio real (Stripe não alcança `localhost`), copiar `STRIPE_WEBHOOK_SECRET`
+- [ ] Ativar o Billing Portal do Stripe (Settings → Billing → Customer portal) e habilitar a opção "Update subscription" (permitir trocar de plano) apontando pros 6 Prices pagos — o app manda quem já assina pro Billing Portal em vez de abrir um Checkout novo, justamente pra nunca criar uma segunda assinatura cobrando em paralelo
+- [ ] Depois de preencher `STRIPE_SECRET_KEY`: testar uma assinatura ponta a ponta pelo próprio
+      Checkout do app com cartão de teste (aprovação/recusa — cartões em `MONETIZATION.md` #6);
+      a criação/cancelamento direto na Stripe já foi validada acima, isso testa o Checkout em si
+- [ ] Preencher `SUPABASE_SERVICE_ROLE_KEY` (item 1 acima) — sem ele o webhook da Stripe não
+      consegue gravar `plan`/`status` em `subscriptions`, mesmo com tudo acima configurado certo
 
 ### 3. Resend (e-mail)
 - [ ] Criar conta, verificar domínio de envio
@@ -150,37 +174,49 @@ Ordem sugerida:
       (falha de pagamento, falha de autenticação sistêmica, erro não tratado) só ficam no log,
       sem e-mail
 
-### 4. WhatsApp (Evolution API ou Z-API — escolher um)
+### 4. n8n — alerta crítico → Telegram (ver `AUTOMATIONS.md` — ETAPA 17)
+- [x] Workflow criado, ativado e testado ao vivo (`Radar Milhas & Viagens — Alerta Operacional →
+      Telegram`, instância `webhook.cortexbot.xyz`) — nada pendente aqui, `N8N_ALERT_WEBHOOK_URL`
+      e `N8N_ALERT_WEBHOOK_SECRET` já preenchidos em `.env.local`
+- [ ] (Opcional) Ler `AUTOMATIONS.md` §6 — 3 propostas de automação adicional (resumo diário,
+      ponte WhatsApp, crons via n8n) que ainda dependem de você decidir se quer
+
+### 5. WhatsApp (Evolution API ou Z-API — escolher um)
 - [ ] Subir instância Evolution API (ou criar conta Z-API)
 - [ ] Preencher `EVOLUTION_API_URL`/`EVOLUTION_API_KEY`/`EVOLUTION_INSTANCE` (ou `ZAPI_INSTANCE_ID`/`ZAPI_TOKEN`)
 - [ ] Definir `WHATSAPP_PROVIDER` (`evolution` ou `zapi`)
 - [ ] Testar envio manual antes de confiar no cron
 
-### 5. IA consultora
+### 6. IA consultora
 - [ ] Preencher `ANTHROPIC_API_KEY` (sem isso, o consultor usa um fallback de regras simples, não quebra)
 
-### 6. APIs de voo/hotel (fora do MVP, opcional)
+### 7. APIs de voo/hotel (fora do MVP, opcional)
 - [ ] Solicitar acesso Amadeus for Developers, preencher `AMADEUS_CLIENT_ID`/`AMADEUS_CLIENT_SECRET`
 - [ ] Solicitar acesso Duffel, preencher `DUFFEL_ACCESS_TOKEN`
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`
 - [ ] Implementar de fato as chamadas em `lib/providers/amadeus-provider.ts` / `duffel-provider.ts` / `booking-provider.ts` (hoje são stubs que caem no mock)
 
-### 7. Domínio e deploy
+### 8. Domínio e deploy
 - [ ] **Nenhum projeto Vercel existe ainda** (confirmado na ETAPA 12, 25/08 — só o repositório
       GitHub `ibcorreaai-oss/radar-milhas-viagens` é real; todo trabalho até aqui rodou local
       via `npm run dev`/`npm run build`). Deploy na Vercel (importar o repo)
 - [ ] Configurar domínio próprio
 - [ ] Preencher `NEXT_PUBLIC_APP_URL` com a URL final
-- [ ] Preencher `CRON_SECRET` (qualquer string aleatória forte) e confirmar que os 3 cron jobs do `vercel.json` estão rodando (aba Cron Jobs do projeto na Vercel)
+- [ ] Preencher `CRON_SECRET` (qualquer string aleatória forte) e confirmar que os 4 cron jobs do `vercel.json` estão rodando (aba Cron Jobs do projeto na Vercel)
 - [ ] Conferir todas as env vars acima também na Vercel (não só no `.env.local`)
 - [ ] Apontar um serviço de uptime gratuito (UptimeRobot, Better Uptime, Freshping) para
       `/api/health` — ver `OBSERVABILITY.md`
 - [ ] Habilitar o Vercel Speed Insights (gratuito no plano Hobby) para medir Core Web Vitals
       de campo com tráfego real — ver `PERFORMANCE.md`
 
-### 8. Testes finais ponta a ponta
+### 9. Testes finais ponta a ponta
 - [ ] Cadastro → onboarding → dashboard
 - [ ] Busca de voo e de hotel (mock) gerando resultados com score/recomendação
 - [ ] Criar alerta, forçar `npm run` local do cron (ou aguardar) e confirmar notificação
 - [ ] Assinar um plano pago em modo teste do Stripe e confirmar que `subscriptions.plan` mudou
 - [ ] Acessar `/admin` com o usuário promovido e cadastrar uma promoção/programa/oportunidade manual
+- [ ] ETAPA 16 — expirar manualmente o `trial_ends_at` de um usuário de teste (SQL) e confirmar
+      que ele é redirecionado pra `/assinatura?trial_expirado=1` ao tentar acessar `/dashboard`,
+      mas continua acessando `/perfil` e `/assinatura` normalmente
+- [ ] ETAPA 16 — cancelar a assinatura de teste no Billing Portal e confirmar que o acesso volta a
+      ser bloqueado (a não ser que o trial dos 5 dias ainda esteja rodando)

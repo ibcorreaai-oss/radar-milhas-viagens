@@ -4,6 +4,7 @@ import { PointsCalculator, type UserProgramOption } from './points-calculator';
 
 export const metadata = {
   title: 'Calculadora de pontos',
+  alternates: { canonical: '/calculadora' },
 };
 
 // Formato bruto da linha retornada pelo join user_loyalty_programs + loyalty_programs.

@@ -4,17 +4,23 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { PlanDefinition } from '@/lib/plans';
+import { planPriceForInterval, type PlanDefinition, type BillingInterval } from '@/lib/plans';
 
 interface SubscriptionCardProps {
   plan: PlanDefinition;
   isCurrent: boolean;
   isDowngrade: boolean;
+  interval: BillingInterval;
 }
 
 // Server Component (sem interatividade própria) — o botão de assinar é um
 // <form action={startCheckout}> simples, sem precisar de client component.
-export function SubscriptionCard({ plan, isCurrent, isDowngrade }: SubscriptionCardProps) {
+// `interval` vem do query param ?interval= lido no page.tsx (server) — ver
+// components/billing-interval-toggle.tsx.
+export function SubscriptionCard({ plan, isCurrent, isDowngrade, interval }: SubscriptionCardProps) {
+  const pricing = planPriceForInterval(plan, interval);
+  const priceLabel = pricing?.label ?? plan.priceLabel;
+
   return (
     <Card className={cn('flex flex-col', isCurrent && 'border-primary shadow-md')}>
       <CardHeader className="space-y-2">
@@ -23,7 +29,7 @@ export function SubscriptionCard({ plan, isCurrent, isDowngrade }: SubscriptionC
           {isCurrent && <Badge>Seu plano atual</Badge>}
         </div>
         <CardDescription>
-          <span className="text-2xl font-bold text-foreground">{plan.priceLabel}</span>
+          <span className="text-2xl font-bold text-foreground">{priceLabel}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1">
@@ -48,6 +54,7 @@ export function SubscriptionCard({ plan, isCurrent, isDowngrade }: SubscriptionC
         ) : (
           <form action={startCheckout} className="w-full">
             <input type="hidden" name="planId" value={plan.id} />
+            <input type="hidden" name="interval" value={interval} />
             <Button type="submit" className="w-full" variant={isDowngrade ? 'outline' : 'default'}>
               Assinar {plan.name}
             </Button>

@@ -38,6 +38,23 @@ export async function sendContactMessage(
   }
 
   const { name, email, subject, message } = parsed.data;
+  const supabase = await createClient();
+
+  // ETAPA 19 (auditoria de segurança pré-deploy) — rate limit real, não só
+  // honeypot: endpoint público sem autenticação, scriptável. Mesmo padrão
+  // do chat público (RPC atômica, migration 0023) — 5 mensagens/dia por
+  // e-mail. Falha "aberta" (loga e segue) se a RPC der erro, pra nunca
+  // travar um envio legítimo por causa de um problema de infraestrutura.
+  const { data: countToday, error: rateLimitError } = await supabase.rpc(
+    'increment_contact_message_count',
+    { target_email: email }
+  );
+  if (rateLimitError) {
+    logger.error('integration', 'Contato: falha ao checar rate limit', { reason: rateLimitError.message });
+  } else if (typeof countToday === 'number' && countToday > 5) {
+    logger.warn('system', 'Contato: rate limit atingido', { email });
+    return { error: 'Muitas mensagens enviadas hoje. Tente novamente amanhã ou fale pelo WhatsApp.' };
+  }
 
   // E-mail primeiro, e o status resultante já entra no insert: a policy de
   // INSERT de contact_messages permite qualquer um escrever, mas só admin
@@ -56,7 +73,6 @@ export async function sendContactMessage(
     logger.warn('integration', 'Contato: OPS_ALERT_EMAIL não configurado — mensagem só fica salva, sem notificação');
   }
 
-  const supabase = await createClient();
   const { error: insertError } = await supabase
     .from('contact_messages')
     .insert({ name, email, subject, message, email_status: emailStatus });

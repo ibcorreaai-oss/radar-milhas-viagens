@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { getUserContext } from '@/lib/auth';
 import { isBlocked } from '@/lib/roles';
 import { stripe } from '@/lib/stripe';
-import { PLANS } from '@/lib/plans';
+import { PLANS, planPriceForInterval, type BillingInterval } from '@/lib/plans';
 import type { PlanId } from '@/lib/types';
 
 // Server Action do botão "Assinar {plano}" (<form action={startCheckout}>).
@@ -18,6 +18,8 @@ export async function startCheckout(formData: FormData): Promise<void> {
   }
 
   const planId = String(formData.get('planId') ?? '') as PlanId;
+  const intervalRaw = String(formData.get('interval') ?? 'month');
+  const interval: BillingInterval = intervalRaw === 'year' ? 'year' : 'month';
 
   if (planId === 'free' || !(planId in PLANS)) {
     redirect('/assinatura');
@@ -39,7 +41,8 @@ export async function startCheckout(formData: FormData): Promise<void> {
   }
 
   const plan = PLANS[planId];
-  const priceId = plan.stripeEnvVar ? process.env[plan.stripeEnvVar] : undefined;
+  const pricing = planPriceForInterval(plan, interval);
+  const priceId = pricing ? process.env[pricing.stripeEnvVar] : undefined;
 
   if (!priceId) {
     redirect('/assinatura?erro=stripe_nao_configurado');
@@ -59,9 +62,21 @@ export async function startCheckout(formData: FormData): Promise<void> {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${appUrl}/assinatura?sucesso=1`,
     cancel_url: `${appUrl}/assinatura?cancelado=1`,
+    // ETAPA 16 (ver MONETIZATION.md #4) — telefone e CPF/CNPJ coletados e
+    // guardados pela própria Stripe no Checkout hospedado, não no nosso
+    // banco: mesmo raciocínio já usado pro CPF do chat público na ETAPA
+    // 15.1 (dado sensível só armazenado onde tem uso real — aqui, nota
+    // fiscal/antifraude da Stripe). tax_id_collection detecta o país pelo
+    // endereço de cobrança preenchido no próprio Checkout.
+    phone_number_collection: { enabled: true },
+    tax_id_collection: { enabled: true },
     metadata: {
       userId: ctx.userId,
       planId,
+      interval,
+    },
+    subscription_data: {
+      metadata: { userId: ctx.userId, planId, interval },
     },
   });
 
