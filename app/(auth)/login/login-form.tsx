@@ -96,7 +96,7 @@ function OtpLoginForm({ next }: { next?: string }) {
         <input type="hidden" name="next" value={next ?? ''} />
 
         {state.info && (
-          <p className="rounded-md bg-secondary/10 px-3 py-2 text-sm text-secondary-foreground">
+          <p className="rounded-md bg-secondary/10 px-3 py-2 text-sm text-secondary">
             {state.info}
           </p>
         )}

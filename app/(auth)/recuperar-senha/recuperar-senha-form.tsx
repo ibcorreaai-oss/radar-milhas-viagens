@@ -23,7 +23,7 @@ export function RecuperarSenhaForm() {
 
   if (state.success) {
     return (
-      <p className="rounded-md bg-secondary/10 px-3 py-3 text-sm text-secondary-foreground">
+      <p className="rounded-md bg-secondary/10 px-3 py-3 text-sm text-secondary">
         {state.success}
       </p>
     );
