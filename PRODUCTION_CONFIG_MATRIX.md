@@ -15,7 +15,7 @@ uma leitura direta do painel. Onde não há evidência de log, está marcado `UN
 |---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Sim | production | ✅ Confirmado funcionando (login/cadastro retornam 200 agora) | Nenhuma |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sim | production | ✅ Confirmado funcionando | Nenhuma |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sim | production | ✅ Confirmado (webhook Stripe grava `subscriptions` via admin client) | Nenhuma |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sim | production | 🔴 **CONFIRMADO AUSENTE (27/08)** — a inferência anterior desta linha (que o webhook Stripe funcionando provava que a chave existia) estava errada; nenhum checkout real tinha sido concluído ainda, então esse caminho nunca foi exercitado. Testado ao vivo em `/contato` (trocado temporariamente pra usar `createAdminClient()`): erro real `"Supabase admin: faltam ... SUPABASE_SERVICE_ROLE_KEY no ambiente."` Revertido. Ver `MANUAL_ACTIONS.md` BLOCKERS. | **Preencher na Vercel** — Supabase Dashboard → Project Settings → API → `service_role` (secret) |
 
 ## Stripe (obrigatório pra monetização)
 

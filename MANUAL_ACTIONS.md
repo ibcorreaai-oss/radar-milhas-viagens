@@ -240,9 +240,40 @@ importa pra decisão/ação sua, reorganizado por urgência.
 
 ### BLOCKERS (impedem lançamento comercial pleno)
 
-Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
+- [ ] **`SUPABASE_SERVICE_ROLE_KEY` não configurada na Vercel — achado real em 27/08, muda o GO
+      anterior.** Confirmado ao vivo (não por inferência) que essa variável não existe em
+      produção — quebrou o formulário de contato real ao tentar usá-la (detalhe completo na
+      seção IMPORTANT abaixo). Isso significa que **`app/api/webhooks/stripe/route.ts` também
+      vai quebrar** na primeira vez que `checkout.session.completed` disparar de verdade —
+      `createAdminClient()` lança exceção assim que chamado, ANTES de gravar a subscription no
+      banco. Concretamente: **se alguém pagar de verdade agora, o cartão é cobrado pela Stripe, mas
+      a assinatura NUNCA ativa no banco** (Stripe reentrega o evento, mas todas as tentativas
+      falham do mesmo jeito até a chave existir). Isso não foi pego antes porque os 6 testes de
+      checkout do Igor (validados como GO) abriram a tela de pagamento mas nenhum foi concluído —
+      só a etapa de validação de assinatura do webhook (POST forjado) tinha sido testada, nunca
+      o caminho real de escrita. **Ação: preencher `SUPABASE_SERVICE_ROLE_KEY` na Vercel (Supabase
+      Dashboard → Project Settings → API → `service_role` secret → Vercel → Settings →
+      Environments → Production) ANTES de aceitar qualquer pagamento real.** Depois de preencher,
+      valide um checkout completo de ponta a ponta (posso ajudar a confirmar via
+      `get_runtime_errors` que a subscription foi gravada).
 
 ### IMPORTANT (não bloqueia lançamento, mas precisa de atenção antes de escalar)
+
+- [ ] **`SUPABASE_SERVICE_ROLE_KEY` não está configurada na Vercel (achado real, 27/08)** —
+      confirmado ao vivo (não por inferência): o formulário de contato público quebrou em
+      produção depois de eu trocar `app/contato/actions.ts`/`app/home-chat-actions.ts` pra usar
+      `createAdminClient()`, com o erro exato "Supabase admin: faltam ... 
+      SUPABASE_SERVICE_ROLE_KEY no ambiente." Revertido na hora (migrations `0040`→`0041`). Isso
+      também significa que o webhook Stripe (`app/api/webhooks/stripe/route.ts`, que já usa
+      `createAdminClient()` desde a ETAPA 16) **nunca teve seu caminho de escrita real
+      testado de ponta a ponta em produção** — só a validação de assinatura foi confirmada (POST
+      forjado retornando erro de assinatura), porque nenhum checkout foi concluído ainda. Copie a
+      `service_role key` do Supabase Dashboard → Project Settings → API → `service_role` (secret)
+      pra Vercel → Settings → Environments → Production → `SUPABASE_SERVICE_ROLE_KEY`. Depois de
+      configurar: (a) reabrir o fix de segurança das 2 RPCs de contador (ver achado 6 da revisão
+      geral abaixo — é só repetir a migration `0040` + o código que ela tinha, revertidos aqui),
+      (b) validar um checkout real de ponta a ponta pra confirmar que o webhook grava a
+      subscription corretamente pela primeira vez.
 
 - [ ] **Validar o webhook com um evento de teste real do Stripe Dashboard** (opcional antes da
       primeira assinatura de verdade, não bloqueia o lançamento — os 6 checkouts já confirmados
@@ -329,14 +360,17 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
          `hasActiveAccess` (o gate real) sim — um usuário em dunning clicando "Assinar" de novo
          criava exatamente a assinatura órfã paralela que esse código existe pra evitar. Fix:
          inclui `past_due`.
-      6. **2 RPCs de contador anti-abuso (`increment_contact_message_count`,
-         `increment_home_chat_message_count`) eram chamáveis direto por `anon` via PostgREST**
-         com e-mail arbitrário — qualquer um com a anon key (pública) podia negar o
-         contato/chat público pra um e-mail de terceiro, sem nunca passar pelo formulário. Fix:
-         EXECUTE público revogado (migration `0040`), as 2 Server Actions passam a chamar via
-         `createAdminClient()` (service_role, só server-side). Confirmado antes de aplicar que
-         `SUPABASE_SERVICE_ROLE_KEY` está configurada em produção (webhook já depende dela e
-         funciona; zero erro desse tipo nos últimos 7 dias de log).
+      6. **(REVERTIDO — ver item novo abaixo) 2 RPCs de contador anti-abuso
+         (`increment_contact_message_count`, `increment_home_chat_message_count`) são chamáveis
+         direto por `anon` via PostgREST** com e-mail arbitrário — qualquer um com a anon key
+         (pública) pode negar o contato/chat público pra um e-mail de terceiro, sem nunca passar
+         pelo formulário. Tentei corrigir trocando pra `createAdminClient()` (migration `0040`),
+         mas **quebrou em produção de verdade** — `SUPABASE_SERVICE_ROLE_KEY` não está
+         configurada neste projeto (a inferência de que estava, por causa do webhook Stripe
+         funcionando, estava errada: o webhook nunca tinha exercitado esse caminho porque nenhum
+         checkout real foi concluído ainda). Testei ao vivo no formulário de `/contato` real logo
+         depois do deploy — quebrou, revertido na hora (migration `0041`, código de volta pro
+         client normal). **Continua vulnerável, ver item de ação abaixo.**
       7. **Consultor IA (endpoint pago) nunca truncava mensagem/histórico** antes de mandar pra
          Anthropic — diferente do Concierge, que já limitava. Fix: mesmos limites (800
          caracteres/mensagem, 8 turnos de histórico).

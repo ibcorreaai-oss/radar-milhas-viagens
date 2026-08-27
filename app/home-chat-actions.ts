@@ -3,7 +3,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { contactMessageEmail } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -90,16 +89,19 @@ async function recentChatCount(email: string): Promise<number> {
 // recentChatCount acima; se Supabase não está configurado, não há como
 // persistir o contador mesmo, então também não há limite pra impor.
 //
-// Achado em /code-review (revisão geral 27/08): a RPC tinha EXECUTE pra
+// Achado em /code-review (revisão geral 27/08): a RPC tem EXECUTE pra
 // anon/authenticated via PostgREST — qualquer um com a anon key (pública)
-// conseguia chamar /rest/v1/rpc/increment_home_chat_message_count direto,
-// com QUALQUER e-mail, sem nunca passar pelo widget — negava o chat público
-// pra um e-mail de terceiro maxando o contador dele. Fix (migration 0040):
-// EXECUTE público revogado, chamada aqui via createAdminClient()
-// (service_role, só server-side) — mesmo padrão de app/contato/actions.ts.
+// consegue chamar /rest/v1/rpc/increment_home_chat_message_count direto,
+// com QUALQUER e-mail, sem nunca passar pelo widget (DoS barato contra
+// e-mail de terceiro). Tentei fechar isso via createAdminClient()
+// (service_role) nesta mesma revisão, mas SUPABASE_SERVICE_ROLE_KEY não
+// está configurada em produção neste projeto (confirmado ao vivo, quebrou
+// o chat real, revertido na hora) — revertido pro client normal até essa
+// env var existir. Ver MANUAL_ACTIONS.md pra reabrir esse fix.
 async function incrementDailyMessageCount(email: string): Promise<number> {
   if (!isSupabaseConfigured()) return 0;
-  const { data, error } = await createAdminClient().rpc('increment_home_chat_message_count', { target_email: email });
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('increment_home_chat_message_count', { target_email: email });
   if (error) {
     logger.error('integration', 'Falha ao incrementar contador de mensagens do chat público', { reason: error.message });
     return 0;

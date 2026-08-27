@@ -333,7 +333,29 @@ Consolidado em `MANUAL_ACTIONS.md` (estrutura BLOCKERS/IMPORTANT/OPTIONAL/DONE).
 
 ## GO / NO-GO
 
-# GO
+# GO WITH CONDITIONS — reaberto em 27/08 (revisão geral pré-pausa)
+
+**ATUALIZADO 27/08 — achado real muda a decisão anterior desta seção.** O GO original (abaixo,
+preservado como histórico) foi dado depois dos 6 testes de checkout do Igor — mas nenhum desses
+6 testes CONCLUIU o pagamento (só abriram a tela do Stripe Checkout). Numa revisão de código
+diferente nesta mesma data, confirmei ao vivo em produção que `SUPABASE_SERVICE_ROLE_KEY` **não
+está configurada na Vercel** (quebrou o formulário de contato real ao tentar usá-la — ver
+`MANUAL_ACTIONS.md` BLOCKERS). Isso significa que `app/api/webhooks/stripe/route.ts` — que
+também usa `createAdminClient()` — vai lançar exceção assim que `checkout.session.completed`
+disparar de verdade, ANTES de gravar a subscription. **Concretamente: um pagamento real completo
+agora cobraria o cartão do cliente sem nunca ativar a assinatura dele no banco.** Esse caminho
+nunca tinha sido exercitado de fato (só a validação de assinatura HMAC do webhook foi testada,
+via POST forjado).
+
+**Condição pro GO valer de verdade**: preencher `SUPABASE_SERVICE_ROLE_KEY` na Vercel (Supabase
+Dashboard → Project Settings → API → `service_role` secret) e validar um checkout completo de
+ponta a ponta depois. Até lá, **não divulgar/aceitar pagamento real** — a experiência de abrir o
+Checkout continua correta (é só isso que os 6 testes do Igor provaram), o problema é
+especificamente o pós-pagamento.
+
+---
+
+## GO (decisão original, 27/08 — histórico, ver correção acima)
 
 O código está production-ready: build limpo, segurança auditada sem achado explorável, RLS
 correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe resiliente a

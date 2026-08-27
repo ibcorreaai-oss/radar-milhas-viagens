@@ -88,6 +88,10 @@ pro detalhe de cada item.
 
 ## Decisão final
 
-Ver `PRODUCTION_READINESS_REPORT.md` — **GO**. Igor testou pessoalmente os 6 checkouts em
-produção (27/08) — todos abriram o Stripe Checkout corretamente, nenhum pagamento concluído.
-Nenhum blocker técnico ou de configuração restante.
+**ATUALIZADO 27/08 (mesmo dia) — GO WITH CONDITIONS, reaberto.** Ver `PRODUCTION_READINESS_REPORT.md`
+§GO/NO-GO pro detalhe: `SUPABASE_SERVICE_ROLE_KEY` não está configurada na Vercel (confirmado ao
+vivo), então o webhook Stripe vai falhar em gravar a subscription na primeira vez que um
+pagamento REAL for concluído (os 6 testes do Igor abriram o Checkout mas nenhum concluiu
+pagamento — esse caminho nunca foi exercitado). **Não aceitar pagamento real até preencher essa
+env var e validar um checkout completo.** Abrir a tela de Checkout continua funcionando
+normalmente — o problema é só o pós-pagamento.

@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { contactSchema } from '@/lib/validation/contact-schema';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
@@ -47,17 +46,18 @@ export async function sendContactMessage(
   // e-mail. Falha "aberta" (loga e segue) se a RPC der erro, pra nunca
   // travar um envio legítimo por causa de um problema de infraestrutura.
   //
-  // Achado em /code-review (revisão geral 27/08): a RPC era EXECUTE pra
-  // anon/authenticated via PostgREST, então qualquer um com a anon key
-  // (pública, já exposta no browser) podia chamar
-  // /rest/v1/rpc/increment_contact_message_count direto, com QUALQUER
-  // e-mail, sem nunca passar por este formulário — um jeito barato de negar
-  // o contato/chat público pra um e-mail de terceiro (maxar o contador dele
-  // antes de ele tentar de verdade). Fix (migration 0040): revoga o EXECUTE
-  // público da RPC, chama aqui via createAdminClient() (service_role,
-  // nunca exposto ao client) — só este Server Action, rodando no servidor,
-  // consegue incrementar o contador agora.
-  const { data: countToday, error: rateLimitError } = await createAdminClient().rpc(
+  // Achado em /code-review (revisão geral 27/08): esta RPC tem EXECUTE
+  // liberado pra anon/authenticated via PostgREST — qualquer um com a anon
+  // key (pública) pode chamar /rest/v1/rpc/increment_contact_message_count
+  // direto, com QUALQUER e-mail, sem passar por este formulário (DoS barato
+  // contra e-mail de terceiro). Tentei fechar isso trocando pra
+  // createAdminClient() (service_role) nesta mesma revisão, mas
+  // SUPABASE_SERVICE_ROLE_KEY não está configurada em produção neste
+  // projeto (confirmado ao vivo: quebrou o formulário real, revertido na
+  // hora) — revertido pro client normal até essa env var existir. Ver
+  // MANUAL_ACTIONS.md pra reabrir esse fix assim que a chave for
+  // preenchida.
+  const { data: countToday, error: rateLimitError } = await supabase.rpc(
     'increment_contact_message_count',
     { target_email: email }
   );
