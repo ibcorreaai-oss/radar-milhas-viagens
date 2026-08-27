@@ -37,11 +37,17 @@ pro detalhe de cada item.
 - [PASS] `robots.txt` bloqueia corretamente rotas privadas; sitemap só lista rotas públicas
 
 ## Stripe / pagamentos
-- [FAIL] 🔴 Checkout real falhando em produção — `No such price` confirmado por log real (23:38 UTC, 26/08)
-- [MANUAL] Corrigir Price ID no Stripe Dashboard real + Vercel env var
-- [MANUAL] Reconfirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real (histórico de log misto)
+- [FAIL] 🔴 Stripe live environment — checkout real falhando em produção (`No such price`, confirmado por log real, 23:38 UTC de 26/08)
+- [FAIL] Stripe Product/Price — `STRIPE_PRICE_PREMIUM` confirmado inválido; `_PRO`/`_CONSULTOR`/anuais suspeitos (mesmo lote de criação) mas não confirmados por log
+- [FAIL] Checkout Session — não consegue ser criada com sucesso enquanto o Price ID estiver errado
+- [PASS] Success URL / Cancel URL — resolvidas via `getSiteUrl()` server-side, nunca aceitam destino do usuário (sem risco de open redirect)
+- [MANUAL] Corrigir os 6 Price IDs no Stripe Dashboard real + colar em cada env var exata na Vercel (nomes exatos em `MANUAL_ACTIONS.md`)
+- [MANUAL] Reconfirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real (histórico de log misto) — [MANUAL] Signature verification: código confirmado correto (`stripe.webhooks.constructEvent`), só o valor real da variável não é confirmável por mim
 - [PASS] Webhook agora reentrega em falha de escrita real (corrigido nesta auditoria)
 - [PASS] Nenhum segredo Stripe hardcoded no código/git
+- [PASS] Erro de checkout agora mostra mensagem amigável em vez de tela quebrada (corrigido nesta auditoria)
+- [PASS] Nenhum Price ID arbitrário aceito do cliente — sempre resolvido via whitelist server-side (`plan` → env var → Price ID)
+- [N/A] Nenhuma cobrança real feita durante esta investigação (só leitura de código e logs já existentes)
 
 ## IA / custo
 - [PASS] `AI_PROVIDER` nunca usa Anthropic (pago) por padrão, mesmo com chave configurada

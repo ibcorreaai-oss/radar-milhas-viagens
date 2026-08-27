@@ -240,23 +240,50 @@ importa pra decisão/ação sua, reorganizado por urgência.
 
 ### BLOCKERS (impedem lançamento comercial pleno)
 
-- [ ] **🔴 Stripe: Price ID inválido, confirmado por log real de produção.** Não é suposição —
-      `get_runtime_errors` da Vercel mostra `Error: No such price:
-      'price_1U8jeSFbJuUYebOzjb7TReB3'` acontecendo de verdade (última vez: 23:38 UTC de
-      26/08/2026, poucas horas antes desta auditoria), 4 vezes, na rota `/assinatura`. Ou seja: a
-      pendência antiga do "Arc A" (diagnosticada como a conta/escopo do MCP do Stripe ser
-      diferente da sua conta real) **continua sem correção** — usuários reais não conseguem
-      assinar nenhum plano pago agora.
-      - **Onde**: Stripe Dashboard (sua conta real, não via MCP) → Products → confirme os 6
-        Price IDs (Premium/Pro/Consultor × mensal/anual) que você criou manualmente.
-      - **O que fazer**: copie o Price ID certo de cada produto real.
-      - **Depois**: cole cada um na variável de ambiente correspondente
-        (`STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_CONSULTOR`, + as `_ANNUAL` se
-        for oferecer anual) em Vercel → Project → Settings → Environment Variables → Production.
-      - **Como validar**: `git commit --allow-empty && git push` pra forçar redeploy (salvar env
-        var sozinho não redeploya o que já está no ar), depois tente assinar um plano de teste em
-        `/assinatura` até ver a tela de sucesso.
-      - **Risco se não fizer**: zero monetização — todo usuário que tentar pagar recebe erro.
+- [ ] **🔴 Stripe: os 6 Price IDs configurados não existem na conta/modo real (causa raiz
+      confirmada, não suposição).** Investigação desta auditoria (27/08):
+      - `get_runtime_errors` da Vercel mostra `Error: No such price:
+        'price_1U8jeSFbJuUYebOzjb7TReB3'` acontecendo de verdade em produção (última vez: 23:38
+        UTC de 26/08/2026), 4 vezes, na rota `/assinatura` — `STRIPE_PRICE_PREMIUM`.
+      - Os **6** Price IDs em `.env.local` (`STRIPE_PRICE_PREMIUM/_PRO/_CONSULTOR` +
+        `_ANNUAL`) começam todos com o mesmo prefixo `price_1U8j...FbJuUYebOz...` — foram
+        criados juntos, no mesmo lote/sessão. Isso é consistente com o diagnóstico já feito
+        antes desta mega-etapa: **provavelmente os 6 foram criados via a integração MCP do
+        Stripe**, que opera numa conta/escopo diferente da sua conta real logada no navegador —
+        Price IDs criados lá nunca funcionam com o `STRIPE_SECRET_KEY` real.
+      - Tentei confirmar isso de forma definitiva e sem risco (chamada só-leitura
+        `stripe.prices.retrieve()` direto contra o `STRIPE_SECRET_KEY` real, sem criar
+        checkout/cobrança) — **não consegui**: `STRIPE_SECRET_KEY` está **vazia em
+        `.env.local`** (só existe configurada na Vercel, que eu não tenho como ler). Não
+        invento o resultado — fica como suspeita fortemente evidenciada, não confirmação
+        100%, dos 5 IDs que ainda não erraram na prática (só o Premium foi realmente testado
+        por um usuário).
+      - **Onde**: Stripe Dashboard (sua conta real, a mesma que você usa logado no navegador —
+        NÃO peça pra mim fazer isso de novo via MCP) → Products.
+      - **O que fazer**: para cada um dos 3 planos (Premium, Pro, Consultor) × 2 intervalos
+        (mensal, anual) = 6 produtos/preços: confirme se o produto existe; se não existir,
+        crie-o; copie o Price ID (`price_...`) de cada um.
+      - **Depois**: cole cada um na variável de ambiente EXATA correspondente — os nomes exatos
+        usados no código (`lib/plans.ts`) são:
+        `STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_PREMIUM_ANNUAL`,
+        `STRIPE_PRICE_PRO`, `STRIPE_PRICE_PRO_ANNUAL`,
+        `STRIPE_PRICE_CONSULTOR`, `STRIPE_PRICE_CONSULTOR_ANNUAL`
+        — em Vercel → projeto `radar-milhas-viagens` → Settings → Environment Variables →
+        ambiente **Production**.
+      - **Como validar**: depois de salvar as variáveis, rode `git commit --allow-empty && git
+        push` pra forçar um redeploy (salvar env var sozinho não redeploya o que já está no ar).
+        Depois tente assinar um plano de teste em `/assinatura` até ver a tela de sucesso
+        (`?sucesso=1`) — com a correção desta auditoria, se algum Price ID ainda estiver errado
+        você verá uma mensagem amigável de erro em vez de tela quebrada, e o detalhe técnico
+        fica só no log do servidor.
+      - **Risco se não fizer**: zero monetização — todo usuário que tentar pagar recebe erro
+        (antes desta auditoria: tela quebrada; depois da correção de código: mensagem amigável,
+        mas o pagamento continua não funcionando até os Price IDs certos serem colados).
+      - **Corrigido nesta auditoria (não depende de você)**: `app/(app)/assinatura/actions.ts`
+        agora captura qualquer erro da Stripe ao criar a Checkout Session e mostra a mensagem
+        amigável já existente (`?erro=stripe_nao_configurado`) em vez de deixar o erro estourar
+        sem tratamento — o problema de fundo (Price ID errado) continua exigindo sua ação, mas
+        a experiência do usuário não fica mais quebrada enquanto isso não é resolvido.
 
 - [ ] **Stripe: reconfirmar `STRIPE_WEBHOOK_SECRET`.** Log real mostra histórico misto: "ausente"
       até ~20:37 UTC de 26/08, depois 1 falha de "assinatura inválida" às 22:38 UTC — pode já
@@ -321,6 +348,9 @@ importa pra decisão/ação sua, reorganizado por urgência.
       dentro do range já existente, sharp) — sem breaking change.
 - [x] Sessão paralela (Fases 5-7 implementadas por outra janela do Claude Code) — reconciliada e
       auditada, sem duplicar trabalho.
+- [x] Checkout da Stripe agora captura qualquer erro da API (ex.: Price ID inválido) e mostra
+      mensagem amigável em vez de tela de erro genérica — o Price ID em si continua sendo
+      pendência sua (ver BLOCKERS acima), mas a experiência do usuário não fica mais quebrada.
 
 ### Documentos desta auditoria
 

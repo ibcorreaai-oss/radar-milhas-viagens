@@ -1,9 +1,11 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import type Stripe from 'stripe';
 import { getUserContext } from '@/lib/auth';
 import { isBlocked } from '@/lib/roles';
 import { stripe } from '@/lib/stripe';
+import { logger } from '@/lib/logger';
 import { PLANS, planPriceForInterval, type BillingInterval } from '@/lib/plans';
 import { getSiteUrl } from '@/lib/site-url';
 import type { PlanId } from '@/lib/types';
@@ -55,34 +57,54 @@ export async function startCheckout(formData: FormData): Promise<void> {
   // Customer novo por e-mail — evita duplicar o cadastro de cliente na Stripe.
   const existingCustomerId = ctx.subscription?.stripe_customer_id ?? undefined;
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    ...(existingCustomerId
-      ? { customer: existingCustomerId }
-      : { customer_email: ctx.email ?? undefined }),
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/assinatura?sucesso=1`,
-    cancel_url: `${appUrl}/assinatura?cancelado=1`,
-    // ETAPA 16 (ver MONETIZATION.md #4) — telefone e CPF/CNPJ coletados e
-    // guardados pela própria Stripe no Checkout hospedado, não no nosso
-    // banco: mesmo raciocínio já usado pro CPF do chat público na ETAPA
-    // 15.1 (dado sensível só armazenado onde tem uso real — aqui, nota
-    // fiscal/antifraude da Stripe). tax_id_collection detecta o país pelo
-    // endereço de cobrança preenchido no próprio Checkout.
-    phone_number_collection: { enabled: true },
-    tax_id_collection: { enabled: true },
-    metadata: {
-      userId: ctx.userId,
+  // Achado na auditoria de producao: uma falha real da API da Stripe aqui
+  // (ex.: Price ID que nao existe na conta/modo configurado em
+  // STRIPE_SECRET_KEY) nao era capturada — o usuario via a tela de erro
+  // generica do Next.js (digest sem detalhe nenhum) em vez de uma mensagem
+  // amigavel. Reaproveita o mesmo banner ?erro=stripe_nao_configurado que
+  // ja existe pra "env var vazia", agora tambem pra "a Stripe recusou o
+  // Price ID configurado" — sintoma igual do ponto de vista do usuario,
+  // mesma mensagem, mas logado com detalhe pra diagnostico.
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      ...(existingCustomerId
+        ? { customer: existingCustomerId }
+        : { customer_email: ctx.email ?? undefined }),
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/assinatura?sucesso=1`,
+      cancel_url: `${appUrl}/assinatura?cancelado=1`,
+      // ETAPA 16 (ver MONETIZATION.md #4) — telefone e CPF/CNPJ coletados e
+      // guardados pela própria Stripe no Checkout hospedado, não no nosso
+      // banco: mesmo raciocínio já usado pro CPF do chat público na ETAPA
+      // 15.1 (dado sensível só armazenado onde tem uso real — aqui, nota
+      // fiscal/antifraude da Stripe). tax_id_collection detecta o país pelo
+      // endereço de cobrança preenchido no próprio Checkout.
+      phone_number_collection: { enabled: true },
+      tax_id_collection: { enabled: true },
+      metadata: {
+        userId: ctx.userId,
+        planId,
+        interval,
+      },
+      subscription_data: {
+        metadata: { userId: ctx.userId, planId, interval },
+      },
+    });
+  } catch (error) {
+    await logger.critical('payment', 'Falha ao criar Checkout Session da Stripe', {
       planId,
       interval,
-    },
-    subscription_data: {
-      metadata: { userId: ctx.userId, planId, interval },
-    },
-  });
+      priceEnvVar: pricing?.stripeEnvVar,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    redirect('/assinatura?erro=stripe_nao_configurado');
+  }
 
   if (!session.url) {
-    throw new Error('Stripe não retornou uma URL de checkout.');
+    await logger.critical('payment', 'Stripe criou a Checkout Session mas não retornou url', { planId, interval });
+    redirect('/assinatura?erro=stripe_nao_configurado');
   }
 
   redirect(session.url);

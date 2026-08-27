@@ -19,12 +19,19 @@ uma leitura direta do painel. Onde não há evidência de log, está marcado `UN
 
 ## Stripe (obrigatório pra monetização)
 
+**Stripe Mode**: LIVE (chave de produção configurada na Vercel — não confirmável por leitura
+direta, mas o comportamento observado — checkout real tentado por usuário real — só acontece
+com uma chave de verdade configurada).
+
 | Variável | Obrigatória | Ambiente | Status | Ação |
 |---|---|---|---|---|
-| `STRIPE_SECRET_KEY` | Sim | production | ⚠️ Configurada, mas aponta pra uma conta/escopo com Price IDs que não batem (ver abaixo) | Confirmar que é a chave da conta REAL do Igor (não a do MCP) |
-| `STRIPE_WEBHOOK_SECRET` | Sim | production | ⚠️ Log real mostra "ausente" até ~20:37 UTC, depois "assinatura inválida" 1x às 22:38 UTC — histórico misto, estado atual não confirmável sem novo teste | Reenviar um evento de teste real do Stripe Dashboard e conferir 200 |
-| `STRIPE_PRICE_PREMIUM` / `_PRO` / `_CONSULTOR` | Sim (pelo menos 1) | production | 🔴 **BLOCKER confirmado**: log real de produção (23:38 UTC, poucas horas atrás) mostra `Error: No such price: 'price_1U8jeSFbJuUYebOzjb7TReB3'` — usuário de teste tentou assinar e recebeu 400 | Recriar/confirmar o Price ID certo no Stripe Dashboard real e colar o valor correto na env var correspondente na Vercel |
-| `STRIPE_PRICE_*_ANNUAL` (3) | Não (opcional) | production | UNVERIFIED | Preencher se quiser oferecer anual |
+| `STRIPE_SECRET_KEY` | Sim | production | CONFIGURED (não legível por mim; vazia em `.env.local`, só existe na Vercel) | Confirmar que é a chave da conta REAL do Igor (não a do MCP) |
+| `STRIPE_WEBHOOK_SECRET` | Sim | production | UNVERIFIED — log mostra "ausente" até ~20:37 UTC de 26/08, depois "assinatura inválida" 1x às 22:38 UTC; histórico misto, estado atual não confirmável sem novo teste | Reenviar um evento de teste real do Stripe Dashboard e conferir 200 |
+| `STRIPE_PRICE_PREMIUM` | Sim | production | 🔴 **MISSING/INVÁLIDO, confirmado**: log real de produção mostra `Error: No such price: 'price_1U8jeSFbJuUYebOzjb7TReB3'` | Substituir pelo Price ID real (ver `MANUAL_ACTIONS.md`) |
+| `STRIPE_PRICE_PRO` / `STRIPE_PRICE_CONSULTOR` | Sim | production | ⚠️ Suspeito, não confirmado por log (nenhum usuário testou esses ainda) — mesmo prefixo de criação em lote que o Premium inválido, fortemente suspeito de ter o mesmo problema | Verificar e substituir junto com o Premium |
+| `STRIPE_PRICE_*_ANNUAL` (3) | Não (opcional) | production | ⚠️ Mesmo suspeito acima | Preencher/corrigir se for oferecer anual |
+| **Checkout Session (criação)** | — | — | 🔴 FAIL confirmado por log de produção real (não um teste desta auditoria) | Depende da correção dos Price IDs acima |
+| **Price livemode** | — | — | UNVERIFIED (não consigo ler a chave real pra confirmar) | — |
 
 ## IA (opcional, zero-custo por padrão)
 

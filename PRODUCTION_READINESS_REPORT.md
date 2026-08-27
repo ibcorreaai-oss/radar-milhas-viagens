@@ -106,6 +106,54 @@ Corrigido nesta auditoria (não depende do Igor): o webhook agora devolve 500 (S
 em vez de 200 quando uma escrita crítica falha de verdade — antes, uma falha de banco nesse
 momento deixava a assinatura desatualizada pra sempre sem nenhum retry.
 
+## Final Stripe Validation
+
+**Root cause**: os 6 Price IDs configurados (`STRIPE_PRICE_PREMIUM/_PRO/_CONSULTOR` + `_ANNUAL`)
+compartilham o mesmo prefixo de criação em lote (`price_1U8j...FbJuUYebOz...`) — foram criados
+juntos, na mesma sessão. Isso é consistente com o diagnóstico já registrado antes desta
+mega-etapa: provavelmente criados via a integração MCP do Stripe, que opera numa conta/escopo
+diferente da conta real do Igor — Price IDs de lá nunca funcionam com o `STRIPE_SECRET_KEY`
+real. `STRIPE_PRICE_PREMIUM` já foi confirmado inválido por um erro real de produção; os outros
+5 são fortemente suspeitos (mesmo lote), mas não confirmados individualmente por log — nenhum
+usuário tentou usá-los ainda.
+
+**Tentativa de verificação direta (não invento resultado que não consegui obter)**: tentei
+confirmar definitivamente via uma chamada só-leitura (`stripe.prices.retrieve()`, sem criar
+checkout nem cobrança) contra o `STRIPE_SECRET_KEY` real. **Não foi possível**: essa variável
+está vazia em `.env.local` — só existe configurada na Vercel, que nenhuma ferramenta disponível
+consegue ler. Script de teste descartado sem deixar rastro no projeto.
+
+**Fix aplicado (código, não depende do Igor)**: `app/(app)/assinatura/actions.ts` — a chamada
+`stripe.checkout.sessions.create()` agora está dentro de um `try/catch`. Qualquer erro da API da
+Stripe (Price ID inválido, conta errada, o que for) é logado com `logger.critical` (categoria
+`payment`, sem nenhum dado sensível) e redireciona para a mensagem amigável já existente
+(`/assinatura?erro=stripe_nao_configurado`) em vez de deixar a exceção estourar sem tratamento
+(o que antes gerava a tela de erro genérica do Next.js, digest sem detalhe nenhum, visível no
+log real de produção desta mesma auditoria). O mesmo tratamento cobre o caso (não observado, mas
+possível) de a Stripe retornar uma sessão sem `url`.
+
+**Checkout Session — teste real não realizado**: não tentei criar uma Checkout Session de
+verdade (nem via navegador nem via API) porque isso exigiria autenticar como um usuário real
+logado no app com plano elegível, e a regra de custo zero + a regra de nunca inserir credencial
+me impedem de logar por conta própria. O log de produção já é evidência mais forte que um teste
+sintético meu: mostra o app tentando de verdade, na produção real, e falhando com a causa exata.
+
+**Success/Cancel URL**: confirmadas seguras — `getSiteUrl()` (resolvido só a partir de env vars
+do servidor/Vercel, nunca de input do usuário), nunca `localhost` em produção.
+
+**Metadata da Checkout Session**: só `userId`/`planId`/`interval` — nenhum dado sensível.
+
+**Price ID arbitrário do cliente**: não é possível — o servidor sempre resolve
+`plan → planPriceForInterval() → nome da env var → process.env[nome]`, nunca aceita um
+`price_id` vindo direto do formulário/navegador.
+
+**Webhook**: assinatura verificada com `stripe.webhooks.constructEvent()` antes de qualquer
+processamento (confirmado por leitura de código, não alterado nesta rodada); estado real de
+`STRIPE_WEBHOOK_SECRET` em produção continua `UNVERIFIED UNTIL FIRST REAL SUBSCRIPTION` — só um
+evento de teste real do Stripe Dashboard confirma de vez.
+
+**Payments made during testing**: NONE.
+
 ## AI Providers
 
 `lib/ai/provider.ts` corrigido nesta sessão: nunca usa Anthropic (pago) por padrão, mesmo com a
@@ -206,8 +254,13 @@ Consolidado em `MANUAL_ACTIONS.md` (estrutura BLOCKERS/IMPORTANT/OPTIONAL/DONE).
 
 O código está production-ready: build limpo, segurança auditada sem achado explorável, RLS
 correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe agora resiliente
-a falha transitória. **A condição que bloqueia lançamento comercial pleno é uma só, e não é
-código**: o Price ID do Stripe em produção está incorreto (confirmado por log real, usuários
-reais recebendo erro no checkout agora). Até isso ser corrigido no Stripe Dashboard + Vercel (ação
-que só o Igor pode fazer, envolve conta de pagamento real), o app funciona perfeitamente para
-todo uso gratuito/orgânico, mas ninguém consegue completar uma assinatura paga.
+a falha transitória, checkout agora falha graciosamente em vez de quebrar a tela. **A condição
+que bloqueia lançamento comercial pleno é uma só, e não é código**: os 6 Price IDs do Stripe em
+produção muito provavelmente não existem na conta/modo real (causa raiz: parecem ter sido
+criados via integração MCP, que opera numa conta diferente da conta real do Igor) — confirmado
+por log real para o plano Premium, fortemente suspeito para os outros 5 (mesmo lote de criação).
+Não consegui verificar/corrigir isso automaticamente: a chave real da Stripe só existe na
+Vercel, sem nenhuma ferramenta disponível pra lê-la. Até os Price IDs certos serem colados no
+Stripe Dashboard real + Vercel (ação que só o Igor pode fazer, envolve conta de pagamento real),
+o app funciona perfeitamente para todo uso gratuito/orgânico, mas ninguém consegue completar uma
+assinatura paga.
