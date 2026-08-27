@@ -8,16 +8,32 @@ premium de alertas de viagem com IA**.
 **Comece por `SYSTEM_ARCHITECTURE.md`** — referência única de arquitetura geral (modelo de
 dados, papéis, integrações, auth, storage, logs, backup, monitoramento, escalabilidade), com
 link pro documento certo pra cada assunto. Nenhuma funcionalidade nova deve ser criada sem
-checar esse documento primeiro. Os demais, por assunto: `PROMPT.md` (spec original do MVP),
-`VISION_MASTER.md` (norte de longo prazo, referência de UX), `ARCHITECTURE.md` +
-`IMPLEMENTATION_PLAN.md` (evolução 3.0 — World Experience Radar, Bucket List),
-`DISASTER_RECOVERY.md` (backup/restore, rollback, recuperação de exclusão acidental),
-`OBSERVABILITY.md` (logs, auditoria, uptime, alertas críticos), `PERFORMANCE.md` (consultas,
-cache, imagens, Core Web Vitals), `DATA_QUALITY.md` (validação Zod, deduplicação, integridade
-referencial), `GROWTH.md` (ativação, retenção, conversão, `/admin/metricas`),
-`ENGAGEMENT_UX.md` (progresso, microvitórias, feedback imediato, conquistas opcionais),
-`REQUIREMENTS.md` (requisitos funcionais/não funcionais), `SCREENS.md` (inventário das 34
-telas) e `SEO_GEO.md` (SEO, Open Graph, GEO/IA generativa).
+checar esse documento primeiro.
+
+**Se for retomar o projeto depois de um tempo parado, comece por `MANUAL_ACTIONS.md`** — é o
+único documento que lista, por etapa, tudo que ainda depende de uma ação sua (chave de API,
+decisão de produto, configuração de dashboard) organizado em BLOCKERS/IMPORTANT/OPTIONAL/DONE.
+`PRODUCTION_READINESS_REPORT.md` + `LAUNCH_CHECKLIST.md` têm o resultado da auditoria de
+produção mais recente (decisão GO/NO-GO com evidência).
+
+Os demais documentos, por assunto (ordem aproximada de quando cada um foi escrito):
+
+- `PROMPT.md` — spec original do MVP · `VISION_MASTER.md` — norte de longo prazo, referência de UX
+- `REQUIREMENTS.md` — requisitos funcionais/não funcionais · `SCREENS.md` — inventário de telas
+- `SCORING.md` — lógica de pontuação/ranking de oportunidades · `EXISTING_FEATURES.md` — o que já existia antes de cada etapa nova
+- `AUDIT_REPORT.md` — baseline pré-etapa-3.0 (23/08) · `ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` — evolução 3.0 (World Experience Radar, Bucket List)
+- `OBSERVABILITY.md` — logs, auditoria, uptime, alertas críticos · `PERFORMANCE.md` — consultas, cache, imagens, Core Web Vitals
+- `DATA_QUALITY.md` — validação Zod, deduplicação, integridade referencial · `DISASTER_RECOVERY.md` — backup/restore, rollback, recuperação de exclusão acidental
+- `GROWTH.md` — ativação, retenção, conversão, `/admin/metricas` · `ENGAGEMENT_UX.md` — progresso, microvitórias, feedback imediato, conquistas opcionais
+- `SEO_GEO.md` — SEO, Open Graph, GEO/IA generativa · `AUTOMATIONS.md` — n8n, alerta crítico → Telegram
+- `AUTH_AND_ADMIN.md` — Stack Auth × Supabase Auth × OTP, roles · `PLATFORM_ADMIN.md` — painel `/admin` completo
+- `MONETIZATION.md` — planos, trial, gate de acesso, regras de negócio Stripe · `TRAINING.md` — Central de Treinamentos / Mini LMS
+- `SECURITY_REPORT.md` — visão consolidada "estamos seguros pra estar no ar?" (não substitui `AUTH_AND_ADMIN.md`/`PLATFORM_ADMIN.md`/`MONETIZATION.md`, que têm o detalhe de cada subsistema)
+- `POST_DEPLOY_AUDIT.md` — auditoria completa pós-deploy (ETAPA 20, 26/08) · `WORLD_EXPERIENCE_RADAR_FINAL_REPORT.md` — implementação das Fases 3-11
+- `PRODUCTION_CONFIG_MATRIX.md` — toda variável de ambiente, valor esperado e onde configurar
+
+Documento novo desta rodada: `CODEBASE_REVIEW_FINAL.md` (revisão geral pré-pausa do projeto,
+27/08 — bugs corrigidos, decisões de organização, estado final antes de o Igor desligar).
 
 ## Stack
 
@@ -46,9 +62,9 @@ cp .env.example .env.local   # preencha as variáveis (ver checklist abaixo)
 npm run dev
 ```
 
-`npm run build` e `npm run typecheck` já foram validados (37 rotas, build limpo, incluindo o
-World Radar/Bucket List novos). `npm run lint` ainda não está configurado neste projeto
-(ver `EXISTING_FEATURES.md`).
+`npm run build`, `npm run typecheck` e `npm run lint` (ESLint configurado 27/08) sempre limpos —
+84 rotas geradas no build mais recente. `npm run test:smoke` roda a suíte Playwright (14 testes)
+contra produção real por padrão (ver `playwright.config.ts` pra rodar contra local).
 
 ## Estrutura
 

@@ -78,7 +78,12 @@ export function evaluateExperience(input: ExperienceScoreInput): ExplainableScor
   if (input.status === 'confirmado') {
     score += 10;
     positives.push('Data confirmada pela fonte');
-  } else if (input.status === 'estimado' || input.status === 'em_monitoramento') {
+  } else if (input.status === 'estimado' || input.status === 'em_monitoramento' || input.status === 'previsto') {
+    // 'previsto' faltava aqui (achado na revisão de 27/08) — sem essa
+    // branch, um evento "previsto" (padrão histórico, sem anúncio oficial
+    // ainda) pontuava como se o status nem existisse, igual a um evento
+    // sem nenhuma incerteza sobre a data. Mesmo tratamento de 'estimado'/
+    // 'em_monitoramento': é informação não confirmada oficialmente.
     score -= 8;
     negatives.push('Data ainda não confirmada oficialmente');
   } else if (input.status === 'cancelado' || input.status === 'adiado') {

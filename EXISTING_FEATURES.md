@@ -38,12 +38,9 @@ Supabase configurado) ainda depende do checklist manual do `README.md`.
 
 - `AmadeusProvider`, `DuffelProvider`, `BookingProvider` — stubs, não implementados
   (README já documentava isso antes desta sessão).
-- ESLint — **não configurado no projeto** (nenhum arquivo `.eslintrc*`/`eslint.config.*`
-  encontrado). `npm run lint` cai num prompt interativo de setup do Next.js. Isso é
-  estado pré-existente, não uma regressão desta sessão — o `npm run build` já roda
-  checagem de tipos e validade JSX internamente, então não há uma lacuna de qualidade
-  crítica, mas fica registrado como pendência de tooling caso o Igor queira lint
-  automatizado.
+- ~~ESLint — não configurado no projeto~~ — **RESOLVIDO 27/08**: `eslint.config.mjs` (flat
+  config) criado, `npm run lint` limpo. Este item fica como registro histórico do estado em
+  23/08; ver `MANUAL_ACTIONS.md` §14 DONE pro detalhe da correção.
 
 ## NÃO CONSTRUÍDO NESTA SESSÃO (roadmap explícito no IMPLEMENTATION_PLAN.md)
 

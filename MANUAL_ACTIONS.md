@@ -284,6 +284,20 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### DONE
 
+- [x] **Revisão geral pré-pausa (27/08) — 4 bugs reais corrigidos.** Rodei `/code-review high`
+      sobre a própria correção de data (item abaixo) e achei 3 problemas na migration `0035`:
+      (1) ela mudava `start_date`/`end_date` sem recalcular `experience_score`/`book_now_state`
+      pelo motor (`lib/scoring/event-score.ts`), violando o invariante do próprio
+      `admin/eventos/actions.ts` de nunca divergir score da explicação mostrada ao usuário;
+      (2) bumped `last_checked_at` mas não `last_changed_at`, mesmo com dado real mudando;
+      (3) usava `title` (não é unique) em vez de `slug` (é) no `where`. Ao recalcular à mão pra
+      conferir, achei um 4º bug, pré-existente desde a Fase 2: `evaluateExperience()` nunca
+      tratava o status `previsto` — só `confirmado`/`estimado`/`em_monitoramento`/`cancelado`/
+      `adiado`/`finalizado` — então todo evento "previsto" pontuava como se o status nem
+      existisse (sem o -8 que `estimado`/`em_monitoramento` levam), inflando o score. Corrigido
+      no código (`previsto` entrou no mesmo -8) e recalculado no banco real pras 4 linhas afetadas
+      (Rock in Rio, Coachella, GP Mônaco, Tomorrowland) via migration `0036`. Nenhum outro evento
+      tem status `previsto` hoje.
 - [x] **3 eventos do World Radar com data errada, corrigidos (27/08)** — verificação com fonte
       oficial (WebSearch) dos 9 eventos de data fixa em `world_events`: Oktoberfest, Festival de
       Parintins, San Fermín e o eclipse solar total de 2027 já estavam certos; a janela de aurora
