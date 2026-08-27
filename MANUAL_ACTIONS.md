@@ -231,3 +231,60 @@ só o que precisa de uma decisão ou configuração sua:
       registro: se notar algum comportamento estranho em `/contato`, no widget de IA da home, ou
       em bloqueio/desbloqueio de usuário nas próximas semanas, esse commit é o primeiro lugar pra
       olhar.
+
+## 14. World Experience Radar — Fases 3 a 11 (26/08) — pendências consolidadas
+
+Ver `WORLD_EXPERIENCE_RADAR_FINAL_REPORT.md` para o relatório completo de todas as fases. Só o
+que precisa de decisão/ação sua está aqui, em ordem de prioridade:
+
+- [ ] **Prioridade alta — custo real de IA já exposto**: você reforçou "zero custo absoluto"
+      nesta sessão, mas `ANTHROPIC_API_KEY` já está configurada em `.env.local` (usada
+      originalmente pelo Consultor IA, uma feature anterior a esta mega-etapa). Isso significa
+      que **Trip Builder** (`/montar-viagem`) e **Concierge IA** (`/concierge`) — ambos novos
+      nesta sessão, ambos gatados por plano Pro/Consultor — vão chamar a API paga de verdade
+      (custo real por token) sempre que um usuário Pro/Consultor usar essas telas, exatamente
+      como o Consultor IA já fazia. Se você realmente quer zero custo agora: defina
+      `AI_PROVIDER=none` no ambiente (local e Vercel) — as três features (Consultor IA não foi
+      alterado nesta sessão, mas honra a env var só se o Igor migrar a chave também; Trip
+      Builder e Concierge já respeitam `AI_PROVIDER=none` via `lib/ai/provider.ts`) caem no
+      fallback determinístico grátis automaticamente, sem quebrar nada. Se preferir manter a IA
+      ligada, não precisa fazer nada — é o comportamento atual.
+- [ ] **Confirmar se a pendência antiga do Stripe (Arc A, antes desta mega-etapa) foi
+      resolvida** — a última verificação registrada mostrava erro "No such price" persistente
+      até você criar os 6 produtos/preços manualmente no seu dashboard real do Stripe (diagnóstico:
+      a integração MCP do Stripe opera numa conta/escopo diferente da sua conta real logada no
+      navegador). Não foi revisitado durante as Fases 3-11 — verifique se `/assinatura` funciona
+      ponta a ponta com um checkout de teste antes de anunciar preços reais.
+- [ ] **Revisar o conteúdo curado antes de anunciar para usuários pagantes** — todo dado novo
+      das Fases 3, 4 e 11 (8 hospedagens, 8 cruzeiros, 7 eventos avançados) é `is_mock=true`,
+      `verification_status='estimated'` (ou sem data confirmada) — são reais e conhecidos
+      publicamente, mas preço/disponibilidade/data exata não foram verificados ao vivo por mim.
+      Mesma decisão de todas as fases anteriores (Fase 2 em diante): funciona para demonstração,
+      mas precisa da sua curadoria (ou de uma fonte oficial) antes de virar promessa comercial.
+- [ ] **Decidir sobre leitura anônima (SEO) em `/estadias`, `/cruzeiros`, `/descobrir`,
+      `/oportunidades-mundiais`, `/onde-ir`** — característica herdada desde a Fase 2, não
+      corrigida em nenhuma fase por decisão deliberada (preservar RLS): um visitante deslogado
+      vê a página carregar, mas vazia, porque a RLS dessas tabelas só libera leitura para
+      `authenticated`. Se quiser essas páginas indexáveis/verem conteúdo por visitantes (bom
+      para SEO/GEO), precisa de uma nova policy de leitura `anon`, no mesmo padrão já usado em
+      `/promocoes`/`/programas` (`0005_public_read_promotions_programs.sql`) — decisão de
+      produto, não implementada por padrão.
+- [ ] **`next lint` não tem configuração neste projeto** (achado nesta sessão, não é regressão
+      minha) — rodar `npx next lint` abre um assistente interativo pedindo para criar a
+      configuração do zero; todas as fases anteriores (inclusive esta) usaram só
+      `tsc --noEmit` + `next build` como gate de qualidade, nunca lint. Se quiser lint de
+      verdade no CI/dev, alguém precisa rodar o assistente uma vez e decidir a config (Strict
+      vs Base).
+- [ ] **Achados de performance do Supabase (não urgentes, nenhum ERROR)**: 27 avisos de RLS
+      chamando `auth.uid()`/`auth.role()` sem `(select ...)` e 40 de policies permissivas
+      sobrepostas — mas isso é o MESMO padrão já usado desde a Fase 2 em `world_events`, não uma
+      regressão das tabelas novas (`stays`/`cruises`/`trips`/`price_observations` só herdaram o
+      estilo já estabelecido). 24 índices "não usados" são esperados num banco semeado hoje.
+      8 foreign keys sem índice de cobertura (`source_id` em `stays`/`cruises`/`world_events`/
+      `price_observations`, `world_event_id` em `bucket_list_items`) — otimização de performance
+      opcional, sem urgência com o volume de dado atual (dezenas de linhas, não milhares).
+- [ ] **Sessão paralela**: parte das Fases 5, 6 e 7 foi implementada por outra janela do Claude
+      Code sua, rodando ao mesmo tempo nesta mesma pasta — reconciliei e auditei tudo antes de
+      continuar (ver `git log`), mas se ainda tiver essa outra janela aberta, feche-a ou
+      confirme que ela também considera o trabalho concluído antes de continuar editando o
+      projeto, para não haver mais colisão de working tree.
