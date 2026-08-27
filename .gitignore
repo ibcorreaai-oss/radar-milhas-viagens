@@ -13,3 +13,8 @@ next-env.d.ts
 # usuário, nunca versionar. Ver DISASTER_RECOVERY.md.
 /backups/
 *.dump.sql
+
+# Playwright (tests/smoke.spec.ts) — relatório/artefatos de execução local.
+/playwright-report/
+/test-results/
+/blob-report/
