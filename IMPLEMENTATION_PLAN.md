@@ -39,11 +39,35 @@ Migration `supabase/migrations/0002_world_radar.sql`:
 **Não incluído nesta fase** (fica para quando houver decisão sobre fonte de dados real):
 agentes de descoberta automática, deduplicação semântica, verificação contínua de fonte.
 
-## FASE 3 — Stay Experience (não iniciada)
+## FASE 3 — Stay Experience ✅ CONCLUÍDA (26/08/2026)
 
-Extraordinary Stays, Stay Experience Score, Smart Stay Split. Requer nova tabela `stays`
-(forma de dado diferente de `world_events`: preço, categoria de conforto,
-disponibilidade) — não reaproveita `world_events`.
+- Migration `0025_stay_experience.sql` — tabela `stays` (19 categorias, `experience_tags[]`,
+  provenance mais rigorosa que a Fase 2: `verification_status` explícito
+  verified/unverified/estimated/stale/mock + `retrieved_at`/`last_verified_at`, além de
+  `source_id`/`confidence_score`/`is_mock` já existentes na Fase 2). RLS idêntica ao padrão de
+  `world_events`.
+- `lib/scoring/stay-score.ts` — Stay Experience Score explicável (mesmo formato
+  `ExplainableScore` do Experience Score), determinístico.
+- `/estadias` (não `/stays` — mantém convenção PT-BR do resto do app) + `/estadias/[slug]`
+  (mostra o score com "por quê", positivos/negativos).
+- `/admin/estadias` — CRUD completo, mesmo padrão dos outros CRUDs do admin.
+- Sidebar atualizada (`Estadias`, atrás da flag `stayExperience`).
+- Seed (`supabase/seed_stay_experience.sql`) com 8 hospedagens reais e conhecidas (Amangiri,
+  ICEHOTEL, Treehotel, Giraffe Manor, Conrad Maldives, Skylodge Peru, Castello di Vicarello,
+  acampamento em Merzouga) — `verification_status='estimated'`, `is_mock=true` (dados públicos
+  conhecidos, mas preço/disponibilidade não verificados ao vivo nesta sessão). Scores
+  calculados à mão replicando `evaluateStay()`, não chutados.
+- Feature flag `stayExperience` ativada (mesmo padrão de `worldRadar` na Fase 2).
+- Testado ao vivo localmente (`next start`): listagem + filtros + card + página de detalhe com
+  explicação do score, tudo renderizando corretamente. `tsc`/`build` limpos.
+
+**Decisão registrada**: RLS de `stays` segue exatamente o padrão de `world_events` (leitura só
+`authenticated`, não `anon`) — mesmo `/estadias` sendo rota pública no `middleware.ts`. Isso
+significa que um visitante deslogado vê a página carregar mas sem itens (mesmo comportamento já
+existente em `/descobrir` desde a Fase 2 — não é uma regressão nova desta fase, é a mesma
+característica herdada). Registrado aqui, não corrigido agora (preservar decisão da Fase 2 sem
+scope creep) — fica como item de melhoria futura se o Igor quiser habilitar leitura anônima
+para SEO (mesmo padrão de `0005_public_read_promotions_programs.sql`).
 
 ## FASE 4 — Cruise Radar (não iniciada)
 

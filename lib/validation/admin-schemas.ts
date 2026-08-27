@@ -100,6 +100,35 @@ export const worldEventSchema = z.object({
 });
 export type WorldEventInput = z.infer<typeof worldEventSchema>;
 
+// --- Stays (Fase 3 do World Experience Radar) ---
+export const stayCategoryEnum = z.enum([
+  'hotel', 'resort', 'pousada', 'lodge', 'safari_lodge', 'glamping', 'villa', 'chalet',
+  'ryokan', 'overwater_bungalow', 'boutique_hotel', 'eco_lodge', 'castle_hotel',
+  'cave_hotel', 'treehouse', 'desert_camp', 'ski_resort', 'wellness_retreat', 'all_inclusive',
+]);
+
+export const staySchema = z.object({
+  name: z.string().trim().min(1, 'Nome é obrigatório.').max(200),
+  slug: z.string().trim().min(1, 'Não foi possível gerar um slug válido a partir do nome.').max(200),
+  destination_id: z.string().trim().uuid().nullable(),
+  category: stayCategoryEnum,
+  experience_tags: z.array(z.string().trim().min(1)).default([]),
+  description: z.string().trim().max(2000).nullable(),
+  price_from_cash: z.number().nonnegative('Preço não pode ser negativo.').nullable(),
+  price_currency: z.string().trim().min(1).max(6).default('BRL'),
+  price_unit: z.enum(['diaria', 'pacote']).default('diaria'),
+  best_season: z.string().trim().max(200).nullable(),
+  source_id: z.string().trim().uuid().nullable(),
+  source_url: z.string().trim().url('URL da fonte inválida.').max(500).nullable(),
+  verification_status: z.enum(['verified', 'unverified', 'estimated', 'stale', 'mock']),
+  confidence_score: z.number().min(0).max(1),
+  is_mock: z.boolean().default(false),
+  cover_image_url: z.string().trim().url('URL da imagem inválida.').max(500).nullable(),
+  featured: z.boolean().default(false),
+  active: z.boolean().default(true),
+});
+export type StayInput = z.infer<typeof staySchema>;
+
 // --- Central de Treinamentos / Mini LMS (ETAPA 15.2 — ver TRAINING.md) ---
 export const trainingModuleSchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório.').max(200),

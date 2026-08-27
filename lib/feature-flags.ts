@@ -11,6 +11,10 @@ const DEFAULTS: Record<FeatureFlagKey, boolean> = {
   worldCalendar: false,
   conciergeAI: false,
   achievementsPanel: false,
+  stayExperience: false,
+  worldOpportunityEngine: false,
+  inspireMe: false,
+  priceIntelligence: false,
 };
 
 // Único ponto de leitura de feature flags. Se o Supabase não estiver

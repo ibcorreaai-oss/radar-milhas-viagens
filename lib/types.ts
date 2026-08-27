@@ -298,7 +298,11 @@ export type FeatureFlagKey =
   | 'tripBuilder'
   | 'worldCalendar'
   | 'conciergeAI'
-  | 'achievementsPanel';
+  | 'achievementsPanel'
+  | 'stayExperience'
+  | 'worldOpportunityEngine'
+  | 'inspireMe'
+  | 'priceIntelligence';
 
 export interface FeatureFlag {
   key: FeatureFlagKey;
@@ -444,6 +448,133 @@ export const EVENT_RADAR_LABEL: Record<EventRadar, string> = {
   trem_terrestre: 'Trem & Terrestre',
   once_in_a_lifetime: 'Once in a Lifetime',
   hidden_gem: 'Hidden Gem',
+};
+
+// =====================================================================
+// FASE 3 — Stay Experience (World Experience Radar)
+// Espelham supabase/migrations/0025_stay_experience.sql.
+// =====================================================================
+
+export type StayCategory =
+  | 'hotel'
+  | 'resort'
+  | 'pousada'
+  | 'lodge'
+  | 'safari_lodge'
+  | 'glamping'
+  | 'villa'
+  | 'chalet'
+  | 'ryokan'
+  | 'overwater_bungalow'
+  | 'boutique_hotel'
+  | 'eco_lodge'
+  | 'castle_hotel'
+  | 'cave_hotel'
+  | 'treehouse'
+  | 'desert_camp'
+  | 'ski_resort'
+  | 'wellness_retreat'
+  | 'all_inclusive';
+
+export type ExperienceTag =
+  | 'BEACH'
+  | 'SNOW'
+  | 'NATURE'
+  | 'LUXURY'
+  | 'ROMANTIC'
+  | 'FAMILY'
+  | 'ADVENTURE'
+  | 'WELLNESS'
+  | 'GASTRONOMY'
+  | 'SAFARI'
+  | 'SKI'
+  | 'DIVING'
+  | 'REMOTE'
+  | 'UNIQUE'
+  | 'ALL_INCLUSIVE'
+  | 'OVERWATER'
+  | 'NORTHERN_LIGHTS';
+
+// Estado de proveniência do dado — mais rigoroso que o is_mock simples da
+// Fase 2 (pedido explícito do prompt da Fase 3+). "mock" é o único estado
+// usado sem uma fonte real por trás; os demais pressupõem source_id/url.
+export type VerificationStatus = 'verified' | 'unverified' | 'estimated' | 'stale' | 'mock';
+
+export interface Stay {
+  id: string;
+  destination_id: string | null;
+  name: string;
+  slug: string;
+  category: StayCategory;
+  experience_tags: ExperienceTag[];
+  description: string | null;
+  price_from_cash: number | null;
+  price_currency: string;
+  price_unit: 'diaria' | 'pacote';
+  best_season: string | null;
+  stay_score: number;
+  source_id: string | null;
+  source_url: string | null;
+  retrieved_at: string | null;
+  last_verified_at: string | null;
+  verification_status: VerificationStatus;
+  confidence_score: number;
+  is_mock: boolean;
+  cover_image_url: string | null;
+  featured: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const STAY_CATEGORY_LABEL: Record<StayCategory, string> = {
+  hotel: 'Hotel',
+  resort: 'Resort',
+  pousada: 'Pousada',
+  lodge: 'Lodge',
+  safari_lodge: 'Safari Lodge',
+  glamping: 'Glamping',
+  villa: 'Villa',
+  chalet: 'Chalé',
+  ryokan: 'Ryokan',
+  overwater_bungalow: 'Bangalô sobre a água',
+  boutique_hotel: 'Hotel boutique',
+  eco_lodge: 'Eco Lodge',
+  castle_hotel: 'Hotel-castelo',
+  cave_hotel: 'Hotel em caverna',
+  treehouse: 'Casa na árvore',
+  desert_camp: 'Acampamento no deserto',
+  ski_resort: 'Resort de ski',
+  wellness_retreat: 'Retiro de bem-estar',
+  all_inclusive: 'All-inclusive',
+};
+
+export const EXPERIENCE_TAG_LABEL: Record<ExperienceTag, string> = {
+  BEACH: 'Praia',
+  SNOW: 'Neve',
+  NATURE: 'Natureza',
+  LUXURY: 'Luxo',
+  ROMANTIC: 'Romântico',
+  FAMILY: 'Família',
+  ADVENTURE: 'Aventura',
+  WELLNESS: 'Bem-estar',
+  GASTRONOMY: 'Gastronomia',
+  SAFARI: 'Safári',
+  SKI: 'Ski',
+  DIVING: 'Mergulho',
+  REMOTE: 'Remoto',
+  UNIQUE: 'Único',
+  ALL_INCLUSIVE: 'All-inclusive',
+  OVERWATER: 'Sobre a água',
+  NORTHERN_LIGHTS: 'Aurora Boreal',
+};
+
+export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
+  verified: 'Verificado',
+  unverified: 'Não verificado',
+  estimated: 'Estimado',
+  stale: 'Desatualizado',
+  mock: 'Dado de exemplo',
 };
 
 export interface BucketList {
