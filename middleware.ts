@@ -18,6 +18,9 @@ const PROTECTED_PREFIXES = [
   '/favoritos',
   '/afiliados',
   '/treinamentos',
+  '/viagens',
+  '/montar-viagem',
+  '/concierge',
   '/admin',
 ];
 

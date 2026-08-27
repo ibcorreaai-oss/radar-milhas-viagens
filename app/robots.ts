@@ -28,12 +28,20 @@ export default function robots(): MetadataRoute.Robots {
         '/afiliados',
         '/treinamentos',
         '/auth',
+        // World Experience Radar (Fases 8-9) — mesmas 3 exigem login
+        // (redirect próprio na page, não middleware), achado na auditoria
+        // de produção: nunca tinham sido adicionadas aqui.
+        '/viagens',
+        '/montar-viagem',
+        '/concierge',
       ],
-      // '/descobrir' NÃO entra aqui de propósito (achado em auditoria pré-
-      // deploy, ETAPA 19): é conteúdo público de verdade (World Radar, só
-      // atrás de feature flag, não de login — não está em
-      // middleware.ts PROTECTED_PREFIXES). Bloquear indexação dele seria
-      // um erro, não um ganho de crawl budget.
+      // '/descobrir', '/estadias', '/cruzeiros', '/oportunidades-mundiais',
+      // '/onde-ir' e '/viagem-compartilhada' NÃO entram aqui de propósito
+      // (mesmo achado da ETAPA 19, estendido nas Fases 3-11): são conteúdo
+      // público de verdade (atrás de feature flag, não de login — nenhuma
+      // delas está em middleware.ts PROTECTED_PREFIXES nem faz redirect por
+      // falta de sessão). Bloquear indexação delas seria um erro, não um
+      // ganho de crawl budget.
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
