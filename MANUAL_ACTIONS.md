@@ -284,6 +284,12 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### DONE
 
+- [x] **Mais 3 foreign keys sem índice de cobertura, corrigidas (27/08)** — `get_advisors(performance)`
+      rodado de novo depois de todas as mudanças de hoje mostrou 3 FKs diferentes das 5 já
+      corrigidas na migration `0034`: `notification_logs.alert_id`, `opportunities.world_event_id`,
+      `user_loyalty_programs.program_id`. Migration `0037`. `multiple_permissive_policies` (40) e
+      `auth_rls_initplan` (20) continuam sendo o mesmo padrão intencional já formalizado (2
+      policies simples em vez de 1 complexa) — sem ação, mesma decisão de sempre.
 - [x] **Drift real entre banco de produção e repositório, corrigido (27/08).** Comparando
       `mcp__supabase__list_migrations` (o que está realmente aplicado no banco) contra
       `supabase/migrations/*.sql` (o que o repositório descreve), achei 2 migrations aplicadas
