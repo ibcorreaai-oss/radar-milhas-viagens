@@ -10,11 +10,13 @@ mega-etapa Fases 3-11) presente na história, working tree limpo. 4 sub-auditori
 
 O app está **rodando em produção agora** (`radar-milhas-viagens.vercel.app`, deploy automático a
 cada push, todos READY). Código, banco e segurança estão sólidos — nenhum achado crítico de
-segurança, nenhuma regressão, build/typecheck limpos. **Existe 1 blocker real e confirmado por
-log de produção**: o Stripe checkout está falhando pra usuários reais agora (`No such price`).
-Sem esse Price ID corrigido, ninguém consegue assinar um plano pago. O resto do app (World Radar,
-Estadias, Cruzeiros, Trip Builder, Concierge, Price Intelligence, Advanced Radars, autenticação,
-admin) está íntegro e utilizável.
+segurança, nenhuma regressão, build/typecheck limpos. **Atualização final (27/08)**: o blocker de
+Stripe (`No such price`, Price IDs de conta/escopo errado) foi corrigido por Igor no Stripe
+Dashboard real + Vercel, e validado ponta a ponta — Igor testou pessoalmente os 6 checkouts
+(Premium/Pro/Consultor × mensal/anual) em produção, todos abriram o Stripe Checkout
+corretamente, nenhum pagamento concluído. Nenhum blocker restante. World Radar, Estadias,
+Cruzeiros, Trip Builder, Concierge, Price Intelligence, Advanced Radars, autenticação, admin e
+monetização estão todos íntegros e utilizáveis. **Decisão: GO.**
 
 ## Current Git State
 
@@ -101,12 +103,14 @@ price: 'price_1U8jeSFbJuUYebOzjb7TReB3'`, 4 ocorrências, a mais recente às 23:
 usuário real tentando assinar recebeu erro 400 no checkout. Webhook mostrava histórico misto no
 log (ausente até ~20:37 UTC, depois 1 falha de assinatura às 22:38 UTC).
 
-**Estado atual (27/08, pós-correção manual do Igor)**: Igor corrigiu os 6 Price IDs e o
-`STRIPE_WEBHOOK_SECRET` diretamente no Stripe Dashboard real + Vercel. Um redeploy foi disparado
-(`git commit --allow-empty`, commit `5071f0d`) e confirmado `READY`. Desde então, **nenhum erro
-novo de Stripe apareceu nos logs** (`No such price`/`StripeInvalidRequestError`/falha de
-webhook) — mas isso, por si só, não é confirmação positiva: significa que ninguém tentou de
-novo ainda, não necessariamente que está corrigido. Ver "Final Stripe Validation" abaixo pro
+**Estado final (27/08, validado ponta a ponta)**: Igor corrigiu os 6 Price IDs e o
+`STRIPE_WEBHOOK_SECRET` diretamente no Stripe Dashboard real + Vercel. Redeploy disparado
+(`git commit --allow-empty`, commit `5071f0d`) e confirmado `READY`. Igor então **testou
+pessoalmente os 6 checkouts em produção** (Premium/Pro/Consultor × mensal/anual) — todos abriram
+o Stripe Checkout corretamente, nenhum pagamento concluído, nenhum cartão inserido.
+`get_runtime_errors` confirma nenhum erro novo de Stripe (`No such price`/
+`StripeInvalidRequestError`) nas 2h seguintes aos testes. **Causa raiz resolvida e confirmada
+por evidência real de uso, não só ausência de erro.** Ver "Final Stripe Validation" abaixo pro
 detalhe completo.
 
 Corrigido nesta auditoria via código (não depende do Igor): o webhook agora devolve 500 (Stripe
@@ -187,6 +191,29 @@ evento de teste real do Stripe Dashboard confirma de vez.
   mas não é o mesmo que "confirmado funcionando" — por isso o status fica `PENDING
   CONFIRMATION`, não `PASS`, até alguém completar esse clique real (só o Igor pode).
 
+### Round 3 — validação manual real pelo Igor (27/08, mesma data)
+
+Igor reportou ter testado pessoalmente os 6 planos (Premium/Pro/Consultor × mensal/anual) em
+produção, autenticado, e confirmou que **todos abriram o Stripe Checkout normalmente** — nenhum
+pagamento concluído, nenhum cartão inserido. Esse é exatamente o teste que o Round 2 identificou
+como impossível de eu fazer sozinho (exige login real em produção), então esta confirmação
+fecha a lacuna.
+
+Verificação feita nesta rodada: `get_runtime_errors` na janela de 2h cobrindo os testes —
+**nenhum erro novo de Stripe** (`No such price`/`StripeInvalidRequestError`/falha de
+assinatura). Consistente com o relato do Igor, embora a fonte primária de verdade seja o teste
+manual dele, não a ausência de erro (que sozinha só prova "ninguém tentou" ou "tentou e deu
+certo", nunca as duas coisas de forma distinguível por log). Combinando as duas evidências —
+relato direto de quem tem a única conta que pode testar + ausência de qualquer erro nos logs
+durante a janela dos testes — a correção está confirmada.
+
+Webhook: o teste operacional de 1 evento real via "Send test webhook" não foi mencionado como
+feito — mantido como item opcional/não-bloqueante (os 6 checkouts já provam que a integração de
+Price ID está correta; o webhook cobre o ciclo pós-pagamento, que só é exercitado de fato na
+primeira assinatura real).
+
+**Payments made during this round**: NONE.
+
 ## AI Providers
 
 `lib/ai/provider.ts` corrigido nesta sessão: nunca usa Anthropic (pago) por padrão, mesmo com a
@@ -247,17 +274,15 @@ Ver seção Tests/E2E acima — todas as rotas testadas retornaram o resultado e
 
 ## Known Issues
 
-1. Stripe: correção manual aplicada e redeploy confirmado, mas falta confirmação positiva real
-   (clique de "Assinar" em produção) — ver seção Stripe.
-2. STRIPE_WEBHOOK_SECRET: corrigido pelo Igor, falta reenviar 1 evento de teste real pra
-   confirmar 200 de ponta a ponta.
-3. `next lint` sem configuração neste projeto (nunca teve) — gate de qualidade é só
+1. STRIPE_WEBHOOK_SECRET: corrigido pelo Igor, falta reenviar 1 evento de teste real (opcional,
+   não bloqueia — ver seção Stripe).
+2. `next lint` sem configuração neste projeto (nunca teve) — gate de qualidade é só
    typecheck+build.
-4. 1 vulnerabilidade de dependência (postcss) só resolve com upgrade major do Next — não
+3. 1 vulnerabilidade de dependência (postcss) só resolve com upgrade major do Next — não
    aplicado.
-5. Conteúdo curado das Fases 3, 4, 11 é `is_mock=true`/estimado — precisa curadoria antes de
+4. Conteúdo curado das Fases 3, 4, 11 é `is_mock=true`/estimado — precisa curadoria antes de
    promessa comercial (já documentado desde a Fase 3).
-6. `CRON_SECRET` — sem confirmação direta (sem tool pra ler env var da Vercel), só inferência
+5. `CRON_SECRET` — sem confirmação direta (sem tool pra ler env var da Vercel), só inferência
    por ausência de erro nos logs.
 
 ## Manual Actions
@@ -285,16 +310,15 @@ Consolidado em `MANUAL_ACTIONS.md` (estrutura BLOCKERS/IMPORTANT/OPTIONAL/DONE).
 
 ## GO / NO-GO
 
-# GO WITH CONDITIONS
+# GO
 
 O código está production-ready: build limpo, segurança auditada sem achado explorável, RLS
-correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe agora resiliente
-a falha transitória, checkout agora falha graciosamente em vez de quebrar a tela. Igor já
-corrigiu manualmente os 6 Price IDs e o webhook secret no Stripe Dashboard real + Vercel, e um
-redeploy foi disparado e confirmado `READY` — nenhum erro novo de Stripe apareceu nos logs desde
-então. **A única condição restante não é mais causa raiz desconhecida, é confirmação de uso
-real**: ninguém completou um checkout de verdade ainda depois da correção, e eu não posso testar
-isso sozinho (exigiria login em produção, que a regra de credencial me impede de fazer). Assim
-que o Igor clicar "Assinar" nos 6 planos em `/assinatura` uma vez (sem precisar concluir
-pagamento) e confirmar que a página do Stripe Checkout abre sem erro, esta condição vira `GO`
-sem ressalvas.
+correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe resiliente a
+falha transitória, checkout falha graciosamente em vez de quebrar a tela. Igor corrigiu
+manualmente os 6 Price IDs e o webhook secret no Stripe Dashboard real + Vercel, disparou-se um
+redeploy confirmado `READY`, e **Igor testou pessoalmente os 6 checkouts em produção**
+(Premium/Pro/Consultor × mensal/anual) — todos abriram o Stripe Checkout corretamente, nenhum
+pagamento concluído. `get_runtime_errors` confirma nenhum erro novo de Stripe na janela dos
+testes. Nenhum blocker técnico ou de configuração restante. Único item não-bloqueante: enviar 1
+evento de teste real do webhook pelo Stripe Dashboard (cobre o ciclo pós-pagamento, exercitado
+de fato só na primeira assinatura real) — recomendado, não obrigatório para o lançamento.

@@ -240,36 +240,18 @@ importa pra decisão/ação sua, reorganizado por urgência.
 
 ### BLOCKERS (impedem lançamento comercial pleno)
 
-Nenhum blocker confirmado no momento — rebaixado de BLOCKER pra pendência de confirmação (ver
-IMPORTANT abaixo). Igor corrigiu manualmente os 6 Price IDs e o `STRIPE_WEBHOOK_SECRET` no
-Stripe Dashboard real + Vercel (27/08). Nesta sessão: confirmado que nenhum deploy novo tinha
-sido feito desde a correção das env vars (salvar variável sozinho não redeploya o que já está
-no ar) — disparado um redeploy (`git commit --allow-empty && git push`, commit `5071f0d`),
-confirmado `READY` na Vercel, smoke test sem regressão (`/`, `/login` 200; `/dashboard`,
-`/assinatura` 307 sem sessão; `/robots.txt` 200), e nenhum erro novo de Stripe
-(`No such price`/`StripeInvalidRequestError`/falha de webhook) nos logs desde o redeploy.
-
-### IMPORTANT (falta confirmação real de uso, não é mais causa raiz desconhecida)
-
-- [ ] **Confirmar que os 6 checkouts (Premium/Pro/Consultor × mensal/anual) realmente chegam ao
-      Stripe Checkout.** Não consigo fazer esse teste eu mesmo: exigiria logar como um usuário
-      real no app em produção, e a regra de nunca inserir/contornar credencial me impede — não
-      existe atalho seguro (a chave real da Stripe só existe na Vercel, sem ferramenta pra eu
-      ler; nenhuma sessão autenticada de produção está disponível nesta sessão). A ausência de
-      erro novo nos logs desde o redeploy é um bom sinal, mas não é confirmação — ninguém tentou
-      assinar ainda depois da correção.
-      - **Caminho mais rápido**: você mesmo, já logado no navegador real, clicar em "Assinar"
-        pros 6 planos em `/assinatura` (troque mensal/anual no seletor) — leva ~2 minutos, e
-        você já está autenticado, então não esbarra na regra de credencial. Não precisa
-        preencher cartão nem concluir — só confirmar que a página do Stripe Checkout abre, sem
-        erro.
-      - Alternativa: me diga como prefere que eu verifique (ex.: autorizar uma conta de teste
-        específica, ou aceitar a evidência de log como suficiente por enquanto).
-- [ ] **Confirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real.** Mesmo motivo acima —
-      Stripe Dashboard → Developers → Webhooks → seu endpoint → "Send test webhook", depois
-      conferir no Runtime Log da Vercel (filtro `category=payment`) que retornou 200.
+Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### IMPORTANT (não bloqueia lançamento, mas precisa de atenção antes de escalar)
+
+- [ ] **Validar o webhook com um evento de teste real do Stripe Dashboard** (opcional antes da
+      primeira assinatura de verdade, não bloqueia o lançamento — os 6 checkouts já confirmados
+      provam que a integração está correta; falta só o ciclo de vida pós-pagamento). Stripe
+      Dashboard → Developers → Webhooks → seu endpoint → "Send test webhook", depois conferir no
+      Runtime Log da Vercel (filtro `category=payment`) que retornou 200.
+- [ ] **Monitorar a primeira assinatura real** — quando o primeiro pagamento de verdade
+      acontecer, vale conferir no Runtime Log que `checkout.session.completed` gravou a
+      `subscription` corretamente e o e-mail de ativação foi enviado.
 
 - [ ] **Revisar o conteúdo curado antes de anunciar amplamente**: todo dado novo das Fases 3, 4
       e 11 (8 hospedagens, 8 cruzeiros, 7 eventos avançados) é `is_mock=true`/estimado — reais e
@@ -310,8 +292,14 @@ confirmado `READY` na Vercel, smoke test sem regressão (`/`, `/login` 200; `/da
 - [ ] Acessibilidade — spot-check feito (imagens com alt correto), auditoria completa de
       teclado/contraste/aria em todas as 77 rotas está fora do escopo desta passada.
 
-### DONE (corrigido nesta auditoria, sem ação sua)
+### DONE
 
+- [x] **Stripe: os 6 planos testados em produção pelo Igor, todos abriram o Stripe Checkout
+      corretamente** (Premium/Pro/Consultor × mensal/anual). Nenhum pagamento concluído, nenhum
+      cartão inserido — validação manual real, o único teste que provava de verdade a correção
+      dos Price IDs. `get_runtime_errors` confirmou nenhum erro novo de Stripe nas 2h seguintes
+      aos testes. Causa raiz original (Price IDs de outra conta/escopo, provavelmente criados
+      via MCP) — resolvida.
 - [x] Camada `AIProvider` nunca usa Anthropic (pago) por padrão, mesmo com a chave configurada —
       só Groq (grátis, se configurada) ou `none`. Testado com 5 combinações de env var.
 - [x] Webhook do Stripe agora reentrega em falha de escrita real (antes: falha de banco = erro

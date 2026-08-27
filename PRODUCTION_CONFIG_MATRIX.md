@@ -22,19 +22,25 @@ uma leitura direta do painel. Onde não há evidência de log, está marcado `UN
 **Stripe Mode**: LIVE (chave de produção configurada na Vercel — não confirmável por leitura
 direta).
 
-**Atualizado 27/08**: Igor corrigiu manualmente os 6 Price IDs e o `STRIPE_WEBHOOK_SECRET` no
-Stripe Dashboard real + Vercel. Redeploy disparado e confirmado `READY` (commit `5071f0d`).
-Nenhum erro novo de Stripe nos logs desde então — mas ninguém tentou assinar de verdade ainda
-depois da correção, então "Checkout Session" continua `PENDING CONFIRMATION`, não `PASS`, até
-alguém (Igor, o único que pode logar) completar um clique real em `/assinatura`.
+**Atualizado 27/08 (validação final)**: Igor corrigiu manualmente os 6 Price IDs e o
+`STRIPE_WEBHOOK_SECRET` no Stripe Dashboard real + Vercel, redeploy confirmado `READY` (commit
+`5071f0d`), e **testou pessoalmente os 6 checkouts em produção** — todos abriram o Stripe
+Checkout corretamente (nenhum pagamento concluído). `get_runtime_errors` confirma nenhum erro
+novo de Stripe nas 2h seguintes. Causa raiz (Price IDs de conta/escopo errado) resolvida.
 
 | Variável | Obrigatória | Ambiente | Status | Ação |
 |---|---|---|---|---|
-| `STRIPE_SECRET_KEY` | Sim | production | CONFIGURED (não legível por mim; vazia em `.env.local`, só existe na Vercel) | Nenhuma |
-| `STRIPE_WEBHOOK_SECRET` | Sim | production | CONFIGURED (corrigido por Igor 27/08) — `PENDING CONFIRMATION` (falta reenviar 1 evento de teste real) | Stripe Dashboard → Webhooks → "Send test webhook" |
-| `STRIPE_PRICE_PREMIUM/_PRO/_CONSULTOR` (+ `_ANNUAL`, 6 total) | Sim | production | CONFIGURED (corrigido por Igor 27/08) — `PENDING CONFIRMATION` (nenhum log novo de erro, mas nenhum checkout completo tentado ainda) | Clicar "Assinar" nos 6 planos em `/assinatura` (não precisa concluir pagamento) |
-| **Checkout Session (criação)** | — | — | `PENDING CONFIRMATION` — sem erro novo nos logs, mas sem confirmação positiva de sucesso ainda | Ver acima |
-| **Price livemode** | — | — | UNVERIFIED (não consigo ler a chave real pra confirmar) | — |
+| `STRIPE_SECRET_KEY` | Sim | production | CONFIGURED | Nenhuma |
+| `STRIPE_WEBHOOK_SECRET` | Sim | production | CONFIGURED — código verificado correto; falta só o teste operacional de 1 evento real (opcional, não bloqueia) | Stripe Dashboard → Webhooks → "Send test webhook" |
+| `STRIPE_PRICE_PREMIUM` | Sim | production | ✅ **PASS** — testado em produção, Stripe Checkout abriu corretamente | Nenhuma |
+| `STRIPE_PRICE_PREMIUM_ANNUAL` | Sim | production | ✅ **PASS** — testado em produção | Nenhuma |
+| `STRIPE_PRICE_PRO` | Sim | production | ✅ **PASS** — testado em produção | Nenhuma |
+| `STRIPE_PRICE_PRO_ANNUAL` | Sim | production | ✅ **PASS** — testado em produção | Nenhuma |
+| `STRIPE_PRICE_CONSULTOR` | Sim | production | ✅ **PASS** — testado em produção | Nenhuma |
+| `STRIPE_PRICE_CONSULTOR_ANNUAL` | Sim | production | ✅ **PASS** — testado em produção | Nenhuma |
+| **Checkout Session (criação)** | — | — | ✅ **PASS** (validado manualmente pelo Igor, 6/6 planos) | Nenhuma |
+| **Production Checkout redirect** | — | — | ✅ **PASS** | Nenhuma |
+| **Price livemode** | — | — | Inferido `true` pelo comportamento real (checkout abriu de verdade em produção) — não lido diretamente | — |
 
 ## IA (opcional, zero-custo por padrão)
 

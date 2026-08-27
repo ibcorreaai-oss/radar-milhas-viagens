@@ -37,18 +37,24 @@ pro detalhe de cada item.
 - [PASS] `robots.txt` bloqueia corretamente rotas privadas; sitemap só lista rotas públicas
 
 ## Stripe / pagamentos
-- [PASS] Stripe live environment — Igor corrigiu manualmente os 6 Price IDs + webhook secret (27/08); redeploy disparado e confirmado READY (commit `5071f0d`); nenhum erro novo (`No such price`/`StripeInvalidRequestError`) nos logs desde então
-- [MANUAL] Stripe Product/Price — nenhum log novo de erro, mas nenhum checkout foi completado desde a correção; falta confirmação positiva
-- [MANUAL] Checkout Session — sem erro recente, mas ainda sem confirmação positiva de sucesso para os 6 planos (Premium/Pro/Consultor × mensal/anual) — só o Igor consegue testar (exigiria login, que esta sessão não pode fazer)
+- [PASS] Stripe live Price IDs — validados manualmente por Igor em produção (27/08)
+- [PASS] Premium monthly checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Premium annual checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Pro monthly checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Pro annual checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Consultor monthly checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Consultor annual checkout — testado, Stripe Checkout abriu corretamente
+- [PASS] Checkout redirect to Stripe — confirmado nos 6 planos, nenhum pagamento concluído
+- [PASS] `get_runtime_errors` (2h pós-teste): nenhum erro novo de Stripe
 - [PASS] Success URL / Cancel URL — resolvidas via `getSiteUrl()` server-side, nunca aceitam destino do usuário (sem risco de open redirect)
-- [MANUAL] Clicar "Assinar" nos 6 planos em `/assinatura` (logado, sem concluir pagamento) para confirmar que cada um chega ao Stripe Checkout
-- [MANUAL] Reconfirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real do Stripe Dashboard — [PASS] Signature verification: código confirmado correto (`stripe.webhooks.constructEvent`)
+- [PASS] Signature verification: código confirmado correto (`stripe.webhooks.constructEvent`)
+- [MANUAL] Webhook — evento de teste real do Stripe Dashboard ainda não enviado (opcional, não bloqueia lançamento — os 6 checkouts já provam a integração de Price ID; falta só o ciclo pós-pagamento)
 - [PASS] Webhook agora reentrega em falha de escrita real (corrigido nesta auditoria)
 - [PASS] Nenhum segredo Stripe hardcoded no código/git
 - [PASS] Erro de checkout agora mostra mensagem amigável em vez de tela quebrada (corrigido nesta auditoria)
 - [PASS] Nenhum Price ID arbitrário aceito do cliente — sempre resolvido via whitelist server-side (`plan` → env var → Price ID)
 - [PASS] Smoke test pós-redeploy: `/`, `/login` 200; `/dashboard`, `/assinatura` 307 sem sessão; `/robots.txt` 200 — sem regressão
-- [N/A] Nenhuma cobrança real feita durante esta investigação (só leitura de código, logs e smoke test já existentes)
+- [N/A] Nenhuma cobrança real feita durante toda a investigação e validação (nenhum pagamento concluído, nenhum cartão inserido)
 
 ## IA / custo
 - [PASS] `AI_PROVIDER` nunca usa Anthropic (pago) por padrão, mesmo com chave configurada
@@ -81,6 +87,6 @@ pro detalhe de cada item.
 
 ## Decisão final
 
-Ver `PRODUCTION_READINESS_REPORT.md` — **GO WITH CONDITIONS**. Correção manual do Stripe feita
-por Igor (27/08) e redeploy confirmado; nenhum blocker técnico restante — só falta um clique de
-confirmação real (Igor logado, sem concluir pagamento) para virar **GO** sem ressalvas.
+Ver `PRODUCTION_READINESS_REPORT.md` — **GO**. Igor testou pessoalmente os 6 checkouts em
+produção (27/08) — todos abriram o Stripe Checkout corretamente, nenhum pagamento concluído.
+Nenhum blocker técnico ou de configuração restante.
