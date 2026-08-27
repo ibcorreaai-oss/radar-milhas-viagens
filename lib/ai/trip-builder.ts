@@ -16,7 +16,7 @@
 
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { completeWithAI, estimateCostUsd } from '@/lib/ai/provider';
+import { completeWithAI, estimateCostUsd, currentAIProvider } from '@/lib/ai/provider';
 import type { ExperienceTag, TripBudgetBreakdown, TripItineraryDay, TripOptimization, TripPace, TripVariant } from '@/lib/types';
 
 export interface GenerateTripInput {
@@ -160,7 +160,7 @@ export async function generateTripPlan(input: GenerateTripInput): Promise<Genera
 
     logger.info('system', 'trip_builder: geração de IA concluída', {
       feature: 'trip_builder',
-      model: 'claude-sonnet-4-5',
+      model: currentAIProvider() === 'groq' ? `groq:${process.env.GROQ_MODEL}` : 'claude-sonnet-4-5',
       inputTokens: completion.inputTokens,
       outputTokens: completion.outputTokens,
       estimatedCostUsd: Number(estimateCostUsd(completion.inputTokens, completion.outputTokens).toFixed(4)),

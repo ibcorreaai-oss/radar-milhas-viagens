@@ -237,18 +237,23 @@ só o que precisa de uma decisão ou configuração sua:
 Ver `WORLD_EXPERIENCE_RADAR_FINAL_REPORT.md` para o relatório completo de todas as fases. Só o
 que precisa de decisão/ação sua está aqui, em ordem de prioridade:
 
-- [ ] **Prioridade alta — custo real de IA já exposto**: você reforçou "zero custo absoluto"
-      nesta sessão, mas `ANTHROPIC_API_KEY` já está configurada em `.env.local` (usada
-      originalmente pelo Consultor IA, uma feature anterior a esta mega-etapa). Isso significa
-      que **Trip Builder** (`/montar-viagem`) e **Concierge IA** (`/concierge`) — ambos novos
-      nesta sessão, ambos gatados por plano Pro/Consultor — vão chamar a API paga de verdade
-      (custo real por token) sempre que um usuário Pro/Consultor usar essas telas, exatamente
-      como o Consultor IA já fazia. Se você realmente quer zero custo agora: defina
-      `AI_PROVIDER=none` no ambiente (local e Vercel) — as três features (Consultor IA não foi
-      alterado nesta sessão, mas honra a env var só se o Igor migrar a chave também; Trip
-      Builder e Concierge já respeitam `AI_PROVIDER=none` via `lib/ai/provider.ts`) caem no
-      fallback determinístico grátis automaticamente, sem quebrar nada. Se preferir manter a IA
-      ligada, não precisa fazer nada — é o comportamento atual.
+- [x] **RESOLVIDO — custo real de IA não é mais o padrão**: achado original desta lista era que
+      `ANTHROPIC_API_KEY` (já configurada em `.env.local` para o Consultor IA, feature anterior)
+      faria Trip Builder e Concierge chamarem a API paga automaticamente. Corrigido:
+      `lib/ai/provider.ts` agora **nunca** usa Anthropic por padrão — sem `AI_PROVIDER` definida,
+      só ativa IA se `GROQ_API_KEY`+`GROQ_MODEL` (Groq, free tier) estiverem configurados; caso
+      contrário cai em `none` (fallback grátis), mesmo com `ANTHROPIC_API_KEY` presente. Anthropic
+      só é usada com opt-in explícito (`AI_PROVIDER=anthropic`). Comportamento testado com 5
+      combinações de env var (nenhuma configurada, só chave Anthropic, Groq completo, opt-in
+      explícito Anthropic, `AI_PROVIDER=none` forçado) — todas resolveram corretamente.
+      **Falta só uma coisa sua pra ter IA de verdade de graça**:
+      - [ ] Preencher `GROQ_API_KEY` e `GROQ_MODEL` no `.env.local`/Vercel — Groq tem free tier
+            (mesmo provider que outros bots seus já usam, ex. `@ibc_trader_bot`). Pegue a chave em
+            https://console.groq.com e confirme o model id atual em
+            https://console.groq.com/docs/models (modelos da Groq são descontinuados com
+            frequência — confira também qual id um bot seu que já funciona está usando agora).
+            Sem essas duas variáveis, Trip Builder e Concierge continuam funcionando normalmente,
+            só que sempre no modo determinístico sem IA (zero custo garantido).
 - [ ] **Confirmar se a pendência antiga do Stripe (Arc A, antes desta mega-etapa) foi
       resolvida** — a última verificação registrada mostrava erro "No such price" persistente
       até você criar os 6 produtos/preços manualmente no seu dashboard real do Stripe (diagnóstico:

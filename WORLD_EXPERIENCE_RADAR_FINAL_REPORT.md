@@ -87,14 +87,18 @@ motor e conferidos ao vivo no navegador — nenhum score foi "chutado".
 
 ## 7. Camada de IA (AIProvider) e controle de custo
 
-Criada nesta sessão (`lib/ai/provider.ts`) a pedido explícito do Igor: `AI_PROVIDER=none`
-desliga qualquer chamada paga independentemente de `ANTHROPIC_API_KEY` estar configurada; sem a
-variável, mantém o comportamento retrocompatível (usa Anthropic só se a chave existir). Usada
-por `lib/ai/trip-builder.ts` (Fase 8, refatorado) e `lib/ai/concierge.ts` (Fase 9, já nasceu
-usando a camada). **Todas as features de IA têm fallback determinístico e nunca quebram sem a
-chave** — Trip Builder gera roteiro por regras, Concierge usa o próprio Trip Opportunity Score
-real como resposta. `/consultor-ia` (feature anterior a esta mega-etapa) não foi tocado — ver
-pendência na seção 16.
+Criada nesta sessão (`lib/ai/provider.ts`) a pedido explícito do Igor, **atualizada depois com
+suporte a Groq (free tier)** quando ele deixou claro que queria uma opção de IA gratuita de
+verdade, não só a IA desligada. Resolução final: `AI_PROVIDER=none` desliga qualquer IA;
+`AI_PROVIDER=groq` (ou nenhuma variável definida, com `GROQ_API_KEY`+`GROQ_MODEL` presentes) usa
+Groq de graça; `AI_PROVIDER=anthropic` (opt-in explícito, nunca automático) usa Claude pago — sem
+nenhuma variável e sem chave da Groq, o padrão é `none`, **nunca** cai pra Anthropic mesmo com
+`ANTHROPIC_API_KEY` presente (esse era o achado original, agora corrigido). Testado com 5
+combinações de env var via `tsx`, todas corretas. Usada por `lib/ai/trip-builder.ts` (Fase 8,
+refatorado) e `lib/ai/concierge.ts` (Fase 9). **Todas as features de IA têm fallback
+determinístico e nunca quebram sem a chave** — Trip Builder gera roteiro por regras, Concierge
+usa o próprio Trip Opportunity Score real como resposta. `/consultor-ia` (feature anterior a esta
+mega-etapa, ainda usa Anthropic direto) não foi tocado — ver pendência na seção 16.
 
 ## 8. Segurança
 
@@ -171,15 +175,17 @@ entrada de sidebar — única fase sem isso — corrigido antes de considerar a 
 - Banco: pronto (migrations aplicadas, RLS correta, sem achado de segurança novo).
 - Conteúdo: **não pronto para promessa comercial** sem revisão — todo dado novo (estadias,
   cruzeiros, eventos avançados) é curado/estimado, não verificado ao vivo por fonte oficial.
-- Custo: depende de decisão do Igor sobre `AI_PROVIDER` — ver seção 16.
+- Custo: resolvido — padrão agora é sempre grátis (`none`) a menos que o Igor configure Groq
+  (grátis) ou opte explicitamente por Anthropic (pago). Ver seção 16.
 - Monetização: depende de confirmação da pendência antiga do Stripe (Arc A, não revisitada
   nesta mega-etapa).
 
 ## 16. Pendências manuais consolidadas
 
 Lista completa, com contexto e prioridade, em `MANUAL_ACTIONS.md` item 14 (não duplicada aqui
-para não haver duas fontes de verdade). Resumo dos 6 itens, em ordem de prioridade:
-1. Decidir `AI_PROVIDER` (custo real de IA já exposto via chave existente).
+para não haver duas fontes de verdade). Resumo dos itens, em ordem de prioridade:
+1. ~~Decidir `AI_PROVIDER`~~ — resolvido: padrão seguro por design agora. Só falta preencher
+   `GROQ_API_KEY`/`GROQ_MODEL` se quiser IA de verdade (grátis) em vez de só fallback.
 2. Confirmar se o Stripe (pendência do Arc A) foi resolvido.
 3. Revisar conteúdo curado antes de anúncio comercial.
 4. Decidir sobre leitura anônima (SEO) nas páginas públicas novas.

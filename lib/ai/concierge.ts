@@ -22,7 +22,7 @@
 
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
-import { completeWithAI, estimateCostUsd } from '@/lib/ai/provider';
+import { completeWithAI, estimateCostUsd, currentAIProvider } from '@/lib/ai/provider';
 import { getDestinationOpportunities, type DestinationOpportunity } from '@/lib/opportunity-engine';
 
 export interface ConciergeMessage {
@@ -127,7 +127,7 @@ export async function askConcierge(history: ConciergeMessage[], message: string)
 
     logger.info('system', 'concierge: resposta de IA concluída', {
       feature: 'concierge',
-      model: 'claude-sonnet-4-5',
+      model: currentAIProvider() === 'groq' ? `groq:${process.env.GROQ_MODEL}` : 'claude-sonnet-4-5',
       inputTokens: completion.inputTokens,
       outputTokens: completion.outputTokens,
       estimatedCostUsd: Number(estimateCostUsd(completion.inputTokens, completion.outputTokens).toFixed(4)),
