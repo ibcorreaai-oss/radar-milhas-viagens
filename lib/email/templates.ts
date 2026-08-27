@@ -136,6 +136,31 @@ export function alertFoundEmail(params: {
   };
 }
 
+// Fase 7 (Alerts + Bucket List evolution) — dispara quando um evento salvo
+// na Bucket List entra em janela de "comprar"/"comprar_agora"
+// (book_now_state), o proxy honesto mais próximo que este app tem de
+// "evento abrir vendas" (não existe integração real com bilheteria).
+export function bucketListEventReadyEmail(params: {
+  eventTitle: string;
+  bookNowLabel: string;
+  detailsUrl: string;
+}): EmailTemplate {
+  const { eventTitle, bookNowLabel, detailsUrl } = params;
+  return {
+    subject: `Hora de agir: ${eventTitle} está na sua Bucket List`,
+    html: layout({
+      title: `${escapeHtml(eventTitle)} — ${escapeHtml(bookNowLabel)}`,
+      preheader: 'Um item da sua Bucket List entrou em uma boa janela de compra.',
+      bodyHtml: `
+        <p>O evento <strong>${escapeHtml(eventTitle)}</strong>, que está na sua Bucket List, agora está classificado como <strong>${escapeHtml(bookNowLabel)}</strong>.</p>
+        <p>Vale a pena revisar antes que a janela passe.</p>
+      `,
+      ctaLabel: 'Ver na Bucket List',
+      ctaUrl: detailsUrl,
+    }),
+  };
+}
+
 export function newPromotionEmail(params: { title: string; bonusPercentage: number | null; program: string | null; url: string | null }): EmailTemplate {
   const { title, bonusPercentage, program, url } = params;
   return {

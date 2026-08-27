@@ -4,11 +4,26 @@ import { getFlightProvider, getHotelProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planHasChannel } from '@/lib/plans';
 import { sendEmail } from '@/lib/email/send';
-import { alertFoundEmail } from '@/lib/email/templates';
+import { alertFoundEmail, bucketListEventReadyEmail } from '@/lib/email/templates';
 import { getWhatsAppProvider } from '@/lib/whatsapp';
 import { logger } from '@/lib/logger';
 import { getSiteUrl } from '@/lib/site-url';
-import type { Alert, CabinClass, PlanId } from '@/lib/types';
+import type { Alert, CabinClass, PlanId, BookNowState } from '@/lib/types';
+
+// Fase 7 (Alerts + Bucket List evolution) — cooldown entre lembretes do
+// mesmo item de Bucket List, pra não notificar todo dia enquanto o evento
+// ficar em janela de compra. Usa bucket_list_items.last_alert_sent_at
+// (coluna já existia desde a Fase 2, nunca tinha sido usada).
+const BUCKET_ALERT_COOLDOWN_DAYS = 7;
+const BOOK_NOW_ALERT_STATES: BookNowState[] = ['comprar', 'comprar_agora'];
+const BOOK_NOW_LABEL: Record<BookNowState, string> = {
+  monitorar: 'Monitorar',
+  esperar: 'Esperar',
+  boa_janela: 'Boa janela',
+  comprar: 'Comprar',
+  comprar_agora: 'Comprar agora',
+  alto_risco_esgotar: 'Alto risco de esgotar',
+};
 
 // Cron: /api/cron/check-alerts — roda 1x/dia, 09h (ver vercel.json). Era de
 // hora em hora até a ETAPA 19: o plano Hobby da Vercel só permite cron
@@ -329,6 +344,101 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  logger.info('cron', 'check-alerts finalizado', { dueCount: dueAlerts.length, checked, triggered });
-  return NextResponse.json({ checked, triggered });
+  // --- Fase 7: Bucket List — avisa quando um evento salvo entra em janela
+  // de "comprar"/"comprar_agora" (proxy honesto de "evento abrir vendas" —
+  // este app não tem integração real com bilheteria). Cada bucket_list_item
+  // é sua própria unidade de cooldown via last_alert_sent_at. ---
+  let bucketChecked = 0;
+  let bucketTriggered = 0;
+
+  const { data: bucketItems, error: bucketItemsError } = await admin
+    .from('bucket_list_items')
+    .select('id, last_alert_sent_at, bucket_lists(user_id), world_events(title, book_now_state)')
+    .not('world_event_id', 'is', null);
+
+  if (bucketItemsError) {
+    logger.error('cron', 'check-alerts: erro ao buscar bucket_list_items', { reason: bucketItemsError.message });
+  } else {
+    const now2 = Date.now();
+    for (const item of (bucketItems ?? []) as unknown as Array<{
+      id: string;
+      last_alert_sent_at: string | null;
+      bucket_lists: { user_id: string } | null;
+      world_events: { title: string; book_now_state: BookNowState } | null;
+    }>) {
+      const event = item.world_events;
+      const userId = item.bucket_lists?.user_id;
+      if (!event || !userId) continue;
+      if (!BOOK_NOW_ALERT_STATES.includes(event.book_now_state)) continue;
+
+      if (item.last_alert_sent_at) {
+        const daysSince = (now2 - new Date(item.last_alert_sent_at).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < BUCKET_ALERT_COOLDOWN_DAYS) continue;
+      }
+
+      bucketChecked += 1;
+
+      try {
+        const [{ data: subscription }, { data: profile }] = await Promise.all([
+          admin.from('subscriptions').select('plan').eq('user_id', userId).maybeSingle(),
+          admin.from('profiles').select('email, phone, notify_email, notify_whatsapp').eq('user_id', userId).maybeSingle(),
+        ]);
+        const plan = ((subscription?.plan as PlanId | undefined) ?? 'free') as PlanId;
+        const bookNowLabel = BOOK_NOW_LABEL[event.book_now_state];
+        const detailsUrl = `${getSiteUrl()}/bucket-list`;
+
+        const logs: Array<{
+          user_id: string;
+          alert_id: null;
+          channel: 'email' | 'whatsapp';
+          message: string;
+          status: 'sent' | 'failed' | 'skipped';
+          sent_at: string;
+        }> = [];
+        const nowIso2 = new Date().toISOString();
+
+        if (profile?.notify_email && planHasChannel(plan, 'email')) {
+          if (profile.email) {
+            const template = bucketListEventReadyEmail({ eventTitle: event.title, bookNowLabel, detailsUrl });
+            const result = await sendEmail(profile.email, template);
+            logs.push({ user_id: userId, alert_id: null, channel: 'email', message: template.subject, status: result.status, sent_at: nowIso2 });
+          }
+        }
+
+        if (profile?.notify_whatsapp && planHasChannel(plan, 'whatsapp')) {
+          if (profile.phone) {
+            const message = `Radar Milhas & Viagens: "${event.title}" (na sua Bucket List) está em ${bookNowLabel}. Confira: ${detailsUrl}`;
+            const result = await getWhatsAppProvider().sendText(profile.phone, message);
+            logs.push({ user_id: userId, alert_id: null, channel: 'whatsapp', message, status: result.status, sent_at: nowIso2 });
+          }
+        }
+
+        if (logs.length > 0) {
+          const { error: logError } = await admin.from('notification_logs').insert(logs);
+          if (logError) {
+            logger.error('integration', 'check-alerts: erro ao gravar notification_logs (bucket list)', {
+              itemId: item.id,
+              reason: logError.message,
+            });
+          }
+          await admin.from('bucket_list_items').update({ last_alert_sent_at: nowIso2 }).eq('id', item.id);
+          bucketTriggered += 1;
+        }
+      } catch (err) {
+        logger.error('cron', 'check-alerts: erro ao processar item de bucket list', {
+          itemId: item.id,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  logger.info('cron', 'check-alerts finalizado', {
+    dueCount: dueAlerts.length,
+    checked,
+    triggered,
+    bucketChecked,
+    bucketTriggered,
+  });
+  return NextResponse.json({ checked, triggered, bucketChecked, bucketTriggered });
 }

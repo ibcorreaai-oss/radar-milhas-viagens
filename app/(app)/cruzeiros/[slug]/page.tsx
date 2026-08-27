@@ -2,14 +2,17 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MapPin, ArrowLeft, CheckCircle2, XCircle, Moon, Anchor } from 'lucide-react';
+import { MapPin, ArrowLeft, CheckCircle2, XCircle, Moon, Anchor, Heart } from 'lucide-react';
 import { getFeatureFlags } from '@/lib/feature-flags';
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isOptimizableImageHost } from '@/lib/image-hosts';
 import { formatBRL } from '@/lib/utils';
 import { evaluateCruise } from '@/lib/scoring/cruise-score';
+import { saveCruiseToBucketList } from '../actions';
 import {
   CRUISE_CATEGORY_LABEL,
   CRUISE_REGION_TAG_LABEL,
@@ -65,6 +68,8 @@ export default async function CruzeiroDetailPage({ params }: { params: Promise<{
 
   const cruise = await loadCruise(slug);
   if (!cruise) notFound();
+
+  const ctx = await getUserContext();
 
   const explanation = evaluateCruise({
     category: cruise.category,
@@ -133,6 +138,15 @@ export default async function CruzeiroDetailPage({ params }: { params: Promise<{
             </Badge>
           ))}
         </div>
+      )}
+
+      {ctx && (
+        <form action={saveCruiseToBucketList.bind(null, cruise.id)}>
+          <Button type="submit" variant="outline" size="sm">
+            <Heart className="h-3.5 w-3.5" />
+            Salvar na Bucket List
+          </Button>
+        </form>
       )}
 
       <Card>

@@ -178,12 +178,43 @@ são informativos, sem link de destino individual (evitando link para uma págin
   (único stay com tag BEACH); modo "Família" mostra o estado vazio honesto. `tsc --noEmit` e
   `next build` limpos.
 
-## FASE 7 — Alertas de Bucket List (não iniciada)
+## FASE 7 — Alerts + Bucket List evolution ✅ CONCLUÍDA (26/08/2026)
 
-Estende `app/api/cron/check-alerts/route.ts` (já existe, roda 1x/dia — limite do plano Hobby da
-Vercel, ver ETAPA 19) para
-também varrer `bucket_list_items` e cruzar com `world_events` atualizados. Reaproveita o
-cron existente — não cria worker novo.
+- Migration `0029_bucket_list_alerts_evolution.sql` — `bucket_list_items` ganha `stay_id`/
+  `cruise_id` (nullable, FK pra `stays`/`cruises`), constraint de "pelo menos um tipo
+  preenchido" recriada pra cobrir os dois campos novos, índices únicos por lista pra evitar
+  duplicata (mesmo padrão do `world_event_id` já existente desde a Fase 2).
+- **Sem tabelas novas de `AlertRule`/`AlertCondition`/`AlertEvaluation`/`AlertNotification`**
+  (decisão deliberada citando a regra "não fazer overengineering" do próprio prompt): a tabela
+  `alerts` (0001) já cobre AlertRule+AlertCondition+AlertEvaluation pra voo/hotel;
+  `notification_logs` já cobre AlertNotification; `bucket_list_items.last_alert_sent_at` (coluna
+  existia desde 0002, nunca tinha sido usada) passa a cobrir o cooldown de alerta por item salvo.
+- `/estadias/[slug]` e `/cruzeiros/[slug]` ganharam botão "Salvar na Bucket List" (só faltava
+  isso — o botão já existia em `/descobrir` desde a Fase 2, mas nunca tinha sido estendido pras
+  Fases 3/4). Novos `app/(app)/estadias/actions.ts` e `app/(app)/cruzeiros/actions.ts`
+  (`saveStayToBucketList`/`saveCruiseToBucketList`), mesmo padrão de `saveEventToBucketList`.
+- `/bucket-list` atualizada pra renderizar itens de estadia/cruzeiro (nome, destino, score,
+  botão remover) além dos itens de evento e livre já suportados.
+- `app/api/cron/check-alerts/route.ts` (já existia, roda 1x/dia) ganhou uma segunda passada:
+  varre `bucket_list_items` com `world_event_id`, e quando o `book_now_state` do evento entra em
+  `comprar`/`comprar_agora` — o proxy honesto mais próximo que este app tem de "evento abrir
+  vendas", já que não existe integração real com bilheteria — envia e-mail/WhatsApp respeitando
+  `profiles.notify_email`/`notify_whatsapp` e o plano do usuário (`planHasChannel`), com cooldown
+  de 7 dias via `last_alert_sent_at` pra não notificar todo dia. Novo template
+  `bucketListEventReadyEmail` em `lib/email/templates.ts`.
+- **Não incluído nesta fase** (documentado, não escondido): alertas de queda de preço para
+  estadias/cruzeiros salvos ("avise quando hotel < X", "avise quando cruzeiro cair X%") — exigem
+  histórico de preço real, que é exatamente o que a Fase 10 (Price Intelligence 2.0) vai
+  construir; implementar agora seria inventar uma tendência de preço sem dado por trás (Zero
+  Hallucination Policy). Canais Telegram/Push: `notification_logs.channel` já aceita esses
+  valores no schema desde 0001, mas nenhum provider real foi ativado (exigiria token/conta
+  externa — decisão que cabe ao Igor, não uma decisão técnica normal).
+- Testado ao vivo localmente: estadia e cruzeiro salvos via botão novo, renderizados
+  corretamente em `/bucket-list` com o score certo, remoção funcionando; consulta SQL direta
+  confirmou que o item de Oktoberfest 2026 (book_now_state='comprar') seria corretamente
+  identificado pela nova passada do cron como elegível para notificação (sem disparar o envio
+  real de e-mail, pra não gerar side-effect indesejado num teste). `tsc --noEmit` e `next build`
+  limpos.
 
 ## FASE 8-11 — AI Trip Builder, Concierge IA (dados reais), Price Intelligence 2.0,
 Advanced Radars (não iniciadas)

@@ -671,6 +671,9 @@ export interface BucketListItem {
   id: string;
   bucket_list_id: string;
   world_event_id: string | null;
+  // stay_id/cruise_id — Fase 7 (Alerts + Bucket List evolution), ver 0029_bucket_list_alerts_evolution.sql.
+  stay_id: string | null;
+  cruise_id: string | null;
   custom_title: string | null;
   notes: string | null;
   last_alert_sent_at: string | null;

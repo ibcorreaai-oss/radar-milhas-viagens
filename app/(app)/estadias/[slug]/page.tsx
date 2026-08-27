@@ -2,14 +2,17 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MapPin, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
+import { MapPin, ArrowLeft, CheckCircle2, XCircle, Heart } from 'lucide-react';
 import { getFeatureFlags } from '@/lib/feature-flags';
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isOptimizableImageHost } from '@/lib/image-hosts';
 import { formatBRL } from '@/lib/utils';
 import { evaluateStay } from '@/lib/scoring/stay-score';
+import { saveStayToBucketList } from '../actions';
 import {
   STAY_CATEGORY_LABEL,
   EXPERIENCE_TAG_LABEL,
@@ -64,6 +67,8 @@ export default async function EstadiaDetailPage({ params }: { params: Promise<{ 
 
   const stay = await loadStay(slug);
   if (!stay) notFound();
+
+  const ctx = await getUserContext();
 
   // Recalcula a explicação ao vivo (mesmos inputs salvos) só pra exibir o
   // "por quê" — o stay_score gravado no banco já é este mesmo resultado
@@ -121,6 +126,15 @@ export default async function EstadiaDetailPage({ params }: { params: Promise<{ 
             </Badge>
           ))}
         </div>
+      )}
+
+      {ctx && (
+        <form action={saveStayToBucketList.bind(null, stay.id)}>
+          <Button type="submit" variant="outline" size="sm">
+            <Heart className="h-3.5 w-3.5" />
+            Salvar na Bucket List
+          </Button>
+        </form>
       )}
 
       <Card>

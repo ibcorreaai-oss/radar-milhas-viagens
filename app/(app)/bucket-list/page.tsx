@@ -12,7 +12,7 @@ import { WorldEventCard, type WorldEventCardData } from '@/components/world-even
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { addCustomBucketListItem, removeBucketListItem } from './actions';
-import type { BucketListItem, EventCategory, WorldEvent } from '@/lib/types';
+import type { BucketListItem, EventCategory, WorldEvent, Stay, Cruise, Destination } from '@/lib/types';
 
 type ItemRow = BucketListItem & {
   world_events:
@@ -21,6 +21,8 @@ type ItemRow = BucketListItem & {
         destinations: { city: string; country: string } | null;
       })
     | null;
+  stays: (Stay & { destinations: Pick<Destination, 'city' | 'country'> | null }) | null;
+  cruises: (Cruise & { destinations: Pick<Destination, 'city' | 'country'> | null }) | null;
 };
 
 export default async function BucketListPage() {
@@ -55,7 +57,9 @@ export default async function BucketListPage() {
 
   const { data } = await supabase
     .from('bucket_list_items')
-    .select('*, world_events(*, event_categories(label, radar), destinations(city, country))')
+    .select(
+      '*, world_events(*, event_categories(label, radar), destinations(city, country)), stays(*, destinations(city, country)), cruises(*, destinations:embarkation_destination_id(city, country))'
+    )
     .eq('bucket_list_id', bucketListId)
     .order('created_at', { ascending: false });
 
@@ -125,6 +129,56 @@ export default async function BucketListPage() {
                   : null,
               };
               return <WorldEventCard key={item.id} event={card} footer={removeButton} />;
+            }
+
+            if (item.stays) {
+              return (
+                <Card key={item.id}>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      <Link href={`/estadias/${item.stays.slug}`} className="hover:underline">
+                        {item.stays.name}
+                      </Link>
+                    </CardTitle>
+                    {item.stays.destinations && (
+                      <p className="text-sm text-muted-foreground">
+                        {item.stays.destinations.city}, {item.stays.destinations.country}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                      {item.stays.stay_score}/100 · Stay Score
+                    </div>
+                    {removeButton}
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            if (item.cruises) {
+              return (
+                <Card key={item.id}>
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      <Link href={`/cruzeiros/${item.cruises.slug}`} className="hover:underline">
+                        {item.cruises.name}
+                      </Link>
+                    </CardTitle>
+                    {item.cruises.destinations && (
+                      <p className="text-sm text-muted-foreground">
+                        Embarque: {item.cruises.destinations.city}, {item.cruises.destinations.country}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                      {item.cruises.cruise_score}/100 · Cruise Score
+                    </div>
+                    {removeButton}
+                  </CardContent>
+                </Card>
+              );
             }
 
             return (
