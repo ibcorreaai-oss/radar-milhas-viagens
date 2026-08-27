@@ -216,13 +216,68 @@ são informativos, sem link de destino individual (evitando link para uma págin
   real de e-mail, pra não gerar side-effect indesejado num teste). `tsc --noEmit` e `next build`
   limpos.
 
-## FASE 8-11 — AI Trip Builder, Concierge IA (dados reais), Price Intelligence 2.0,
-Advanced Radars (não iniciadas)
+## FASE 8 — AI Trip Builder ✅ CONCLUÍDA (26/08/2026)
 
-Descritas no PROMPT 3.0 original (§40-§42, §29, §11-§24). Ficam para depois das fases
-3-7 terem dado real — Concierge IA em particular precisa consultar dados reais do banco
-(§42), não pode ser implementado de forma honesta antes de Optimize/Discover terem
-volume de dado.
+**Nota de reconciliação**: o código desta fase foi escrito por outra janela do Claude Code do
+Igor rodando em paralelo no mesmo repositório (mesmo padrão já visto em sessões anteriores —
+ver `git log`, sempre fonte de verdade quando duas sessões mexem na mesma pasta). Esta sessão
+reconciliou o working tree, auditou o código linha a linha antes de confiar nele, e completou o
+que faltava antes de considerar a fase pronta — não recriou nada do zero.
+
+- Migration `0030_ai_trip_builder.sql` — tabela `trips` (itinerário e orçamento em `jsonb`,
+  decisão deliberada de não normalizar em tabela por dia — mesma regra "não fazer
+  overengineering" das fases anteriores). RLS: dono tem acesso total; leitura pública só
+  quando `is_shared = true` (link de compartilhamento somente-leitura, nunca edição). Estende
+  `bucket_list_items` com `trip_id` (Fase 7 ganha "salvar viagem montada na Bucket List").
+  Aplicada ao projeto Supabase real nesta sessão (estava só no working tree, não tinha sido
+  rodada ainda) — `get_advisors` (security) confirmado sem nenhum achado novo relacionado a
+  `trips`.
+- `lib/ai/trip-builder.ts` — `generateTripPlan()`: chama a Anthropic API (mesmo padrão já usado
+  em `/consultor-ia`, que já é uma integração paga pré-existente e aprovada, não introduzida por
+  esta fase) só quando `ANTHROPIC_API_KEY` está configurada; sem a chave, cai automaticamente em
+  `buildFallbackPlan()` — roteiro determinístico por regras, zero custo, `ai_generated=false`
+  deixado explícito na UI. Orçamento estimado sempre rotulado como estimativa de IA, nunca preço
+  real (Zero Hallucination Policy), com aviso visível nas páginas de detalhe e de
+  compartilhamento.
+- `/montar-viagem` (formulário, gate de plano Pro/Consultor — mesmo gate do Consultor IA, já que
+  cada geração com IA tem custo real por token quando a chave está configurada) → `/viagens`
+  (lista, ativas/arquivadas) → `/viagens/[id]` (detalhe: itinerário dia a dia, orçamento,
+  duplicar/arquivar/compartilhar/excluir/salvar na Bucket List) → `/viagem-compartilhada/[id]`
+  (link público somente-leitura, só renderiza se `is_shared=true`).
+- Feature flag `tripBuilder` — corrigido nesta sessão: existia no `FeatureFlagKey` e no
+  `DEFAULTS` de `lib/feature-flags.ts`, mas a migration (logo a linha do banco) só foi aplicada
+  agora; ativada após validação.
+- **Achado corrigido nesta sessão**: `components/app-sidebar.tsx` não tinha nenhuma entrada de
+  navegação para `/viagens` (diferente de toda fase anterior, que sempre adicionou item de
+  sidebar atrás da própria flag) — a feature existia mas só era alcançável digitando a URL
+  direto. Adicionado item "Minhas Viagens" (ícone `Luggage`, flag `tripBuilder`) depois de "Onde
+  Ir".
+- **Verificação desta sessão** (sem repetir o que a outra janela já tinha feito): `tsc --noEmit`
+  e `next build` limpos (65 rotas, incluindo as 4 novas desta fase). Migration aplicada ao banco
+  real e testada com um round-trip real (insert com o shape exato dos tipos TS, incluindo
+  `itinerary`/`budget_breakdown` em jsonb → select de volta → delete do registro de teste) —
+  confirma que schema, constraints e RLS aceitam o dado corretamente. **Não testado via
+  navegador/Chrome** desta vez: o fluxo completo via `/montar-viagem` dispara uma chamada real à
+  API paga da Anthropic (a chave já está configurada no `.env.local` para o Consultor IA
+  existente) — evitado deliberadamente para não gerar custo real numa verificação, em linha com
+  a regra de custo zero reforçada pelo Igor nesta sessão. Recomendação registrada abaixo.
+
+**Pendência/recomendação registrada, não bloqueante**: o Igor pediu explicitamente (nesta
+sessão) uma camada `AIProvider` abstrata para as Fases 8/9 — grátis/local/configurável/
+`AI_PROVIDER=none` — em vez de assumir Claude pago. O Trip Builder desta fase já é seguro em
+custo (cai pra fallback grátis sem a chave), mas ainda chama a Anthropic diretamente quando a
+chave existe, sem essa camada de abstração. Refatorar isso tocaria também `/consultor-ia`
+(já em produção) — escopo maior que reconciliar esta fase, então não foi feito agora para não
+mexer numa feature já estável sem necessidade. Ver `MANUAL_ACTIONS.md`/relatório final.
+
+## FASE 9-11 — AI Travel Concierge, Price Intelligence 2.0, Advanced Radars (não iniciadas)
+
+Descritas no PROMPT WORLD EXPERIENCE RADAR original. A partir daqui todas seguem a doutrina de
+custo zero absoluto reforçada pelo Igor: camada `AIProvider` (grátis/local/configurável/none)
+em vez de assumir modelo pago; Price Intelligence 2.0 constrói histórico próprio a partir de
+observações reais do próprio sistema (`price_observations`), nunca compra/inventa histórico;
+Advanced Radars só integra fonte gratuita e permitida por fonte, com graceful degradation
+quando não houver uma.
 
 ## Regra de ouro para todas as fases futuras
 

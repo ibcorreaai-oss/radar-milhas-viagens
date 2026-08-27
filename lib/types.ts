@@ -674,11 +674,97 @@ export interface BucketListItem {
   // stay_id/cruise_id — Fase 7 (Alerts + Bucket List evolution), ver 0029_bucket_list_alerts_evolution.sql.
   stay_id: string | null;
   cruise_id: string | null;
+  // trip_id — Fase 8 (AI Trip Builder), ver 0030_ai_trip_builder.sql.
+  trip_id: string | null;
   custom_title: string | null;
   notes: string | null;
   last_alert_sent_at: string | null;
   created_at: string;
 }
+
+// =====================================================================
+// FASE 8 — AI Trip Builder (World Experience Radar)
+// Espelham supabase/migrations/0030_ai_trip_builder.sql.
+// =====================================================================
+
+export type TripPace = 'tranquilo' | 'moderado' | 'intenso';
+export type TripVariant = 'economy' | 'balanced' | 'premium';
+export type TripStatus = 'ativa' | 'arquivada';
+
+export interface TripItineraryDay {
+  day: number;
+  date: string | null;
+  morning: string;
+  afternoon: string;
+  evening: string;
+}
+
+export interface TripBudgetBreakdown {
+  flights: number | null;
+  hotels: number | null;
+  transport: number | null;
+  food: number | null;
+  tickets: number | null;
+  experiences: number | null;
+  cruise: number | null;
+  other: number | null;
+  estimated_total: number | null;
+  currency: string;
+}
+
+export interface Trip {
+  id: string;
+  user_id: string;
+  title: string;
+  origin: string | null;
+  destination: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  travelers_adults: number;
+  travelers_children: number;
+  budget_total: number | null;
+  interests: ExperienceTag[];
+  pace: TripPace;
+  variant: TripVariant;
+  optimizations: string[];
+  itinerary: TripItineraryDay[];
+  budget_breakdown: TripBudgetBreakdown;
+  summary: string | null;
+  ai_generated: boolean;
+  status: TripStatus;
+  is_shared: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const TRIP_PACE_LABEL: Record<TripPace, string> = {
+  tranquilo: 'Tranquilo',
+  moderado: 'Moderado',
+  intenso: 'Intenso',
+};
+
+export const TRIP_VARIANT_LABEL: Record<TripVariant, string> = {
+  economy: 'Econômica',
+  balanced: 'Equilibrada',
+  premium: 'Premium',
+};
+
+export type TripOptimization =
+  | 'reduzir_custo'
+  | 'menos_deslocamentos'
+  | 'mais_experiencias'
+  | 'mais_descanso'
+  | 'mais_gastronomia'
+  | 'mais_natureza';
+
+export const TRIP_OPTIMIZATION_LABEL: Record<TripOptimization, string> = {
+  reduzir_custo: 'Reduzir custo',
+  menos_deslocamentos: 'Menos deslocamentos',
+  mais_experiencias: 'Mais experiências',
+  mais_descanso: 'Mais descanso',
+  mais_gastronomia: 'Mais gastronomia',
+  mais_natureza: 'Mais natureza',
+};
 
 // =====================================================================
 // Favoritos (ETAPA 14 — ver AUTH_AND_ADMIN.md §8)
