@@ -77,6 +77,16 @@ export async function POST(request: Request) {
       });
     }
 
+    // Achado na auditoria de producao: sem isto, um erro de escrita real
+    // (ex.: subscriptions.upsert falhando) so era logado, e o handler ainda
+    // devolvia 200 no fim — a Stripe nunca reentregava o evento porque, do
+    // ponto de vista dela, deu tudo certo. `hadCriticalWriteError` marca essa
+    // falha pra devolver 500 (a Stripe reentrega automaticamente com
+    // backoff); o guard de idempotencia gravado acima e apagado antes de
+    // devolver 500, senao a proxima reentrega seria descartada como
+    // "ja processada" sem nunca re-tentar a escrita que falhou.
+    let hadCriticalWriteError = false;
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -110,6 +120,7 @@ export async function POST(request: Request) {
         );
 
         if (error) {
+          hadCriticalWriteError = true;
           await logger.critical('payment', 'Erro ao gravar subscription após checkout concluído', {
             userId,
             planId,
@@ -145,6 +156,7 @@ export async function POST(request: Request) {
           .eq('stripe_subscription_id', subscription.id);
 
         if (error) {
+          hadCriticalWriteError = true;
           logger.error('payment', 'Erro ao atualizar subscription (customer.subscription.updated)', {
             stripeSubscriptionId: subscription.id,
             reason: error.message,
@@ -182,6 +194,7 @@ export async function POST(request: Request) {
           .eq('stripe_subscription_id', subscription.id);
 
         if (error) {
+          hadCriticalWriteError = true;
           logger.error('payment', 'Erro ao cancelar subscription (customer.subscription.deleted)', {
             stripeSubscriptionId: subscription.id,
             reason: error.message,
@@ -208,6 +221,14 @@ export async function POST(request: Request) {
       default:
         // Eventos não tratados são ignorados de propósito.
         break;
+    }
+
+    if (hadCriticalWriteError) {
+      // Apaga o guard de idempotência gravado no início — sem isto, a
+      // reentrega da Stripe (disparada pelo 500 abaixo) seria descartada
+      // como "já processada" antes de tentar escrever de novo.
+      await supabaseAdmin.from('stripe_webhook_events').delete().eq('event_id', event.id);
+      return NextResponse.json({ error: 'Falha ao gravar estado da assinatura, aguardando nova tentativa.' }, { status: 500 });
     }
 
     return NextResponse.json({ received: true });
