@@ -23,7 +23,7 @@ export default async function AdminModuloPage({ params }: { params: Promise<{ id
   ]);
 
   if (!moduleData) notFound();
-  const module = moduleData as TrainingModule;
+  const trainingModule = moduleData as TrainingModule;
   const lessons = (lessonsData ?? []) as TrainingLesson[];
 
   return (
@@ -35,18 +35,18 @@ export default async function AdminModuloPage({ params }: { params: Promise<{ id
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{module.title}</h1>
-          {module.description && <p className="mt-1 text-muted-foreground">{module.description}</p>}
-          <Badge variant={module.status === 'published' ? 'success' : 'outline'} className="mt-2">
-            {TRAINING_STATUS_LABEL[module.status]}
+          <h1 className="text-2xl font-bold tracking-tight">{trainingModule.title}</h1>
+          {trainingModule.description && <p className="mt-1 text-muted-foreground">{trainingModule.description}</p>}
+          <Badge variant={trainingModule.status === 'published' ? 'success' : 'outline'} className="mt-2">
+            {TRAINING_STATUS_LABEL[trainingModule.status]}
           </Badge>
         </div>
         <div className="flex gap-2">
-          <Link href={`/admin/treinamentos/modulos/${module.id}/editar`} className={cn(buttonVariants({ variant: 'outline' }))}>
+          <Link href={`/admin/treinamentos/modulos/${trainingModule.id}/editar`} className={cn(buttonVariants({ variant: 'outline' }))}>
             <Pencil className="h-4 w-4" />
             Editar módulo
           </Link>
-          <Link href={`/admin/treinamentos/aulas/nova?modulo=${module.id}`} className={cn(buttonVariants({ variant: 'default' }))}>
+          <Link href={`/admin/treinamentos/aulas/nova?modulo=${trainingModule.id}`} className={cn(buttonVariants({ variant: 'default' }))}>
             <Plus className="h-4 w-4" />
             Nova aula
           </Link>
@@ -71,12 +71,12 @@ export default async function AdminModuloPage({ params }: { params: Promise<{ id
         ]}
         actions={(l) => (
           <div className="flex justify-end gap-2">
-            <form action={moveLesson.bind(null, l.id, module.id, 'up')}>
+            <form action={moveLesson.bind(null, l.id, trainingModule.id, 'up')}>
               <Button type="submit" variant="ghost" size="icon" aria-label="Mover para cima">
                 <ArrowUp className="h-3.5 w-3.5" />
               </Button>
             </form>
-            <form action={moveLesson.bind(null, l.id, module.id, 'down')}>
+            <form action={moveLesson.bind(null, l.id, trainingModule.id, 'down')}>
               <Button type="submit" variant="ghost" size="icon" aria-label="Mover para baixo">
                 <ArrowDown className="h-3.5 w-3.5" />
               </Button>
@@ -103,7 +103,7 @@ export default async function AdminModuloPage({ params }: { params: Promise<{ id
               <Pencil className="h-3.5 w-3.5" />
               Editar
             </Link>
-            <form action={deleteLesson.bind(null, l.id, module.id)}>
+            <form action={deleteLesson.bind(null, l.id, trainingModule.id)}>
               <ConfirmSubmitButton
                 variant="destructive"
                 size="sm"

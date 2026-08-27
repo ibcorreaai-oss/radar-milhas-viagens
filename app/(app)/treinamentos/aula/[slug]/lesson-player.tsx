@@ -108,7 +108,7 @@ export function LessonPlayer({
               />
             )}
             {resolved.kind === 'native' && (
-              // eslint-disable-next-line jsx-a11y/media-has-caption -- conteúdo educativo do próprio admin, sem legendas geradas
+              // Sem legenda: conteúdo educativo do próprio admin, sem legendas geradas ainda.
               <video
                 ref={videoRef}
                 src={resolved.src}

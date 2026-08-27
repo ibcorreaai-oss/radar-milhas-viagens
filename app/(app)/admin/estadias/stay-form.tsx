@@ -139,7 +139,7 @@ export function StayForm({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="best_season">Melhor época (texto livre — ex.: "dez-fev, temporada seca")</Label>
+            <Label htmlFor="best_season">Melhor época (texto livre — ex.: &quot;dez-fev, temporada seca&quot;)</Label>
             <Input id="best_season" name="best_season" maxLength={200} defaultValue={stay?.best_season ?? ''} />
           </div>
 

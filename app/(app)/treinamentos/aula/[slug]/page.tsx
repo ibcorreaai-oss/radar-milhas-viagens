@@ -26,7 +26,7 @@ export default async function AulaPage({ params }: { params: Promise<{ slug: str
     .select('*')
     .eq('id', lesson.module_id)
     .maybeSingle();
-  const module = moduleData as TrainingModule | null;
+  const trainingModule = moduleData as TrainingModule | null;
 
   // Lista global (todos os módulos, na mesma ordem do /treinamentos) pra
   // navegação anterior/próxima cruzar limite de módulo, e a lista lateral
@@ -87,7 +87,7 @@ export default async function AulaPage({ params }: { params: Promise<{ slug: str
 
       <LessonPlayer
         lesson={lesson}
-        module={module}
+        module={trainingModule}
         progress={(progressData as LessonProgress) ?? null}
         prevLesson={prevLesson}
         nextLesson={nextLesson}

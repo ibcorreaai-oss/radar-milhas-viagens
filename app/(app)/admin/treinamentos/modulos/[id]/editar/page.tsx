@@ -19,15 +19,15 @@ export default async function EditarModuloPage({
   const supabase = await createClient();
   const { data } = await supabase.from('training_modules').select('*').eq('id', id).maybeSingle();
   if (!data) notFound();
-  const module = data as TrainingModule;
+  const trainingModule = data as TrainingModule;
 
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Editar módulo</h1>
-        <p className="mt-1 text-muted-foreground">{module.title}</p>
+        <p className="mt-1 text-muted-foreground">{trainingModule.title}</p>
       </div>
-      <ModuleForm module={module} action={updateModule.bind(null, id)} error={erro} />
+      <ModuleForm module={trainingModule} action={updateModule.bind(null, id)} error={erro} />
     </div>
   );
 }

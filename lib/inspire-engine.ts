@@ -63,7 +63,7 @@ export function rankForInspireMe(
   mode: InspireMode,
   continent: string | null
 ): DestinationOpportunity[] {
-  let pool = continent ? opportunities.filter((o) => o.destination.continent === continent) : opportunities;
+  const pool = continent ? opportunities.filter((o) => o.destination.continent === continent) : opportunities;
 
   const tag = MODE_TAG[mode];
   if (tag) {

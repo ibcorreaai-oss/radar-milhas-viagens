@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MapPin, ArrowLeft, CheckCircle2, XCircle, Moon, Anchor, Heart } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Moon, Anchor, Heart } from 'lucide-react';
 import { getFeatureFlags } from '@/lib/feature-flags';
 import { createClient } from '@/lib/supabase/server';
 import { getUserContext } from '@/lib/auth';
