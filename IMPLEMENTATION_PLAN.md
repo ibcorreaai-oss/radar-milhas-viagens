@@ -346,12 +346,44 @@ foi refatorado para usá-la (diff mínimo, comportamento externo idêntico). `/c
 observação real se acumula — depois de 3+ edições espalhadas no tempo, as páginas passam a
 mostrar mediana/faixa/variação de verdade, sem precisar de nenhuma mudança de código.
 
-## FASE 11 — Advanced Experience Radars (não iniciada)
+## FASE 11 — Advanced Experience Radars ✅ CONCLUÍDA (26/08/2026)
 
-Descrita no PROMPT WORLD EXPERIENCE RADAR original. Segue a doutrina de custo zero absoluto:
-só integra fonte gratuita e permitida por fonte (respeitando robots/ToS, sem bypass de
-CAPTCHA/anti-bot), com graceful degradation quando não houver uma disponível para uma
-categoria (futebol/automobilismo/ski/fenômenos naturais/festivais/praia/wildlife/gastronomia).
+**Decisão de arquitetura registrada**: nenhuma tabela ou página nova. Os 8 temas pedidos
+(futebol, automobilismo, ski, fenômenos naturais, festivais, praia, wildlife, gastronomia) são
+reaproveitados 100% do schema `world_events`/`event_categories` já existente desde a Fase 2 —
+criar 8 tabelas/CRUDs/páginas dedicadas seria overengineering puro (mesma regra já citada nas
+Fases 4 e 8), já que o próprio motor de score, RLS, filtro por categoria/mês e página `/descobrir`
+já resolvem exatamente esse problema. `esporte` cobre futebol+automobilismo; `natureza` cobre
+wildlife; `sazonal` cobre ski/praia; `fenomeno-natural` e `gastronomia` já existiam dedicados;
+`festival-musical`/`festa-tradicional`/`cultural` já cobriam festivais desde a Fase 2.
+- `supabase/seed_advanced_radars.sql` (novo, aplicado ao banco real, sem migration — só DML) —
+  5 destinos novos (Le Mans, Zermatt, Serengeti, Alba, Punta Cana) + 7 eventos reais e
+  conhecidos, um ou mais por tema: **El Clásico** Real Madrid x Barcelona (futebol), **24 Horas
+  de Le Mans** (automobilismo), **abertura da temporada de esqui em Zermatt** (ski), **eclipse
+  solar total de 2 de agosto de 2027** visível do Egito (fenômeno natural — status `confirmado`
+  por ser evento astronômico calculável, diferente dos demais que são `estimado`), **Grande
+  Migração do Serengeti** (wildlife), **Fiera del Tartufo Bianco d'Alba** (gastronomia), **alta
+  temporada de praia no Caribe/Punta Cana** (praia). Todos `is_mock=true`, a maioria
+  `status='estimado'` (datas exatas futuras não confirmadas por mim nesta sessão — Zero
+  Hallucination Policy) ou sem `start_date` quando é um evento sazonal/recorrente sem uma data
+  única.
+- `experience_score` calculado à mão replicando `evaluateExperience()` e `book_now_state`
+  replicando `deriveBookNowState()` — conferido depois via live: El Clásico=54, Le Mans=69,
+  Zermatt=43, Eclipse=65, Serengeti=44, Alba=45, Caribe=44 — todos batem exatamente com o que
+  `/descobrir` renderizou ao vivo.
+- Nenhuma linha de código nova (`.ts`/`.tsx`) — `/descobrir` já filtra por categoria
+  dinamicamente a partir de `event_categories`, então os 7 eventos novos apareceram
+  automaticamente sem qualquer mudança de página.
+- **Testado ao vivo localmente**: os 7 eventos renderizando em `/descobrir` com score, badge de
+  categoria, status e "Salvar na Bucket List" funcionando — nenhuma regressão nos eventos já
+  existentes (GP de Mônaco, Oktoberfest, San Fermín, aurora boreal, Tomorrowland, Coachella,
+  Festival de Parintins, Rock in Rio, todos continuam lá).
+
+**Não incluído** (documentado, não escondido, mesma decisão de todas as fases anteriores):
+nenhuma integração com API externa de esportes/clima/astronomia — todo dado é curado
+manualmente, seguindo exatamente o mesmo padrão de `world_events` desde a Fase 2. Se o Igor
+quiser dados ao vivo (calendário oficial de jogos, previsão de aurora em tempo real, etc.) no
+futuro, precisa de uma fonte gratuita real identificada e aprovada — não existe hoje no app.
 
 ## Regra de ouro para todas as fases futuras
 
