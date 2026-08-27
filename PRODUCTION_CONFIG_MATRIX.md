@@ -20,17 +20,20 @@ uma leitura direta do painel. Onde não há evidência de log, está marcado `UN
 ## Stripe (obrigatório pra monetização)
 
 **Stripe Mode**: LIVE (chave de produção configurada na Vercel — não confirmável por leitura
-direta, mas o comportamento observado — checkout real tentado por usuário real — só acontece
-com uma chave de verdade configurada).
+direta).
+
+**Atualizado 27/08**: Igor corrigiu manualmente os 6 Price IDs e o `STRIPE_WEBHOOK_SECRET` no
+Stripe Dashboard real + Vercel. Redeploy disparado e confirmado `READY` (commit `5071f0d`).
+Nenhum erro novo de Stripe nos logs desde então — mas ninguém tentou assinar de verdade ainda
+depois da correção, então "Checkout Session" continua `PENDING CONFIRMATION`, não `PASS`, até
+alguém (Igor, o único que pode logar) completar um clique real em `/assinatura`.
 
 | Variável | Obrigatória | Ambiente | Status | Ação |
 |---|---|---|---|---|
-| `STRIPE_SECRET_KEY` | Sim | production | CONFIGURED (não legível por mim; vazia em `.env.local`, só existe na Vercel) | Confirmar que é a chave da conta REAL do Igor (não a do MCP) |
-| `STRIPE_WEBHOOK_SECRET` | Sim | production | UNVERIFIED — log mostra "ausente" até ~20:37 UTC de 26/08, depois "assinatura inválida" 1x às 22:38 UTC; histórico misto, estado atual não confirmável sem novo teste | Reenviar um evento de teste real do Stripe Dashboard e conferir 200 |
-| `STRIPE_PRICE_PREMIUM` | Sim | production | 🔴 **MISSING/INVÁLIDO, confirmado**: log real de produção mostra `Error: No such price: 'price_1U8jeSFbJuUYebOzjb7TReB3'` | Substituir pelo Price ID real (ver `MANUAL_ACTIONS.md`) |
-| `STRIPE_PRICE_PRO` / `STRIPE_PRICE_CONSULTOR` | Sim | production | ⚠️ Suspeito, não confirmado por log (nenhum usuário testou esses ainda) — mesmo prefixo de criação em lote que o Premium inválido, fortemente suspeito de ter o mesmo problema | Verificar e substituir junto com o Premium |
-| `STRIPE_PRICE_*_ANNUAL` (3) | Não (opcional) | production | ⚠️ Mesmo suspeito acima | Preencher/corrigir se for oferecer anual |
-| **Checkout Session (criação)** | — | — | 🔴 FAIL confirmado por log de produção real (não um teste desta auditoria) | Depende da correção dos Price IDs acima |
+| `STRIPE_SECRET_KEY` | Sim | production | CONFIGURED (não legível por mim; vazia em `.env.local`, só existe na Vercel) | Nenhuma |
+| `STRIPE_WEBHOOK_SECRET` | Sim | production | CONFIGURED (corrigido por Igor 27/08) — `PENDING CONFIRMATION` (falta reenviar 1 evento de teste real) | Stripe Dashboard → Webhooks → "Send test webhook" |
+| `STRIPE_PRICE_PREMIUM/_PRO/_CONSULTOR` (+ `_ANNUAL`, 6 total) | Sim | production | CONFIGURED (corrigido por Igor 27/08) — `PENDING CONFIRMATION` (nenhum log novo de erro, mas nenhum checkout completo tentado ainda) | Clicar "Assinar" nos 6 planos em `/assinatura` (não precisa concluir pagamento) |
+| **Checkout Session (criação)** | — | — | `PENDING CONFIRMATION` — sem erro novo nos logs, mas sem confirmação positiva de sucesso ainda | Ver acima |
 | **Price livemode** | — | — | UNVERIFIED (não consigo ler a chave real pra confirmar) | — |
 
 ## IA (opcional, zero-custo por padrão)

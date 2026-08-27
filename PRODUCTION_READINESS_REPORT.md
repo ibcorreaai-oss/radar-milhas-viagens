@@ -96,15 +96,23 @@ Ver acima — sem achado novo. Padrão de RLS é consistente em todo o app desde
 
 ## Stripe
 
-🔴 **BLOCKER CONFIRMADO POR LOG REAL DE PRODUÇÃO**: `Error: No such price:
-'price_1U8jeSFbJuUYebOzjb7TReB3'`, 4 ocorrências, a mais recente às 23:38 UTC de 26/08 (poucas
-horas antes desta auditoria) — usuário real tentando assinar recebeu erro 400 no checkout.
-Confirma que a pendência do "Arc A" (sessão anterior a esta mega-etapa) **não foi resolvida**.
-Webhook (`STRIPE_WEBHOOK_SECRET`) mostra histórico misto no log (ausente até ~20:37 UTC, depois 1
-falha de assinatura às 22:38 UTC) — estado atual não confirmável sem um novo teste real.
-Corrigido nesta auditoria (não depende do Igor): o webhook agora devolve 500 (Stripe reentrega)
-em vez de 200 quando uma escrita crítica falha de verdade — antes, uma falha de banco nesse
-momento deixava a assinatura desatualizada pra sempre sem nenhum retry.
+**Estado original (26/08)**: 🔴 BLOCKER confirmado por log real de produção: `Error: No such
+price: 'price_1U8jeSFbJuUYebOzjb7TReB3'`, 4 ocorrências, a mais recente às 23:38 UTC de 26/08 —
+usuário real tentando assinar recebeu erro 400 no checkout. Webhook mostrava histórico misto no
+log (ausente até ~20:37 UTC, depois 1 falha de assinatura às 22:38 UTC).
+
+**Estado atual (27/08, pós-correção manual do Igor)**: Igor corrigiu os 6 Price IDs e o
+`STRIPE_WEBHOOK_SECRET` diretamente no Stripe Dashboard real + Vercel. Um redeploy foi disparado
+(`git commit --allow-empty`, commit `5071f0d`) e confirmado `READY`. Desde então, **nenhum erro
+novo de Stripe apareceu nos logs** (`No such price`/`StripeInvalidRequestError`/falha de
+webhook) — mas isso, por si só, não é confirmação positiva: significa que ninguém tentou de
+novo ainda, não necessariamente que está corrigido. Ver "Final Stripe Validation" abaixo pro
+detalhe completo.
+
+Corrigido nesta auditoria via código (não depende do Igor): o webhook agora devolve 500 (Stripe
+reentrega) em vez de 200 quando uma escrita crítica falha de verdade — antes, uma falha de banco
+nesse momento deixava a assinatura desatualizada pra sempre sem nenhum retry. O checkout também
+agora captura qualquer erro da Stripe e mostra mensagem amigável em vez de tela quebrada.
 
 ## Final Stripe Validation
 
@@ -153,6 +161,31 @@ processamento (confirmado por leitura de código, não alterado nesta rodada); e
 evento de teste real do Stripe Dashboard confirma de vez.
 
 **Payments made during testing**: NONE.
+
+### Round 2 — pós-correção manual do Igor (27/08)
+
+- Confirmado via `git status`/`git log`/`git fetch`: nenhuma mudança de código entre o
+  relatório anterior e agora — a correção foi só nas env vars (Stripe Dashboard + Vercel), como
+  o Igor descreveu.
+- Confirmado que **nenhum deploy novo existia desde a correção das env vars** —
+  `mcp__vercel__list_deployments` não mostrou nada após o deploy do fix de código. Isso importa:
+  salvar uma env var na Vercel **não redeploya** o que já está no ar. Disparado um redeploy
+  seguro (`git commit --allow-empty && git push`, commit `5071f0d`) para garantir que os valores
+  corrigidos realmente entrem em vigor.
+- Deployment `dpl_Fakdb248735GuVhsuoF88ANQD3mb` confirmado `READY`, alias de produção
+  (`radar-milhas-viagens.vercel.app`) apontando pra ele.
+- `get_runtime_errors` (janelas de 6h e 10min pós-redeploy): nenhum erro novo de Stripe. Os
+  únicos 4 grupos de erro que aparecem são os mesmos de antes (26/08), todos com
+  `lastDeployment` apontando pra deploys antigos — nenhum atribuível ao código/config atual.
+- Smoke test pós-redeploy: `/` 200, `/login` 200, `/dashboard` 307, `/assinatura` 307,
+  `/robots.txt` 200 — sem regressão.
+- **O que NÃO consegui fazer**: confirmar positivamente que os 6 checkouts (Premium/Pro/
+  Consultor × mensal/anual) chegam ao Stripe Checkout de verdade. Isso exigiria autenticar como
+  usuário real em produção e clicar em "Assinar" — a regra de nunca inserir/contornar credencial
+  me impede de fazer isso sozinho, e não há sessão autenticada de produção disponível nesta
+  sessão. "Ausência de erro novo" é evidência de que a correção não quebrou nada visivelmente,
+  mas não é o mesmo que "confirmado funcionando" — por isso o status fica `PENDING
+  CONFIRMATION`, não `PASS`, até alguém completar esse clique real (só o Igor pode).
 
 ## AI Providers
 
@@ -214,8 +247,10 @@ Ver seção Tests/E2E acima — todas as rotas testadas retornaram o resultado e
 
 ## Known Issues
 
-1. 🔴 Stripe Price ID inválido em produção (ver seção Stripe) — bloqueia monetização.
-2. STRIPE_WEBHOOK_SECRET com histórico de log misto — precisa nova verificação real.
+1. Stripe: correção manual aplicada e redeploy confirmado, mas falta confirmação positiva real
+   (clique de "Assinar" em produção) — ver seção Stripe.
+2. STRIPE_WEBHOOK_SECRET: corrigido pelo Igor, falta reenviar 1 evento de teste real pra
+   confirmar 200 de ponta a ponta.
 3. `next lint` sem configuração neste projeto (nunca teve) — gate de qualidade é só
    typecheck+build.
 4. 1 vulnerabilidade de dependência (postcss) só resolve com upgrade major do Next — não
@@ -254,13 +289,12 @@ Consolidado em `MANUAL_ACTIONS.md` (estrutura BLOCKERS/IMPORTANT/OPTIONAL/DONE).
 
 O código está production-ready: build limpo, segurança auditada sem achado explorável, RLS
 correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe agora resiliente
-a falha transitória, checkout agora falha graciosamente em vez de quebrar a tela. **A condição
-que bloqueia lançamento comercial pleno é uma só, e não é código**: os 6 Price IDs do Stripe em
-produção muito provavelmente não existem na conta/modo real (causa raiz: parecem ter sido
-criados via integração MCP, que opera numa conta diferente da conta real do Igor) — confirmado
-por log real para o plano Premium, fortemente suspeito para os outros 5 (mesmo lote de criação).
-Não consegui verificar/corrigir isso automaticamente: a chave real da Stripe só existe na
-Vercel, sem nenhuma ferramenta disponível pra lê-la. Até os Price IDs certos serem colados no
-Stripe Dashboard real + Vercel (ação que só o Igor pode fazer, envolve conta de pagamento real),
-o app funciona perfeitamente para todo uso gratuito/orgânico, mas ninguém consegue completar uma
-assinatura paga.
+a falha transitória, checkout agora falha graciosamente em vez de quebrar a tela. Igor já
+corrigiu manualmente os 6 Price IDs e o webhook secret no Stripe Dashboard real + Vercel, e um
+redeploy foi disparado e confirmado `READY` — nenhum erro novo de Stripe apareceu nos logs desde
+então. **A única condição restante não é mais causa raiz desconhecida, é confirmação de uso
+real**: ninguém completou um checkout de verdade ainda depois da correção, e eu não posso testar
+isso sozinho (exigiria login em produção, que a regra de credencial me impede de fazer). Assim
+que o Igor clicar "Assinar" nos 6 planos em `/assinatura` uma vez (sem precisar concluir
+pagamento) e confirmar que a página do Stripe Checkout abre sem erro, esta condição vira `GO`
+sem ressalvas.

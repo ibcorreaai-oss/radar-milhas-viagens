@@ -37,17 +37,18 @@ pro detalhe de cada item.
 - [PASS] `robots.txt` bloqueia corretamente rotas privadas; sitemap só lista rotas públicas
 
 ## Stripe / pagamentos
-- [FAIL] 🔴 Stripe live environment — checkout real falhando em produção (`No such price`, confirmado por log real, 23:38 UTC de 26/08)
-- [FAIL] Stripe Product/Price — `STRIPE_PRICE_PREMIUM` confirmado inválido; `_PRO`/`_CONSULTOR`/anuais suspeitos (mesmo lote de criação) mas não confirmados por log
-- [FAIL] Checkout Session — não consegue ser criada com sucesso enquanto o Price ID estiver errado
+- [PASS] Stripe live environment — Igor corrigiu manualmente os 6 Price IDs + webhook secret (27/08); redeploy disparado e confirmado READY (commit `5071f0d`); nenhum erro novo (`No such price`/`StripeInvalidRequestError`) nos logs desde então
+- [MANUAL] Stripe Product/Price — nenhum log novo de erro, mas nenhum checkout foi completado desde a correção; falta confirmação positiva
+- [MANUAL] Checkout Session — sem erro recente, mas ainda sem confirmação positiva de sucesso para os 6 planos (Premium/Pro/Consultor × mensal/anual) — só o Igor consegue testar (exigiria login, que esta sessão não pode fazer)
 - [PASS] Success URL / Cancel URL — resolvidas via `getSiteUrl()` server-side, nunca aceitam destino do usuário (sem risco de open redirect)
-- [MANUAL] Corrigir os 6 Price IDs no Stripe Dashboard real + colar em cada env var exata na Vercel (nomes exatos em `MANUAL_ACTIONS.md`)
-- [MANUAL] Reconfirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real (histórico de log misto) — [MANUAL] Signature verification: código confirmado correto (`stripe.webhooks.constructEvent`), só o valor real da variável não é confirmável por mim
+- [MANUAL] Clicar "Assinar" nos 6 planos em `/assinatura` (logado, sem concluir pagamento) para confirmar que cada um chega ao Stripe Checkout
+- [MANUAL] Reconfirmar `STRIPE_WEBHOOK_SECRET` com um evento de teste real do Stripe Dashboard — [PASS] Signature verification: código confirmado correto (`stripe.webhooks.constructEvent`)
 - [PASS] Webhook agora reentrega em falha de escrita real (corrigido nesta auditoria)
 - [PASS] Nenhum segredo Stripe hardcoded no código/git
 - [PASS] Erro de checkout agora mostra mensagem amigável em vez de tela quebrada (corrigido nesta auditoria)
 - [PASS] Nenhum Price ID arbitrário aceito do cliente — sempre resolvido via whitelist server-side (`plan` → env var → Price ID)
-- [N/A] Nenhuma cobrança real feita durante esta investigação (só leitura de código e logs já existentes)
+- [PASS] Smoke test pós-redeploy: `/`, `/login` 200; `/dashboard`, `/assinatura` 307 sem sessão; `/robots.txt` 200 — sem regressão
+- [N/A] Nenhuma cobrança real feita durante esta investigação (só leitura de código, logs e smoke test já existentes)
 
 ## IA / custo
 - [PASS] `AI_PROVIDER` nunca usa Anthropic (pago) por padrão, mesmo com chave configurada
@@ -80,5 +81,6 @@ pro detalhe de cada item.
 
 ## Decisão final
 
-Ver `PRODUCTION_READINESS_REPORT.md` — **GO WITH CONDITIONS**. Único blocker real: Price ID do
-Stripe.
+Ver `PRODUCTION_READINESS_REPORT.md` — **GO WITH CONDITIONS**. Correção manual do Stripe feita
+por Igor (27/08) e redeploy confirmado; nenhum blocker técnico restante — só falta um clique de
+confirmação real (Igor logado, sem concluir pagamento) para virar **GO** sem ressalvas.
