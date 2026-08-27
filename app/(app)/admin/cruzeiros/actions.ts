@@ -9,6 +9,7 @@ import { friendlyDbError } from '@/lib/db-errors';
 import { cruiseSchema, firstZodError, type CruiseInput } from '@/lib/validation/admin-schemas';
 import { slugify, parseNumberOrNull } from '@/lib/utils';
 import { evaluateCruise } from '@/lib/scoring/cruise-score';
+import { recordPriceObservation } from '@/lib/price-observations';
 import type { CruiseRegionTag } from '@/lib/types';
 
 function rawCruiseForm(formData: FormData) {
@@ -95,6 +96,13 @@ export async function createCruise(formData: FormData): Promise<void> {
   }
 
   await logAuditEvent({ userId: ctx.userId, action: 'create', entity: 'cruises', entityId: created.id, metadata: { name: parsed.data.name } });
+  await recordPriceObservation({
+    entityType: 'cruise',
+    entityId: created.id,
+    priceCash: parsed.data.price_from_cash,
+    priceCurrency: parsed.data.price_currency,
+    sourceId: parsed.data.source_id,
+  });
 
   revalidatePath('/admin/cruzeiros');
   revalidatePath('/cruzeiros');
@@ -113,8 +121,9 @@ export async function updateCruise(id: string, formData: FormData): Promise<void
   const scoring = await computeScoring(supabase, parsed.data);
   const now = new Date().toISOString();
 
-  const { data: before } = await supabase.from('cruises').select('verification_status').eq('id', id).maybeSingle();
+  const { data: before } = await supabase.from('cruises').select('verification_status, price_from_cash').eq('id', id).maybeSingle();
   const becameVerified = parsed.data.verification_status === 'verified' && before?.verification_status !== 'verified';
+  const priceChanged = before?.price_from_cash !== parsed.data.price_from_cash;
 
   const { error } = await supabase
     .from('cruises')
@@ -126,6 +135,15 @@ export async function updateCruise(id: string, formData: FormData): Promise<void
   }
 
   await logAuditEvent({ userId: ctx.userId, action: 'update', entity: 'cruises', entityId: id, metadata: { name: parsed.data.name } });
+  if (priceChanged) {
+    await recordPriceObservation({
+      entityType: 'cruise',
+      entityId: id,
+      priceCash: parsed.data.price_from_cash,
+      priceCurrency: parsed.data.price_currency,
+      sourceId: parsed.data.source_id,
+    });
+  }
 
   revalidatePath('/admin/cruzeiros');
   revalidatePath('/cruzeiros');

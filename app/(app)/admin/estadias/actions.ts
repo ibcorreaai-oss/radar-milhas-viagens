@@ -9,6 +9,7 @@ import { friendlyDbError } from '@/lib/db-errors';
 import { staySchema, firstZodError, type StayInput } from '@/lib/validation/admin-schemas';
 import { slugify, parseNumberOrNull } from '@/lib/utils';
 import { evaluateStay } from '@/lib/scoring/stay-score';
+import { recordPriceObservation } from '@/lib/price-observations';
 import type { ExperienceTag } from '@/lib/types';
 
 function rawStayForm(formData: FormData) {
@@ -88,6 +89,13 @@ export async function createStay(formData: FormData): Promise<void> {
   }
 
   await logAuditEvent({ userId: ctx.userId, action: 'create', entity: 'stays', entityId: created.id, metadata: { name: parsed.data.name } });
+  await recordPriceObservation({
+    entityType: 'stay',
+    entityId: created.id,
+    priceCash: parsed.data.price_from_cash,
+    priceCurrency: parsed.data.price_currency,
+    sourceId: parsed.data.source_id,
+  });
 
   revalidatePath('/admin/estadias');
   revalidatePath('/estadias');
@@ -106,8 +114,9 @@ export async function updateStay(id: string, formData: FormData): Promise<void> 
   const scoring = await computeScoring(supabase, parsed.data);
   const now = new Date().toISOString();
 
-  const { data: before } = await supabase.from('stays').select('verification_status, last_verified_at').eq('id', id).maybeSingle();
+  const { data: before } = await supabase.from('stays').select('verification_status, last_verified_at, price_from_cash').eq('id', id).maybeSingle();
   const becameVerified = parsed.data.verification_status === 'verified' && before?.verification_status !== 'verified';
+  const priceChanged = before?.price_from_cash !== parsed.data.price_from_cash;
 
   const { error } = await supabase
     .from('stays')
@@ -123,6 +132,15 @@ export async function updateStay(id: string, formData: FormData): Promise<void> 
   }
 
   await logAuditEvent({ userId: ctx.userId, action: 'update', entity: 'stays', entityId: id, metadata: { name: parsed.data.name } });
+  if (priceChanged) {
+    await recordPriceObservation({
+      entityType: 'stay',
+      entityId: id,
+      priceCash: parsed.data.price_from_cash,
+      priceCurrency: parsed.data.price_currency,
+      sourceId: parsed.data.source_id,
+    });
+  }
 
   revalidatePath('/admin/estadias');
   revalidatePath('/estadias');

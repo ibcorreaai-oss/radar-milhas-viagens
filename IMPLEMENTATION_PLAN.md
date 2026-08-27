@@ -306,14 +306,52 @@ foi refatorado para usá-la (diff mínimo, comportamento externo idêntico). `/c
   — evitado deliberadamente. Verificação feita por revisão de código linha a linha do prompt,
   do fallback e das defesas de injeção, mais a confirmação de dado real via SQL.
 
-## FASE 10-11 — Price Intelligence 2.0, Advanced Radars (não iniciadas)
+## FASE 10 — Price Intelligence 2.0 ✅ CONCLUÍDA (26/08/2026)
 
-Descritas no PROMPT WORLD EXPERIENCE RADAR original. Seguem a doutrina de custo zero absoluto
-reforçada pelo Igor: Price Intelligence 2.0 constrói histórico próprio a partir de observações
-reais do próprio sistema (`price_observations`), nunca compra/inventa histórico — mostra "dados
-históricos insuficientes" em vez de fabricar tendência; Advanced Radars só integra fonte
-gratuita e permitida por fonte (respeitando robots/ToS, sem bypass de CAPTCHA/anti-bot), com
-graceful degradation quando não houver uma disponível.
+- Migration `0031_price_intelligence.sql` — tabela `price_observations` (log append-only:
+  `entity_type` opportunity/stay/cruise + `entity_id` + `price_cash`/`price_currency` +
+  `observed_at`). RLS: leitura autenticada, escrita só admin (`is_admin()`), sem update/delete —
+  histórico não pode ser editado retroativamente (a própria garantia de integridade que a
+  feature promete). Flag `priceIntelligence` já existia pré-registrada desde etapas anteriores.
+- `lib/price-observations.ts` — `recordPriceObservation()`: grava uma observação real sempre
+  que um admin cadastra ou muda o preço de uma estadia/cruzeiro/oportunidade (comparação
+  "preço mudou?" antes de gravar, pra não poluir o histórico com edições que não mexeram no
+  preço). Best-effort por design — uma falha ao gravar a observação nunca bloqueia o
+  save principal.
+- `lib/scoring/price-intelligence.ts` — `computePriceIntelligence()`: mediana/média/mín/máx/
+  variação 7d/30d a partir das observações reais. Exige um mínimo de 3 observações antes de
+  calcular qualquer estatística — com menos que isso, retorna `insufficient: true` e a UI
+  mostra "dados históricos insuficientes" (nunca fabrica tendência). Testado isoladamente com
+  `tsx` (sem tocar banco): 1 observação → insuficiente corretamente; 4 observações espalhadas
+  em 35 dias com preço caindo de R$1200→R$1000 → mediana R$1075, variação 7d -4,8%, variação
+  30d -16,7% — todos os valores conferem à mão.
+- `components/price-intelligence-card.tsx` — card server-side reaproveitável, já checa a
+  própria flag (quem usa não precisa checar de novo). Embutido em `/estadias/[slug]` e
+  `/cruzeiros/[slug]`.
+- Capturas ligadas nos 3 pontos de entrada de preço: `admin/estadias/actions.ts`,
+  `admin/cruzeiros/actions.ts`, `admin/oportunidades/actions.ts` (create sempre grava; update só
+  grava quando o preço realmente mudou).
+- **Backfill honesto**: como o projeto nasceu hoje, não existiam observações nenhuma —
+  registrado 1 observação real por estadia/cruzeiro já cadastrado com preço (16 no total,
+  8+8; `opportunities` não tinha nenhuma linha com preço pra puxar), representando "o preço tal
+  como estava catalogado no dia em que este sistema de histórico entrou no ar" — não é
+  histórico fabricado, é o primeiro dado real de uma série que só vai crescer a partir de agora.
+- Flag `priceIntelligence` ativada após validação.
+- **Testado ao vivo localmente** (`next start`): `/estadias/amangiri-utah` renderizando o card
+  "Histórico de preço" com a mensagem honesta "Dados históricos insuficientes (1 observação
+  registrada)" — exatamente o esperado, já que só há 1 observação por item agora. `tsc --noEmit`
+  e `next build` limpos.
+
+**Nota para o futuro**: a partir de agora, toda vez que um admin editar um preço, uma nova
+observação real se acumula — depois de 3+ edições espalhadas no tempo, as páginas passam a
+mostrar mediana/faixa/variação de verdade, sem precisar de nenhuma mudança de código.
+
+## FASE 11 — Advanced Experience Radars (não iniciada)
+
+Descrita no PROMPT WORLD EXPERIENCE RADAR original. Segue a doutrina de custo zero absoluto:
+só integra fonte gratuita e permitida por fonte (respeitando robots/ToS, sem bypass de
+CAPTCHA/anti-bot), com graceful degradation quando não houver uma disponível para uma
+categoria (futebol/automobilismo/ski/fenômenos naturais/festivais/praia/wildlife/gastronomia).
 
 ## Regra de ouro para todas as fases futuras
 

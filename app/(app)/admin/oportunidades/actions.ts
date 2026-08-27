@@ -8,6 +8,7 @@ import { logAuditEvent } from '@/lib/audit-log';
 import { friendlyDbError } from '@/lib/db-errors';
 import { opportunitySchema, firstZodError } from '@/lib/validation/admin-schemas';
 import { parseNumberOrNull } from '@/lib/utils';
+import { recordPriceObservation } from '@/lib/price-observations';
 
 // Monta o objeto bruto a partir do FormData (sem validar ainda — validação
 // é feita pelo Zod em opportunitySchema, uma única fonte de verdade
@@ -61,6 +62,7 @@ export async function createOpportunity(formData: FormData): Promise<void> {
     entityId: created.id,
     metadata: { title: parsed.data.title },
   });
+  await recordPriceObservation({ entityType: 'opportunity', entityId: created.id, priceCash: parsed.data.cash_price });
 
   revalidatePath('/admin/oportunidades');
   redirect('/admin/oportunidades');
@@ -75,6 +77,9 @@ export async function updateOpportunity(id: string, formData: FormData): Promise
   }
 
   const supabase = await createClient();
+  const { data: before } = await supabase.from('opportunities').select('cash_price').eq('id', id).maybeSingle();
+  const priceChanged = before?.cash_price !== parsed.data.cash_price;
+
   const { error } = await supabase.from('opportunities').update(parsed.data).eq('id', id);
   if (error) {
     redirect(`/admin/oportunidades/${id}/editar?erro=${encodeURIComponent(friendlyDbError(error, 'uma oportunidade'))}`);
@@ -87,6 +92,9 @@ export async function updateOpportunity(id: string, formData: FormData): Promise
     entityId: id,
     metadata: { title: parsed.data.title },
   });
+  if (priceChanged) {
+    await recordPriceObservation({ entityType: 'opportunity', entityId: id, priceCash: parsed.data.cash_price });
+  }
 
   revalidatePath('/admin/oportunidades');
   redirect('/admin/oportunidades');

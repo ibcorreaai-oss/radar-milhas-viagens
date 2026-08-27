@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isOptimizableImageHost } from '@/lib/image-hosts';
 import { formatBRL } from '@/lib/utils';
 import { evaluateCruise } from '@/lib/scoring/cruise-score';
+import { PriceIntelligenceCard } from '@/components/price-intelligence-card';
 import { saveCruiseToBucketList } from '../actions';
 import {
   CRUISE_CATEGORY_LABEL,
@@ -187,6 +188,8 @@ export default async function CruzeiroDetailPage({ params }: { params: Promise<{
           </Card>
         )}
       </div>
+
+      <PriceIntelligenceCard entityType="cruise" entityId={cruise.id} />
 
       {cruise.sources && (
         <p className="text-xs text-muted-foreground">

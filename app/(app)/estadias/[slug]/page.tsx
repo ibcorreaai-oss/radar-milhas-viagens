@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isOptimizableImageHost } from '@/lib/image-hosts';
 import { formatBRL } from '@/lib/utils';
 import { evaluateStay } from '@/lib/scoring/stay-score';
+import { PriceIntelligenceCard } from '@/components/price-intelligence-card';
 import { saveStayToBucketList } from '../actions';
 import {
   STAY_CATEGORY_LABEL,
@@ -185,6 +186,8 @@ export default async function EstadiaDetailPage({ params }: { params: Promise<{ 
           </Card>
         )}
       </div>
+
+      <PriceIntelligenceCard entityType="stay" entityId={stay.id} />
 
       {stay.sources && (
         <p className="text-xs text-muted-foreground">
