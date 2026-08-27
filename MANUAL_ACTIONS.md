@@ -253,16 +253,6 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
       acontecer, vale conferir no Runtime Log que `checkout.session.completed` gravou a
       `subscription` corretamente e o e-mail de ativação foi enviado.
 
-- [ ] **Revisar o conteúdo curado antes de anunciar amplamente**: todo dado novo das Fases 3, 4
-      e 11 (8 hospedagens, 8 cruzeiros, 7 eventos avançados) é `is_mock=true`/estimado — reais e
-      conhecidos publicamente, mas preço/disponibilidade/data exata não foram verificados ao
-      vivo. Funciona para demonstração; precisa da sua curadoria (ou fonte oficial) antes de virar
-      promessa comercial.
-- [ ] **Decidir sobre leitura anônima (SEO)** em `/estadias`, `/cruzeiros`, `/descobrir`,
-      `/oportunidades-mundiais`, `/onde-ir` — herdado desde a Fase 2: visitante deslogado vê a
-      página carregar vazia (RLS só libera `authenticated`). Se quiser essas páginas indexáveis
-      de verdade, precisa de uma policy de leitura `anon` nova, no mesmo padrão de
-      `0005_public_read_promotions_programs.sql`.
 - [ ] **`CRON_SECRET` — confirmar que está setado na Vercel.** Não há como ler a variável direto
       (nenhuma ferramenta MCP faz isso); a ausência de erro "unauthorized" nos logs dos últimos 7
       dias é um bom sinal indireto, mas não é confirmação — verifique no painel.
@@ -294,6 +284,17 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### DONE
 
+- [x] **Bug real corrigido: TODAS as páginas atrás de feature flag ficavam "desativadas" pra
+      visitante deslogado** (`/estadias`, `/cruzeiros`, `/descobrir`, `/oportunidades-mundiais`,
+      `/onde-ir`) — não era só uma decisão de produto pendente, era um bug real desde a Fase 2.
+      Causa raiz: `feature_flags` exigia `authenticated` pra leitura; `getFeatureFlags()` trata
+      qualquer falha de leitura como "tudo desligado" (fallback seguro por design) — então
+      visitante anônimo via TODA feature flag como `false`, mesmo com o valor real `true` no
+      banco. Corrigido com 2 migrations (`0032`, `0033`): leitura `anon` liberada em
+      `feature_flags`, `world_events`, `stays`, `cruises`, `destinations`, `event_categories`,
+      `sources` (mesmo padrão de `promotions`/`loyalty_programs` desde a ETAPA 11). Escrita
+      continua só admin. Verificado ao vivo nas 5 rotas: todas mostrando conteúdo real agora pra
+      visitante sem login (antes: tela "ainda não está ativado" pra todo mundo deslogado).
 - [x] **Stripe: os 6 planos testados em produção pelo Igor, todos abriram o Stripe Checkout
       corretamente** (Premium/Pro/Consultor × mensal/anual). Nenhum pagamento concluído, nenhum
       cartão inserido — validação manual real, o único teste que provava de verdade a correção
