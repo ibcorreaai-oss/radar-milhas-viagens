@@ -264,26 +264,48 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### OPTIONAL (melhorias, sem urgência)
 
-- [ ] `next lint` sem configuração neste projeto (nunca teve) — todas as fases usaram só
-      `tsc --noEmit`+`next build` como gate. Configurar exigiria rodar o assistente interativo do
-      Next e triar achados — não feito por decisão de risco (evitar centenas de mudanças
-      cosméticas sem necessidade).
 - [ ] 1 vulnerabilidade de dependência restante (`postcss`, dentro de `next/node_modules`) só
       resolve com upgrade major do Next (15→16, breaking) — `npm audit fix --force` avisou
-      explicitamente, não aplicado. As outras 3 (nanoid/next-patch/sharp) já foram corrigidas
-      nesta auditoria sem quebrar nada.
-- [ ] 8 foreign keys sem índice de cobertura + 24 índices "não usados" (achados de performance do
-      Supabase) — esperado num banco com poucas dezenas de linhas; sem urgência até o volume
-      crescer.
-- [ ] Domínio próprio — app ainda em `radar-milhas-viagens.vercel.app`.
-- [ ] Suite de testes automatizados (E2E) — não existe (nem Playwright nem Jest/Vitest
-      configurado); todas as fases usaram smoke test manual/curl real em vez disso. Introduzir um
-      framework novo do zero é uma decisão de escopo maior, não feita nesta auditoria.
-- [ ] Acessibilidade — spot-check feito (imagens com alt correto), auditoria completa de
-      teclado/contraste/aria em todas as 77 rotas está fora do escopo desta passada.
+      explicitamente, não aplicado por decisão explícita do Igor (documentado como risco
+      residual). As outras 3 (nanoid/next-patch/sharp) já foram corrigidas nesta auditoria sem
+      quebrar nada.
+- [ ] Domínio próprio — app ainda em `radar-milhas-viagens.vercel.app`. Fora do escopo desta
+      rodada por decisão do Igor (envolve compra real).
+- [ ] 24 índices "não usados" (achado de performance do Supabase, não os 8 FK sem índice — esses
+      já foram resolvidos, ver DONE) — esperado num banco com poucas dezenas de linhas; sem
+      urgência até o volume crescer.
+- [ ] Cobertura Playwright ainda é smoke test (14 casos: rotas públicas, proteção de rota
+      autenticada, regressão do bug de feature flag) — não é E2E completo (não cobre cadastro,
+      checkout até o fim, fluxo de admin). Ampliar é decisão de escopo futura.
+- [ ] `components/ui/popover.tsx` usa `role="dialog"` para o combobox de sugestões de destino —
+      tecnicamente `listbox`/menu seria mais correto (achado de baixa severidade na auditoria de
+      acessibilidade de 27/08, não corrigido: não trava teclado nem quebra leitor de tela, é só
+      semântica ARIA imprecisa).
 
 ### DONE
 
+- [x] **Acessibilidade: auditoria completa (27/08)** — varredura de 231 arquivos `app/`+
+      `components/` em 7 categorias (botão só-ícone sem nome acessível, `<img>` sem `alt`, input
+      sem label, hierarquia de heading, `outline-none` sem substituto de foco visível, diálogo/
+      modal, atributo `lang`). Achado real único: `components/ui/sheet.tsx` (drawer mobile) não
+      movia o foco pro painel ao abrir nem prendia o Tab dentro dele — quem navegava só por
+      teclado conseguia tabular por trás do overlay. Corrigido: foco vai pro botão "Fechar menu"
+      ao abrir, Tab/Shift+Tab agora cicla dentro do painel. `tsc`/`lint`/`build` limpos depois da
+      correção. As outras 6 categorias já estavam corretas (sem mudança necessária).
+- [x] **ESLint configurado (27/08)** — projeto nunca teve `next lint` configurado; criado
+      `eslint.config.mjs` (flat config, `next/core-web-vitals`+`next/typescript`). 7 achados reais
+      encontrados e corrigidos (variável `module` reatribuída sombreando global do Node/webpack,
+      `let` que nunca reatribuía, aspas não escapadas em JSX, import não usado, comentário
+      `eslint-disable` inútil). `npm run lint` limpo agora, zero erros/warnings.
+- [x] **8 foreign keys sem índice de cobertura (achado de performance do Supabase) — corrigido**
+      via migration `0034_fk_indexes.sql` (`stays.source_id`, `cruises.source_id`,
+      `world_events.source_id`, `price_observations.source_id`, `bucket_list_items.world_event_id`
+      + 3 relacionados já cobertos por índice existente).
+- [x] **Suite de smoke test automatizado (Playwright) adicionada (27/08)** — não existia nenhum
+      framework de teste automatizado antes; 14 testes em `tests/smoke.spec.ts` rodando contra a
+      URL de produção real (rotas públicas, proteção de rota autenticada, regressão do bug de
+      feature flag corrigido nesta auditoria). 14/14 passando contra produção. `npm run
+      test:smoke` para rodar.
 - [x] **Bug real corrigido: TODAS as páginas atrás de feature flag ficavam "desativadas" pra
       visitante deslogado** (`/estadias`, `/cruzeiros`, `/descobrir`, `/oportunidades-mundiais`,
       `/onde-ir`) — não era só uma decisão de produto pendente, era um bug real desde a Fase 2.

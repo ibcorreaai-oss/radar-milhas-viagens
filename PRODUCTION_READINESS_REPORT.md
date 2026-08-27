@@ -41,13 +41,17 @@ só correções pontuais (ver seções abaixo).
 
 ## Tests / E2E
 
-Não existe suíte de testes automatizados (nem Jest/Vitest, nem Playwright configurado —
-confirmado: sem `playwright.config.*`, sem scripts `test`/`test:e2e` no `package.json`). Todas as
-fases anteriores desta sessão (e desta auditoria) validaram fluxos críticos via **smoke test
-manual real**: navegador (Chrome) para telas autenticadas, `curl` direto contra a URL de produção
-para rotas públicas. Introduzir uma suíte E2E do zero agora seria uma mudança de escopo maior que
-"auditoria + correção", não foi feito por decisão de risco — registrado como recomendação, não
-como pendência bloqueante.
+**ATUALIZADO 27/08:** adicionado Playwright (`playwright.config.ts` + `tests/smoke.spec.ts`,
+`npm run test:smoke`) — 14 testes rodando contra a URL de produção real por padrão (rotas
+públicas, proteção de rota autenticada, e um guard de regressão específico pro bug de
+`feature_flags` corrigido nesta auditoria). 14/14 passando. Não é E2E completo (não cobre
+cadastro/checkout ponta a ponta nem fluxo de admin) — continua complementado por smoke test manual
+real quando necessário.
+
+Antes desta atualização, não existia nenhuma suíte automatizada (nem Jest/Vitest, nem Playwright).
+Todas as fases anteriores desta sessão (e o início desta auditoria) validaram fluxos críticos via
+**smoke test manual real**: navegador (Chrome) para telas autenticadas, `curl` direto contra a URL
+de produção para rotas públicas.
 
 **Smoke test real rodado contra produção nesta auditoria** (`curl` contra
 `https://radar-milhas-viagens.vercel.app`):
@@ -81,6 +85,15 @@ eram uma falha de segurança real, já tinham checagem própria).
   padrão de RLS já usado desde a Fase 2 (`auth.uid()` sem `select`), não uma regressão.
 - RLS confirmada correta nas 4 tabelas novas (leitura `authenticated`, escrita `is_admin()`,
   dono-only em `trips`/`price_observations` append-only sem update/delete).
+- **ATUALIZADO 27/08:** 5 dos achados de performance eram FK sem índice de cobertura
+  (`stays.source_id`, `cruises.source_id`, `world_events.source_id`,
+  `price_observations.source_id`, `bucket_list_items.world_event_id`) — corrigido via migration
+  `0034_fk_indexes.sql`. Os índices "não usados" restantes seguem sem ação (esperado num banco com
+  poucas dezenas de linhas).
+- **ATUALIZADO 27/08:** `feature_flags` e as 5 tabelas de leitura pública do World Radar
+  (`world_events`, `stays`, `cruises`, `destinations`, `event_categories`, `sources`) tiveram a
+  policy de leitura trocada de `authenticated` pra `true` (migrations `0032`, `0033`) — ver
+  detalhe completo no bug real corrigido em `MANUAL_ACTIONS.md` §14 DONE.
 
 ## RLS
 
@@ -250,10 +263,19 @@ Sitemap/robots/metadata confirmados corretos; único achado (3 rotas autenticada
 
 ## Accessibility
 
-Spot-check pragmático (não exaustivo): imagens com `alt` real quando o conteúdo é dinâmico
-(nome do destino/evento), `alt=""` correto em imagens puramente decorativas (hero, cards de
-marketing) — padrão correto encontrado, sem achado. Auditoria completa de teclado/contraste/aria
-em todas as 77 rotas está fora do escopo desta passada — **UNVERIFIED** em profundidade.
+**ATUALIZADO 27/08:** auditoria completa (não mais spot-check) via varredura de 231 arquivos
+`app/`+`components/` em 7 categorias: botão só-ícone sem nome acessível, `<img>` sem `alt`, input
+sem label, hierarquia de heading, `outline-none` sem substituto de foco visível, diálogo/modal,
+atributo `lang`. 6 categorias já estavam corretas. Achado real único, corrigido: o drawer mobile
+(`components/ui/sheet.tsx`) não movia o foco pro painel ao abrir nem prendia o Tab dentro dele —
+corrigido nesta auditoria (foco vai pro botão "Fechar menu" ao abrir, Tab/Shift+Tab cicla dentro
+do painel). Achado de baixa severidade não corrigido: `components/ui/popover.tsx` usa
+`role="dialog"` no combobox de destino, onde `listbox`/menu seria semanticamente mais correto —
+não trava teclado nem quebra leitor de tela, é imprecisão de ARIA, sem urgência.
+
+Ainda não coberto por esta auditoria (fora do escopo de leitura estática de código): contraste de
+cor real medido em navegador e teste com leitor de tela de verdade (NVDA/VoiceOver) — a varredura
+foi por padrão de código, não teste manual com assistive tech.
 
 ## Performance
 
@@ -276,10 +298,11 @@ Ver seção Tests/E2E acima — todas as rotas testadas retornaram o resultado e
 
 1. STRIPE_WEBHOOK_SECRET: corrigido pelo Igor, falta reenviar 1 evento de teste real (opcional,
    não bloqueia — ver seção Stripe).
-2. `next lint` sem configuração neste projeto (nunca teve) — gate de qualidade é só
-   typecheck+build.
+2. ~~`next lint` sem configuração~~ — **RESOLVIDO 27/08**: ESLint configurado (flat config),
+   7 achados reais corrigidos, gate de qualidade agora é typecheck+lint+build.
 3. 1 vulnerabilidade de dependência (postcss) só resolve com upgrade major do Next — não
-   aplicado.
+   aplicado (decisão explícita: não fazer upgrade major só por causa deste advisory; risco
+   residual documentado).
 4. Conteúdo curado das Fases 3, 4, 11 é `is_mock=true`/estimado — precisa curadoria antes de
    promessa comercial (já documentado desde a Fase 3).
 5. `CRON_SECRET` — sem confirmação direta (sem tool pra ler env var da Vercel), só inferência

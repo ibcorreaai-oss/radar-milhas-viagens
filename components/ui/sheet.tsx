@@ -4,6 +4,9 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 // Drawer/Sheet lateral mínimo, sem dependência externa — mesmo espírito de
 // components/ui/popover.tsx. Usado pela navegação mobile do dashboard
 // (ETAPA 12 — antes desta etapa, o AppShell logado não tinha NENHUMA
@@ -24,11 +27,31 @@ export function Sheet({
   children: ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      // Tab trap: sem isto, quem navega só por teclado passa direto pelos
+      // elementos atrás do overlay enquanto o Sheet está aberto (achado real
+      // da auditoria de acessibilidade, 27/08).
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener('keydown', onKeyDown);
     const originalOverflow = document.body.style.overflow;
@@ -38,6 +61,12 @@ export function Sheet({
       document.body.style.overflow = originalOverflow;
     };
   }, [open, onClose]);
+
+  // Move o foco pro painel assim que ele abre — mesmo achado acima, metade
+  // do problema (a outra metade é o trap de Tab).
+  useEffect(() => {
+    if (open) closeButtonRef.current?.focus();
+  }, [open]);
 
   // Sem isto, fechar o Sheet clicando no botão "Fechar menu" (que fica
   // DENTRO do próprio Sheet) deixa o foco preso num elemento que acabou de
@@ -65,6 +94,7 @@ export function Sheet({
         )}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
@@ -74,6 +104,7 @@ export function Sheet({
         )}
       >
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           aria-label="Fechar menu"

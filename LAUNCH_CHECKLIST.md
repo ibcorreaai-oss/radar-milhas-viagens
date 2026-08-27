@@ -9,7 +9,7 @@ pro detalhe de cada item.
 - [PASS] Git limpo, sem divergência com `origin/master`
 - [PASS] `tsc --noEmit` limpo
 - [PASS] `next build` limpo (77 rotas)
-- [MANUAL] Lint — sem configuração neste projeto (nunca teve); decisão de configurar fica com o Igor
+- [PASS] Lint — `eslint .` configurado 27/08 (flat config), 7 achados reais corrigidos, zero erros/warnings agora
 - [PASS] `npm audit` — 4 vulnerabilidades altas corrigidas (nanoid/next/sharp); 1 restante exige Next 16 (não aplicado, decisão de risco)
 
 ## Segurança
@@ -83,7 +83,8 @@ pro detalhe de cada item.
 - [PASS] `PRODUCTION_READINESS_REPORT.md` criado
 - [PASS] `MANUAL_ACTIONS.md` reorganizado (BLOCKERS/IMPORTANT/OPTIONAL/DONE)
 - [PASS] `LAUNCH_CHECKLIST.md` (este arquivo) criado
-- [N/A] Testes E2E — sem framework instalado; smoke test manual/curl usado em todas as fases desta sessão em vez disso (decisão de risco documentada em `PRODUCTION_READINESS_REPORT.md`)
+- [PASS] Testes E2E — Playwright configurado 27/08 (`tests/smoke.spec.ts`, `npm run test:smoke`), 14/14 passando contra produção real (rotas públicas, proteção de rota autenticada, regressão do bug de feature flag)
+- [PASS] Acessibilidade — auditoria completa 27/08 (231 arquivos, 7 categorias); 1 achado real corrigido (`components/ui/sheet.tsx` sem trap de foco), demais categorias já corretas
 
 ## Decisão final
 
