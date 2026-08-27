@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/estadias', changeFrequency: 'daily', priority: 0.7 },
     { path: '/cruzeiros', changeFrequency: 'daily', priority: 0.7 },
     { path: '/oportunidades-mundiais', changeFrequency: 'daily', priority: 0.7 },
+    { path: '/onde-ir', changeFrequency: 'daily', priority: 0.7 },
     { path: '/programas', changeFrequency: 'weekly', priority: 0.7 },
     { path: '/calculadora', changeFrequency: 'monthly', priority: 0.7 },
     { path: '/cadastro', changeFrequency: 'monthly', priority: 0.6 },

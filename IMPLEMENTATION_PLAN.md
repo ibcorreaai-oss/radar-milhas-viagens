@@ -148,10 +148,35 @@ sessão. Testado ao vivo: `/descobrir` agora renderiza os 8 eventos corretamente
 isso é o "Experience Graph" do §12, fora do escopo desta fase; os cards de `/oportunidades-mundiais`
 são informativos, sem link de destino individual (evitando link para uma página inexistente).
 
-## FASE 6 — Inspire-me (não iniciada)
+## FASE 6 — Inspire Me ✅ CONCLUÍDA (26/08/2026)
 
-Formulário (origem/datas/orçamento/milhas/interesses) → ranking usando
-`event-score.ts` + `opportunity-engine.ts` já existentes, sem motor novo.
+- Sem tabela nova, sem motor de score novo — reaproveita 100% o `getDestinationOpportunities()`
+  da Fase 5 (`lib/opportunity-engine.ts`), só adiciona uma camada de filtro/ranking por modo
+  (`lib/inspire-engine.ts`, `rankForInspireMe()`). Migration `0028_inspire_me_flag.sql` só
+  insere a feature flag.
+- **Escopo reduzido em relação à lista literal de inputs do prompt** (origem/datas/orçamento/
+  viajantes/duração): documentado no topo de `lib/inspire-engine.ts` — este app não tem provider
+  de preço de voo/hotel por destino nem dado de duração de deslocamento, então filtrar por
+  "orçamento exato" ou "cabe no fim de semana" seria inventar precisão que não existe (Zero
+  Hallucination Policy). Os únicos filtros implementados são os que o banco responde
+  honestamente: **continente** (`destinations.continent`) e **modo/interesse** — mapeado pra
+  `experience_tags` das estadias catalogadas (Romântico→ROMANTIC, Família→FAMILY, Luxo→LUXURY,
+  Aventura→ADVENTURE, Praia→BEACH, Neve→SNOW, Natureza→NATURE, Gastronomia→GASTRONOMY),
+  presença de evento catalogado (modo Eventos), ou `price_from_cash` real em BRL (modo Melhor
+  custo-benefício — não inventado, é o mesmo preço estimado já exibido em `/estadias`/`/cruzeiros`).
+  "Fim de semana" e "Surpreenda-me" caem no ranking padrão do Opportunity Engine por falta de
+  dado de duração/randomização honesta pra diferenciar.
+- **Sem fallback silencioso**: um modo sem nenhum destino correspondente (ex. "Família" — nenhuma
+  estadia semeada tem a tag FAMILY ainda) mostra estado vazio explícito em vez de devolver
+  resultados de outro filtro disfarçados de "família" — verificado ao vivo.
+- `/onde-ir` (rota nova) + `inspire-filters.tsx` (12 modos como pills + select de continente,
+  refletidos na URL via query params, mesmo padrão dos outros filtros do app).
+- Sidebar atualizada (`Onde Ir`, ícone `Navigation`, atrás da flag `inspireMe`).
+- Feature flag `inspireMe` ativada.
+- Testado ao vivo localmente: modo padrão mostra o mesmo TOP do Opportunity Engine (Munique 68,
+  Rio 61, Ushuaia 52...); modo "Praia" filtra corretamente para Ilha Rangali/Conrad Maldives
+  (único stay com tag BEACH); modo "Família" mostra o estado vazio honesto. `tsc --noEmit` e
+  `next build` limpos.
 
 ## FASE 7 — Alertas de Bucket List (não iniciada)
 

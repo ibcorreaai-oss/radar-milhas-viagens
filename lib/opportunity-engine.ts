@@ -9,7 +9,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { evaluateTripOpportunity } from '@/lib/scoring/opportunity-score';
 import type { ExplainableScore } from '@/lib/scoring/event-score';
-import type { Destination } from '@/lib/types';
+import type { Destination, ExperienceTag } from '@/lib/types';
 
 export interface DestinationOpportunity {
   destination: Pick<Destination, 'id' | 'city' | 'country' | 'country_code' | 'continent'>;
@@ -17,6 +17,14 @@ export interface DestinationOpportunity {
   upcomingEventsCount: number;
   staysCount: number;
   cruisesCount: number;
+  /** União das experience_tags de todas as estadias catalogadas neste destino — usada pelo Inspire Me (Fase 6). */
+  experienceTags: ExperienceTag[];
+  /**
+   * Menor price_from_cash (estadia ou cruzeiro) neste destino, só quando em BRL — usada pelo
+   * modo "Melhor custo-benefício" do Inspire Me. Preços em outra moeda ficam de fora para não
+   * comparar valores incompatíveis sem conversão real.
+   */
+  cheapestPriceBRL: number | null;
 }
 
 interface EventRow {
@@ -31,12 +39,17 @@ interface StayRow {
   destination_id: string | null;
   stay_score: number;
   confidence_score: number;
+  experience_tags: ExperienceTag[];
+  price_from_cash: number | null;
+  price_currency: string;
 }
 
 interface CruiseRow {
   embarkation_destination_id: string | null;
   cruise_score: number;
   confidence_score: number;
+  price_from_cash: number | null;
+  price_currency: string;
 }
 
 export async function getDestinationOpportunities(): Promise<DestinationOpportunity[]> {
@@ -51,8 +64,14 @@ export async function getDestinationOpportunities(): Promise<DestinationOpportun
       .not('destination_id', 'is', null)
       .not('status', 'in', '(cancelado,adiado,finalizado)')
       .order('start_date', { ascending: true, nullsFirst: false }),
-    supabase.from('stays').select('destination_id, stay_score, confidence_score').eq('active', true),
-    supabase.from('cruises').select('embarkation_destination_id, cruise_score, confidence_score').eq('active', true),
+    supabase
+      .from('stays')
+      .select('destination_id, stay_score, confidence_score, experience_tags, price_from_cash, price_currency')
+      .eq('active', true),
+    supabase
+      .from('cruises')
+      .select('embarkation_destination_id, cruise_score, confidence_score, price_from_cash, price_currency')
+      .eq('active', true),
   ]);
 
   if (!destinations) return [];
@@ -99,12 +118,21 @@ export async function getDestinationOpportunities(): Promise<DestinationOpportun
       averageConfidence,
     });
 
+    const experienceTags = Array.from(new Set(destStays.flatMap((s) => s.experience_tags)));
+    const brlPrices = [
+      ...destStays.filter((s) => s.price_currency === 'BRL' && s.price_from_cash != null).map((s) => s.price_from_cash as number),
+      ...destCruises.filter((c) => c.price_currency === 'BRL' && c.price_from_cash != null).map((c) => c.price_from_cash as number),
+    ];
+    const cheapestPriceBRL = brlPrices.length ? Math.min(...brlPrices) : null;
+
     results.push({
       destination,
       explanation,
       upcomingEventsCount: destEvents.length,
       staysCount: destStays.length,
       cruisesCount: destCruises.length,
+      experienceTags,
+      cheapestPriceBRL,
     });
   }
 
