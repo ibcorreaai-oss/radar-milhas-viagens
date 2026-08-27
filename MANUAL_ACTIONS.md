@@ -240,50 +240,23 @@ importa pra decisão/ação sua, reorganizado por urgência.
 
 ### BLOCKERS (impedem lançamento comercial pleno)
 
-- [ ] **`SUPABASE_SERVICE_ROLE_KEY` não configurada na Vercel — achado real em 27/08, muda o GO
-      anterior.** Confirmado ao vivo (não por inferência) que essa variável não existe em
-      produção — quebrou o formulário de contato real ao tentar usá-la (detalhe completo na
-      seção IMPORTANT abaixo). Isso significa que **`app/api/webhooks/stripe/route.ts` também
-      vai quebrar** na primeira vez que `checkout.session.completed` disparar de verdade —
-      `createAdminClient()` lança exceção assim que chamado, ANTES de gravar a subscription no
-      banco. Concretamente: **se alguém pagar de verdade agora, o cartão é cobrado pela Stripe, mas
-      a assinatura NUNCA ativa no banco** (Stripe reentrega o evento, mas todas as tentativas
-      falham do mesmo jeito até a chave existir). Isso não foi pego antes porque os 6 testes de
-      checkout do Igor (validados como GO) abriram a tela de pagamento mas nenhum foi concluído —
-      só a etapa de validação de assinatura do webhook (POST forjado) tinha sido testada, nunca
-      o caminho real de escrita. **Ação: preencher `SUPABASE_SERVICE_ROLE_KEY` na Vercel (Supabase
-      Dashboard → Project Settings → API → `service_role` secret → Vercel → Settings →
-      Environments → Production) ANTES de aceitar qualquer pagamento real.** Depois de preencher,
-      valide um checkout completo de ponta a ponta (posso ajudar a confirmar via
-      `get_runtime_errors` que a subscription foi gravada).
+Nenhum. `SUPABASE_SERVICE_ROLE_KEY` configurada pelo Igor na Vercel em 27/08 e confirmada ao vivo
+— ver DONE abaixo.
 
 ### IMPORTANT (não bloqueia lançamento, mas precisa de atenção antes de escalar)
 
-- [ ] **`SUPABASE_SERVICE_ROLE_KEY` não está configurada na Vercel (achado real, 27/08)** —
-      confirmado ao vivo (não por inferência): o formulário de contato público quebrou em
-      produção depois de eu trocar `app/contato/actions.ts`/`app/home-chat-actions.ts` pra usar
-      `createAdminClient()`, com o erro exato "Supabase admin: faltam ... 
-      SUPABASE_SERVICE_ROLE_KEY no ambiente." Revertido na hora (migrations `0040`→`0041`). Isso
-      também significa que o webhook Stripe (`app/api/webhooks/stripe/route.ts`, que já usa
-      `createAdminClient()` desde a ETAPA 16) **nunca teve seu caminho de escrita real
-      testado de ponta a ponta em produção** — só a validação de assinatura foi confirmada (POST
-      forjado retornando erro de assinatura), porque nenhum checkout foi concluído ainda. Copie a
-      `service_role key` do Supabase Dashboard → Project Settings → API → `service_role` (secret)
-      pra Vercel → Settings → Environments → Production → `SUPABASE_SERVICE_ROLE_KEY`. Depois de
-      configurar: (a) reabrir o fix de segurança das 2 RPCs de contador (ver achado 6 da revisão
-      geral abaixo — é só repetir a migration `0040` + o código que ela tinha, revertidos aqui),
-      (b) validar um checkout real de ponta a ponta pra confirmar que o webhook grava a
-      subscription corretamente pela primeira vez.
-
+- [ ] **Validar um checkout real de ponta a ponta agora que `SUPABASE_SERVICE_ROLE_KEY` existe**
+      (não bloqueia — o caminho que faltava testar era exatamente o que dependia dessa chave, e
+      ela já está confirmada funcionando via `createAdminClient()` num código diferente, ver DONE
+      abaixo — mas o webhook do Stripe especificamente, `checkout.session.completed`, ainda nunca
+      processou um pagamento real de ponta a ponta). Quando o primeiro pagamento de verdade
+      acontecer, conferir no Runtime Log (`get_runtime_errors`, filtro `category=payment`) que a
+      `subscription` foi gravada e o e-mail de ativação foi enviado.
 - [ ] **Validar o webhook com um evento de teste real do Stripe Dashboard** (opcional antes da
       primeira assinatura de verdade, não bloqueia o lançamento — os 6 checkouts já confirmados
       provam que a integração está correta; falta só o ciclo de vida pós-pagamento). Stripe
       Dashboard → Developers → Webhooks → seu endpoint → "Send test webhook", depois conferir no
       Runtime Log da Vercel (filtro `category=payment`) que retornou 200.
-- [ ] **Monitorar a primeira assinatura real** — quando o primeiro pagamento de verdade
-      acontecer, vale conferir no Runtime Log que `checkout.session.completed` gravou a
-      `subscription` corretamente e o e-mail de ativação foi enviado.
-
 - [ ] **`CRON_SECRET` — confirmar que está setado na Vercel.** Não há como ler a variável direto
       (nenhuma ferramenta MCP faz isso); a ausência de erro "unauthorized" nos logs dos últimos 7
       dias é um bom sinal indireto, mas não é confirmação — verifique no painel.
@@ -315,6 +288,19 @@ importa pra decisão/ação sua, reorganizado por urgência.
 
 ### DONE
 
+- [x] **`SUPABASE_SERVICE_ROLE_KEY` configurada na Vercel e confirmada ao vivo (27/08).** O Igor
+      copiou a chave `service_role` do Supabase (Dashboard → Project Settings → API Keys → aba
+      "Legacy anon, service_role API keys" — o Supabase reformulou o sistema de chaves
+      recentemente, essa aba mantém o formato clássico que o código já espera) e colou na Vercel.
+      Confirmei ao vivo: reapliquei a correção de segurança das 2 RPCs de contador
+      (`increment_contact_message_count`/`increment_home_chat_message_count`, migration `0042` —
+      re-revoga o `EXECUTE` público, `app/contato/actions.ts`/`app/home-chat-actions.ts` voltam a
+      usar `createAdminClient()`) e testei o formulário de `/contato` real em produção —
+      "Mensagem enviada!" sem erro, `get_runtime_errors` limpo. Isso prova que a chave funciona de
+      verdade (não só por inferência). **Efeito colateral importante**: como o webhook do Stripe
+      (`app/api/webhooks/stripe/route.ts`) usa a mesma função `createAdminClient()`, ele também
+      deixa de correr risco de quebrar na primeira vez que um pagamento real for concluído — só
+      falta validar isso com um checkout de verdade (ver item em IMPORTANT acima, não bloqueia).
 - [x] **Mais 3 foreign keys sem índice de cobertura, corrigidas (27/08)** — `get_advisors(performance)`
       rodado de novo depois de todas as mudanças de hoje mostrou 3 FKs diferentes das 5 já
       corrigidas na migration `0034`: `notification_logs.alert_id`, `opportunities.world_event_id`,

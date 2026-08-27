@@ -333,29 +333,25 @@ Consolidado em `MANUAL_ACTIONS.md` (estrutura BLOCKERS/IMPORTANT/OPTIONAL/DONE).
 
 ## GO / NO-GO
 
-# GO WITH CONDITIONS — reaberto em 27/08 (revisão geral pré-pausa)
+# GO — condição resolvida em 27/08 (mesmo dia)
 
-**ATUALIZADO 27/08 — achado real muda a decisão anterior desta seção.** O GO original (abaixo,
-preservado como histórico) foi dado depois dos 6 testes de checkout do Igor — mas nenhum desses
-6 testes CONCLUIU o pagamento (só abriram a tela do Stripe Checkout). Numa revisão de código
-diferente nesta mesma data, confirmei ao vivo em produção que `SUPABASE_SERVICE_ROLE_KEY` **não
-está configurada na Vercel** (quebrou o formulário de contato real ao tentar usá-la — ver
-`MANUAL_ACTIONS.md` BLOCKERS). Isso significa que `app/api/webhooks/stripe/route.ts` — que
-também usa `createAdminClient()` — vai lançar exceção assim que `checkout.session.completed`
-disparar de verdade, ANTES de gravar a subscription. **Concretamente: um pagamento real completo
-agora cobraria o cartão do cliente sem nunca ativar a assinatura dele no banco.** Esse caminho
-nunca tinha sido exercitado de fato (só a validação de assinatura HMAC do webhook foi testada,
-via POST forjado).
-
-**Condição pro GO valer de verdade**: preencher `SUPABASE_SERVICE_ROLE_KEY` na Vercel (Supabase
-Dashboard → Project Settings → API → `service_role` secret) e validar um checkout completo de
-ponta a ponta depois. Até lá, **não divulgar/aceitar pagamento real** — a experiência de abrir o
-Checkout continua correta (é só isso que os 6 testes do Igor provaram), o problema é
-especificamente o pós-pagamento.
+**ATUALIZADO 27/08 (mesmo dia, depois da correção).** O GO tinha sido reaberto pra "GO WITH
+CONDITIONS" nesta seção depois de confirmar ao vivo que `SUPABASE_SERVICE_ROLE_KEY` não estava
+configurada na Vercel — o que deixaria o webhook do Stripe (`app/api/webhooks/stripe/route.ts`,
+usa `createAdminClient()`) quebrar na primeira vez que um pagamento real fosse concluído (cartão
+cobrado, assinatura nunca ativada). **O Igor configurou a chave na Vercel na mesma sessão** (copiada
+do Supabase Dashboard → Project Settings → API Keys → aba "Legacy anon, service_role API keys" —
+formato clássico, compatível com o código). Confirmado ao vivo que funciona: reapliquei a
+correção de segurança das 2 RPCs de contador (que também dependia de `createAdminClient()`,
+migration `0042`) e testei o formulário de `/contato` real em produção — sucesso, sem erro,
+`get_runtime_errors` limpo. **GO sem ressalva de novo.** Único item não-bloqueante restante:
+validar um checkout real de ponta a ponta pra confirmar que o webhook grava a `subscription`
+corretamente na primeira assinatura de verdade (ver `MANUAL_ACTIONS.md` IMPORTANT) — o risco de
+quebra que motivou o "WITH CONDITIONS" já está eliminado, isso é só validação final.
 
 ---
 
-## GO (decisão original, 27/08 — histórico, ver correção acima)
+## GO (decisão original, 27/08 — histórico)
 
 O código está production-ready: build limpo, segurança auditada sem achado explorável, RLS
 correta, rotas protegidas, IA com custo controlado por padrão, webhook do Stripe resiliente a

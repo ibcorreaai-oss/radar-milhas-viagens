@@ -88,10 +88,10 @@ pro detalhe de cada item.
 
 ## Decisão final
 
-**ATUALIZADO 27/08 (mesmo dia) — GO WITH CONDITIONS, reaberto.** Ver `PRODUCTION_READINESS_REPORT.md`
-§GO/NO-GO pro detalhe: `SUPABASE_SERVICE_ROLE_KEY` não está configurada na Vercel (confirmado ao
-vivo), então o webhook Stripe vai falhar em gravar a subscription na primeira vez que um
-pagamento REAL for concluído (os 6 testes do Igor abriram o Checkout mas nenhum concluiu
-pagamento — esse caminho nunca foi exercitado). **Não aceitar pagamento real até preencher essa
-env var e validar um checkout completo.** Abrir a tela de Checkout continua funcionando
-normalmente — o problema é só o pós-pagamento.
+**ATUALIZADO 27/08 (mesmo dia) — GO de novo, sem ressalva.** O `SUPABASE_SERVICE_ROLE_KEY`
+que faltava (ver `PRODUCTION_READINESS_REPORT.md` §GO/NO-GO) foi configurado pelo Igor na Vercel
+e confirmado funcionando ao vivo (reapliquei a correção de segurança das RPCs de contador via
+`createAdminClient()` e testei `/contato` real em produção — sucesso, sem erro). O risco que
+motivou o "WITH CONDITIONS" (webhook do Stripe quebrar no primeiro pagamento real) está
+eliminado. Único item não-bloqueante restante: validar um checkout real completo pra confirmar
+o webhook na prática (ver `MANUAL_ACTIONS.md` IMPORTANT).
