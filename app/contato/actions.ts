@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { contactSchema } from '@/lib/validation/contact-schema';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
@@ -46,18 +47,17 @@ export async function sendContactMessage(
   // e-mail. Falha "aberta" (loga e segue) se a RPC der erro, pra nunca
   // travar um envio legítimo por causa de um problema de infraestrutura.
   //
-  // Achado em /code-review (revisão geral 27/08): esta RPC tem EXECUTE
+  // Achado em /code-review (revisão geral 27/08): esta RPC tinha EXECUTE
   // liberado pra anon/authenticated via PostgREST — qualquer um com a anon
-  // key (pública) pode chamar /rest/v1/rpc/increment_contact_message_count
+  // key (pública) podia chamar /rest/v1/rpc/increment_contact_message_count
   // direto, com QUALQUER e-mail, sem passar por este formulário (DoS barato
-  // contra e-mail de terceiro). Tentei fechar isso trocando pra
-  // createAdminClient() (service_role) nesta mesma revisão, mas
-  // SUPABASE_SERVICE_ROLE_KEY não está configurada em produção neste
-  // projeto (confirmado ao vivo: quebrou o formulário real, revertido na
-  // hora) — revertido pro client normal até essa env var existir. Ver
-  // MANUAL_ACTIONS.md pra reabrir esse fix assim que a chave for
-  // preenchida.
-  const { data: countToday, error: rateLimitError } = await supabase.rpc(
+  // contra e-mail de terceiro). Primeira tentativa de fechar isso quebrou o
+  // formulário real (SUPABASE_SERVICE_ROLE_KEY não estava configurada —
+  // revertido na hora, ver histórico do git). Reaplicado em 27/08 depois de
+  // configurar a chave na Vercel e confirmar ao vivo que
+  // createAdminClient() funciona (migration 0042 revoga o EXECUTE público
+  // de novo).
+  const { data: countToday, error: rateLimitError } = await createAdminClient().rpc(
     'increment_contact_message_count',
     { target_email: email }
   );
