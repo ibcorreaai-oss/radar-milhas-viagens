@@ -232,64 +232,97 @@ só o que precisa de uma decisão ou configuração sua:
       em bloqueio/desbloqueio de usuário nas próximas semanas, esse commit é o primeiro lugar pra
       olhar.
 
-## 14. World Experience Radar — Fases 3 a 11 (26/08) — pendências consolidadas
+## 14. World Experience Radar (Fases 3-11) + Auditoria de Produção (26-27/08)
 
-Ver `WORLD_EXPERIENCE_RADAR_FINAL_REPORT.md` para o relatório completo de todas as fases. Só o
-que precisa de decisão/ação sua está aqui, em ordem de prioridade:
+Ver `WORLD_EXPERIENCE_RADAR_FINAL_REPORT.md` (implementação das fases) e
+`PRODUCTION_READINESS_REPORT.md` (auditoria completa de produção) para o detalhe. Aqui só o que
+importa pra decisão/ação sua, reorganizado por urgência.
 
-- [x] **RESOLVIDO — custo real de IA não é mais o padrão**: achado original desta lista era que
-      `ANTHROPIC_API_KEY` (já configurada em `.env.local` para o Consultor IA, feature anterior)
-      faria Trip Builder e Concierge chamarem a API paga automaticamente. Corrigido:
-      `lib/ai/provider.ts` agora **nunca** usa Anthropic por padrão — sem `AI_PROVIDER` definida,
-      só ativa IA se `GROQ_API_KEY`+`GROQ_MODEL` (Groq, free tier) estiverem configurados; caso
-      contrário cai em `none` (fallback grátis), mesmo com `ANTHROPIC_API_KEY` presente. Anthropic
-      só é usada com opt-in explícito (`AI_PROVIDER=anthropic`). Comportamento testado com 5
-      combinações de env var (nenhuma configurada, só chave Anthropic, Groq completo, opt-in
-      explícito Anthropic, `AI_PROVIDER=none` forçado) — todas resolveram corretamente.
-      **Falta só uma coisa sua pra ter IA de verdade de graça**:
-      - [ ] Preencher `GROQ_API_KEY` e `GROQ_MODEL` no `.env.local`/Vercel — Groq tem free tier
-            (mesmo provider que outros bots seus já usam, ex. `@ibc_trader_bot`). Pegue a chave em
-            https://console.groq.com e confirme o model id atual em
-            https://console.groq.com/docs/models (modelos da Groq são descontinuados com
-            frequência — confira também qual id um bot seu que já funciona está usando agora).
-            Sem essas duas variáveis, Trip Builder e Concierge continuam funcionando normalmente,
-            só que sempre no modo determinístico sem IA (zero custo garantido).
-- [ ] **Confirmar se a pendência antiga do Stripe (Arc A, antes desta mega-etapa) foi
-      resolvida** — a última verificação registrada mostrava erro "No such price" persistente
-      até você criar os 6 produtos/preços manualmente no seu dashboard real do Stripe (diagnóstico:
-      a integração MCP do Stripe opera numa conta/escopo diferente da sua conta real logada no
-      navegador). Não foi revisitado durante as Fases 3-11 — verifique se `/assinatura` funciona
-      ponta a ponta com um checkout de teste antes de anunciar preços reais.
-- [ ] **Revisar o conteúdo curado antes de anunciar para usuários pagantes** — todo dado novo
-      das Fases 3, 4 e 11 (8 hospedagens, 8 cruzeiros, 7 eventos avançados) é `is_mock=true`,
-      `verification_status='estimated'` (ou sem data confirmada) — são reais e conhecidos
-      publicamente, mas preço/disponibilidade/data exata não foram verificados ao vivo por mim.
-      Mesma decisão de todas as fases anteriores (Fase 2 em diante): funciona para demonstração,
-      mas precisa da sua curadoria (ou de uma fonte oficial) antes de virar promessa comercial.
-- [ ] **Decidir sobre leitura anônima (SEO) em `/estadias`, `/cruzeiros`, `/descobrir`,
-      `/oportunidades-mundiais`, `/onde-ir`** — característica herdada desde a Fase 2, não
-      corrigida em nenhuma fase por decisão deliberada (preservar RLS): um visitante deslogado
-      vê a página carregar, mas vazia, porque a RLS dessas tabelas só libera leitura para
-      `authenticated`. Se quiser essas páginas indexáveis/verem conteúdo por visitantes (bom
-      para SEO/GEO), precisa de uma nova policy de leitura `anon`, no mesmo padrão já usado em
-      `/promocoes`/`/programas` (`0005_public_read_promotions_programs.sql`) — decisão de
-      produto, não implementada por padrão.
-- [ ] **`next lint` não tem configuração neste projeto** (achado nesta sessão, não é regressão
-      minha) — rodar `npx next lint` abre um assistente interativo pedindo para criar a
-      configuração do zero; todas as fases anteriores (inclusive esta) usaram só
-      `tsc --noEmit` + `next build` como gate de qualidade, nunca lint. Se quiser lint de
-      verdade no CI/dev, alguém precisa rodar o assistente uma vez e decidir a config (Strict
-      vs Base).
-- [ ] **Achados de performance do Supabase (não urgentes, nenhum ERROR)**: 27 avisos de RLS
-      chamando `auth.uid()`/`auth.role()` sem `(select ...)` e 40 de policies permissivas
-      sobrepostas — mas isso é o MESMO padrão já usado desde a Fase 2 em `world_events`, não uma
-      regressão das tabelas novas (`stays`/`cruises`/`trips`/`price_observations` só herdaram o
-      estilo já estabelecido). 24 índices "não usados" são esperados num banco semeado hoje.
-      8 foreign keys sem índice de cobertura (`source_id` em `stays`/`cruises`/`world_events`/
-      `price_observations`, `world_event_id` em `bucket_list_items`) — otimização de performance
-      opcional, sem urgência com o volume de dado atual (dezenas de linhas, não milhares).
-- [ ] **Sessão paralela**: parte das Fases 5, 6 e 7 foi implementada por outra janela do Claude
-      Code sua, rodando ao mesmo tempo nesta mesma pasta — reconciliei e auditei tudo antes de
-      continuar (ver `git log`), mas se ainda tiver essa outra janela aberta, feche-a ou
-      confirme que ela também considera o trabalho concluído antes de continuar editando o
-      projeto, para não haver mais colisão de working tree.
+### BLOCKERS (impedem lançamento comercial pleno)
+
+- [ ] **🔴 Stripe: Price ID inválido, confirmado por log real de produção.** Não é suposição —
+      `get_runtime_errors` da Vercel mostra `Error: No such price:
+      'price_1U8jeSFbJuUYebOzjb7TReB3'` acontecendo de verdade (última vez: 23:38 UTC de
+      26/08/2026, poucas horas antes desta auditoria), 4 vezes, na rota `/assinatura`. Ou seja: a
+      pendência antiga do "Arc A" (diagnosticada como a conta/escopo do MCP do Stripe ser
+      diferente da sua conta real) **continua sem correção** — usuários reais não conseguem
+      assinar nenhum plano pago agora.
+      - **Onde**: Stripe Dashboard (sua conta real, não via MCP) → Products → confirme os 6
+        Price IDs (Premium/Pro/Consultor × mensal/anual) que você criou manualmente.
+      - **O que fazer**: copie o Price ID certo de cada produto real.
+      - **Depois**: cole cada um na variável de ambiente correspondente
+        (`STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_CONSULTOR`, + as `_ANNUAL` se
+        for oferecer anual) em Vercel → Project → Settings → Environment Variables → Production.
+      - **Como validar**: `git commit --allow-empty && git push` pra forçar redeploy (salvar env
+        var sozinho não redeploya o que já está no ar), depois tente assinar um plano de teste em
+        `/assinatura` até ver a tela de sucesso.
+      - **Risco se não fizer**: zero monetização — todo usuário que tentar pagar recebe erro.
+
+- [ ] **Stripe: reconfirmar `STRIPE_WEBHOOK_SECRET`.** Log real mostra histórico misto: "ausente"
+      até ~20:37 UTC de 26/08, depois 1 falha de "assinatura inválida" às 22:38 UTC — pode já
+      estar corrigido (commits de redeploy depois desse horário sugerem isso) mas não há como
+      confirmar sem um teste novo.
+      - **Onde**: Stripe Dashboard → Developers → Webhooks → seu endpoint → "Send test webhook".
+      - **Como validar**: confira no log da Vercel (Runtime Logs, filtro `category=payment`) que
+        o evento de teste retornou 200, sem "assinatura inválida" nem "ausente".
+      - **Risco se não fizer**: sem isso, nenhuma assinatura é ativada/atualizada mesmo que o
+        checkout funcione (o webhook é o único lugar que grava `subscriptions` de verdade).
+
+### IMPORTANT (não bloqueia lançamento, mas precisa de atenção antes de escalar)
+
+- [ ] **Revisar o conteúdo curado antes de anunciar amplamente**: todo dado novo das Fases 3, 4
+      e 11 (8 hospedagens, 8 cruzeiros, 7 eventos avançados) é `is_mock=true`/estimado — reais e
+      conhecidos publicamente, mas preço/disponibilidade/data exata não foram verificados ao
+      vivo. Funciona para demonstração; precisa da sua curadoria (ou fonte oficial) antes de virar
+      promessa comercial.
+- [ ] **Decidir sobre leitura anônima (SEO)** em `/estadias`, `/cruzeiros`, `/descobrir`,
+      `/oportunidades-mundiais`, `/onde-ir` — herdado desde a Fase 2: visitante deslogado vê a
+      página carregar vazia (RLS só libera `authenticated`). Se quiser essas páginas indexáveis
+      de verdade, precisa de uma policy de leitura `anon` nova, no mesmo padrão de
+      `0005_public_read_promotions_programs.sql`.
+- [ ] **`CRON_SECRET` — confirmar que está setado na Vercel.** Não há como ler a variável direto
+      (nenhuma ferramenta MCP faz isso); a ausência de erro "unauthorized" nos logs dos últimos 7
+      dias é um bom sinal indireto, mas não é confirmação — verifique no painel.
+- [ ] **Preencher `GROQ_API_KEY`/`GROQ_MODEL` se quiser IA de graça de verdade** (opcional — sem
+      isso, Trip Builder/Concierge continuam funcionando normalmente em modo determinístico, zero
+      custo garantido). Pegue a chave em https://console.groq.com, confirme o model id atual em
+      https://console.groq.com/docs/models (a Groq descontinua modelos com frequência — confira
+      também o id que um bot seu que já funciona está usando, ex. `@ibc_trader_bot`).
+
+### OPTIONAL (melhorias, sem urgência)
+
+- [ ] `next lint` sem configuração neste projeto (nunca teve) — todas as fases usaram só
+      `tsc --noEmit`+`next build` como gate. Configurar exigiria rodar o assistente interativo do
+      Next e triar achados — não feito por decisão de risco (evitar centenas de mudanças
+      cosméticas sem necessidade).
+- [ ] 1 vulnerabilidade de dependência restante (`postcss`, dentro de `next/node_modules`) só
+      resolve com upgrade major do Next (15→16, breaking) — `npm audit fix --force` avisou
+      explicitamente, não aplicado. As outras 3 (nanoid/next-patch/sharp) já foram corrigidas
+      nesta auditoria sem quebrar nada.
+- [ ] 8 foreign keys sem índice de cobertura + 24 índices "não usados" (achados de performance do
+      Supabase) — esperado num banco com poucas dezenas de linhas; sem urgência até o volume
+      crescer.
+- [ ] Domínio próprio — app ainda em `radar-milhas-viagens.vercel.app`.
+- [ ] Suite de testes automatizados (E2E) — não existe (nem Playwright nem Jest/Vitest
+      configurado); todas as fases usaram smoke test manual/curl real em vez disso. Introduzir um
+      framework novo do zero é uma decisão de escopo maior, não feita nesta auditoria.
+- [ ] Acessibilidade — spot-check feito (imagens com alt correto), auditoria completa de
+      teclado/contraste/aria em todas as 77 rotas está fora do escopo desta passada.
+
+### DONE (corrigido nesta auditoria, sem ação sua)
+
+- [x] Camada `AIProvider` nunca usa Anthropic (pago) por padrão, mesmo com a chave configurada —
+      só Groq (grátis, se configurada) ou `none`. Testado com 5 combinações de env var.
+- [x] Webhook do Stripe agora reentrega em falha de escrita real (antes: falha de banco = erro
+      silencioso, sem retry, assinatura ficava desatualizada pra sempre).
+- [x] `/viagens`, `/montar-viagem`, `/concierge` (Fases 8-9) adicionadas ao `middleware.ts` e ao
+      `robots.ts` — única inconsistência de proteção/SEO encontrada em toda a auditoria de rotas.
+- [x] 3 de 4 vulnerabilidades altas de dependência corrigidas via `npm audit fix` (nanoid, next
+      dentro do range já existente, sharp) — sem breaking change.
+- [x] Sessão paralela (Fases 5-7 implementadas por outra janela do Claude Code) — reconciliada e
+      auditada, sem duplicar trabalho.
+
+### Documentos desta auditoria
+
+`PRODUCTION_CONFIG_MATRIX.md`, `PRODUCTION_READINESS_REPORT.md`, `LAUNCH_CHECKLIST.md` (novos) —
+decisão final: **GO WITH CONDITIONS** (ver `PRODUCTION_READINESS_REPORT.md` §GO/NO-GO).
