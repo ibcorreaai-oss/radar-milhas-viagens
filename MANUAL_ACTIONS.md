@@ -284,6 +284,16 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### DONE
 
+- [x] **Drift real entre banco de produção e repositório, corrigido (27/08).** Comparando
+      `mcp__supabase__list_migrations` (o que está realmente aplicado no banco) contra
+      `supabase/migrations/*.sql` (o que o repositório descreve), achei 2 migrations aplicadas
+      no banco real que nunca tinham arquivo no repo: `0007b_fix_revoke_public` (25/08) e
+      `0031_price_intelligence` (27/08, cria `price_observations` + flag `priceIntelligence` —
+      o código que usa essa tabela, `lib/price-observations.ts`/`lib/scoring/price-intelligence.ts`,
+      já existia; só o arquivo de migration é que nunca foi commitado). Recuperei o SQL exato de
+      cada uma direto da tabela `supabase_migrations.schema_migrations` (coluna `statements`, não
+      recriado de memória) e criei os 2 arquivos que faltavam. Sem isso, qualquer setup novo do
+      banco a partir do repo (`supabase db reset`/ambiente novo) ficaria com schema incompleto.
 - [x] **Revisão geral pré-pausa (27/08) — 4 bugs reais corrigidos.** Rodei `/code-review high`
       sobre a própria correção de data (item abaixo) e achei 3 problemas na migration `0035`:
       (1) ela mudava `start_date`/`end_date` sem recalcular `experience_score`/`book_now_state`
