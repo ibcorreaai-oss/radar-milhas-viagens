@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/email/send';
 import { subscriptionActiveEmail, winBackEmail } from '@/lib/email/templates';
-import { PLANS } from '@/lib/plans';
+import { PLANS, planIdForPriceId } from '@/lib/plans';
 import type { PlanId, SubscriptionStatus } from '@/lib/types';
 
 // Route Handler do webhook da Stripe. É a ÚNICA superfície do app que
@@ -107,14 +107,32 @@ export async function POST(request: Request) {
           break;
         }
 
+        // Achado em /code-review (revisão geral 27/08): antes gravava
+        // status:'active' incondicionalmente. Métodos de pagamento com
+        // confirmação demorada (boleto, comum em conta Stripe pt-BR) ou
+        // cartão exigindo 3DS deixam a subscription real como 'incomplete'
+        // mesmo depois do checkout.session.completed disparar — gravar
+        // 'active' de qualquer jeito liberava acesso pago antes do
+        // pagamento ser confirmado de verdade. Busca o status real da
+        // subscription na Stripe em vez de assumir.
+        let status: SubscriptionStatus = 'active';
+        let currentPeriodEnd: string | null = null;
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          status = mapStripeStatusToOurs(subscription.status);
+          currentPeriodEnd = subscription.current_period_end
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null;
+        }
+
         const { error } = await supabaseAdmin.from('subscriptions').upsert(
           {
             user_id: userId,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             plan: planId,
-            status: 'active',
-            current_period_end: null,
+            status,
+            current_period_end: currentPeriodEnd,
           },
           { onConflict: 'user_id' }
         );
@@ -126,11 +144,13 @@ export async function POST(request: Request) {
             planId,
             reason: error.message,
           });
-        } else {
-          logger.info('payment', 'Assinatura ativada via checkout', { userId, planId });
+        } else if (status === 'active' || status === 'trialing') {
+          logger.info('payment', 'Assinatura ativada via checkout', { userId, planId, status });
 
           // ETAPA 7 (conversão): confirma a ativação por e-mail — reduz
           // "paguei mas não sei se funcionou" e reforça a decisão de compra.
+          // Só dispara quando o status já é ativo de verdade (não em
+          // 'incomplete'/boleto pendente) — ver comentário acima.
           const { data: profile } = await supabaseAdmin
             .from('profiles')
             .select('email')
@@ -139,6 +159,12 @@ export async function POST(request: Request) {
           if (profile?.email) {
             await sendEmail(profile.email, subscriptionActiveEmail({ planName: PLANS[planId].name }));
           }
+        } else {
+          // Checkout completou mas o pagamento ainda não confirmou (boleto
+          // pendente, 3DS em andamento) — grava o status real (sem liberar
+          // acesso) e espera o customer.subscription.updated seguinte
+          // atualizar pra 'active' quando o pagamento compensar.
+          logger.info('payment', 'Checkout concluído, aguardando confirmação de pagamento', { userId, planId, status });
         }
         break;
       }
@@ -150,16 +176,52 @@ export async function POST(request: Request) {
           ? new Date(subscription.current_period_end * 1000).toISOString()
           : null;
 
-        const { error } = await supabaseAdmin
+        // Achado em /code-review (revisão geral 27/08): este handler nunca
+        // atualizava `plan` — só status/current_period_end. Upgrade/downgrade
+        // feito pelo usuário no Billing Portal (Premium→Pro, por exemplo)
+        // dispara exatamente este evento, mas o plano ficava travado no
+        // valor antigo pra sempre no nosso banco, mesmo cobrando o valor
+        // novo na Stripe (entitlements — maxAlerts/canais/buscas — nunca
+        // atualizavam). Resolve o plano pelo Price ID real do item da
+        // subscription em vez de confiar em metadata (que só existe na
+        // criação, não é atualizada pela Stripe num upgrade feito no Portal).
+        const priceId = subscription.items.data[0]?.price.id;
+        const resolvedPlanId = priceId ? planIdForPriceId(priceId) : null;
+        if (priceId && !resolvedPlanId) {
+          logger.error('payment', 'customer.subscription.updated com Price ID não reconhecido — plan não atualizado', {
+            stripeSubscriptionId: subscription.id,
+            priceId,
+          });
+        }
+
+        const { data: updated, error } = await supabaseAdmin
           .from('subscriptions')
-          .update({ status, current_period_end: currentPeriodEnd })
-          .eq('stripe_subscription_id', subscription.id);
+          .update({
+            status,
+            current_period_end: currentPeriodEnd,
+            ...(resolvedPlanId ? { plan: resolvedPlanId } : {}),
+          })
+          .eq('stripe_subscription_id', subscription.id)
+          .select('user_id');
 
         if (error) {
           hadCriticalWriteError = true;
           logger.error('payment', 'Erro ao atualizar subscription (customer.subscription.updated)', {
             stripeSubscriptionId: subscription.id,
             reason: error.message,
+          });
+        } else if (!updated || updated.length === 0) {
+          // Achado em /code-review: .update().eq() não dá erro quando 0
+          // linhas batem (não é o mesmo que falha de escrita) — sem checar
+          // isso, entrega fora de ordem (este evento chegando antes do
+          // checkout.session.completed criar a linha) perdia a atualização
+          // pra sempre, e a Stripe nunca reentregava (recebia 200). Marca
+          // como falha real pra forçar retry — a essa altura o
+          // checkout.session.completed quase certamente já terá criado a
+          // linha, então o retry resolve sozinho.
+          hadCriticalWriteError = true;
+          logger.error('payment', 'customer.subscription.updated não encontrou linha em subscriptions (entrega fora de ordem?)', {
+            stripeSubscriptionId: subscription.id,
           });
         } else if (status === 'past_due') {
           // Sinal real de falha de pagamento (cartão recusado, sem saldo,
@@ -188,16 +250,25 @@ export async function POST(request: Request) {
           .eq('stripe_subscription_id', subscription.id)
           .maybeSingle();
 
-        const { error } = await supabaseAdmin
+        const { data: deleted, error } = await supabaseAdmin
           .from('subscriptions')
           .update({ status: 'canceled', plan: 'free' })
-          .eq('stripe_subscription_id', subscription.id);
+          .eq('stripe_subscription_id', subscription.id)
+          .select('user_id');
 
         if (error) {
           hadCriticalWriteError = true;
           logger.error('payment', 'Erro ao cancelar subscription (customer.subscription.deleted)', {
             stripeSubscriptionId: subscription.id,
             reason: error.message,
+          });
+        } else if (!deleted || deleted.length === 0) {
+          // Mesmo achado do handler de 'updated' acima — 0 linhas batendo
+          // não é erro pro Supabase, mas significa que a atualização se
+          // perdeu (entrega fora de ordem). Força retry.
+          hadCriticalWriteError = true;
+          logger.error('payment', 'customer.subscription.deleted não encontrou linha em subscriptions (entrega fora de ordem?)', {
+            stripeSubscriptionId: subscription.id,
           });
         } else {
           logger.info('payment', 'Subscription cancelada, usuário voltou pro plano free', {

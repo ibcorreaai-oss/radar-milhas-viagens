@@ -134,6 +134,20 @@ export function planPriceForInterval(
   return { label: plan.priceLabel, cents: plan.priceCents, stripeEnvVar: plan.stripeEnvVar };
 }
 
+// Achado em /code-review (revisão geral 27/08): o webhook da Stripe
+// (customer.subscription.updated) nunca atualizava `plan` — só `status`/
+// `current_period_end` — então um upgrade/downgrade feito no Billing Portal
+// (ex.: Premium→Pro) ficava com o plano antigo pra sempre no nosso banco,
+// mesmo cobrando o valor novo na Stripe. Resolve o preço/Price ID da Stripe
+// de volta pro PlanId — a mesma direção inversa de `planPriceForInterval`.
+export function planIdForPriceId(priceId: string): PlanId | null {
+  for (const plan of Object.values(PLANS)) {
+    if (plan.stripeEnvVar && process.env[plan.stripeEnvVar] === priceId) return plan.id;
+    if (plan.annualStripeEnvVar && process.env[plan.annualStripeEnvVar] === priceId) return plan.id;
+  }
+  return null;
+}
+
 export function planAllowsMoreAlerts(plan: PlanId, currentCount: number): boolean {
   return currentCount < PLANS[plan].maxAlerts;
 }

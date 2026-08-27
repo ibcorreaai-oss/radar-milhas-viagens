@@ -28,15 +28,23 @@ export async function startCheckout(formData: FormData): Promise<void> {
     redirect('/assinatura');
   }
 
-  // Já tem assinatura paga ativa/trial na Stripe: não cria um segundo
-  // Checkout (isso abriria uma SEGUNDA subscription cobrando em paralelo,
-  // órfã — o usuário só veria a mais nova no Billing Portal e continuaria
-  // sendo cobrado pela antiga sem saber). Manda pro Billing Portal, onde dá
-  // pra trocar de plano na MESMA assinatura (Igor precisa habilitar "Update
-  // subscription" no Customer Portal da Stripe — ver README).
+  // Já tem assinatura paga ativa/trial/past_due na Stripe: não cria um
+  // segundo Checkout (isso abriria uma SEGUNDA subscription cobrando em
+  // paralelo, órfã — o usuário só veria a mais nova no Billing Portal e
+  // continuaria sendo cobrado pela antiga sem saber). Manda pro Billing
+  // Portal, onde dá pra trocar de plano na MESMA assinatura (Igor precisa
+  // habilitar "Update subscription" no Customer Portal da Stripe — ver
+  // README). 'past_due' incluído aqui (achado em /code-review, revisão
+  // geral 27/08): hasActiveAccess() em lib/subscription-access.ts já trata
+  // past_due como acesso concedido (dunning, cartão recusado mas Stripe
+  // ainda tentando) — sem incluir aqui também, esse usuário clicando
+  // "Assinar" de novo criava exatamente a segunda subscription órfã que
+  // este código diz evitar.
   const hasLiveSubscription =
     Boolean(ctx.subscription?.stripe_subscription_id) &&
-    (ctx.subscription?.status === 'active' || ctx.subscription?.status === 'trialing');
+    (ctx.subscription?.status === 'active' ||
+      ctx.subscription?.status === 'trialing' ||
+      ctx.subscription?.status === 'past_due');
 
   if (hasLiveSubscription) {
     await openBillingPortal();

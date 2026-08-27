@@ -300,6 +300,65 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
       cada uma direto da tabela `supabase_migrations.schema_migrations` (coluna `statements`, não
       recriado de memória) e criei os 2 arquivos que faltavam. Sem isso, qualquer setup novo do
       banco a partir do repo (`supabase db reset`/ambiente novo) ficaria com schema incompleto.
+- [x] **Revisão geral pré-pausa (27/08) — `/code-review high` no app inteiro, 8 bugs reais
+      corrigidos.** Rodei de novo pedindo explicitamente escopo completo (a 1ª chamada só tinha
+      revisado o último commit — ver lição em memória). 10 achados reais, 8 corrigidos nesta
+      sessão, 2 documentados como risco residual aceito (abaixo):
+      1. **RLS de conta bloqueada nunca foi generalizada** — a migration 0021 (ETAPA 15.2) só
+         aplicou `is_blocked()` em `favorites`/`lesson_progress`; outras 7 tabelas de escrita do
+         usuário comum (`alerts`, `bucket_lists`, `bucket_list_items`, `flight_searches`,
+         `hotel_searches`, `trips`, `user_loyalty_programs`) continuavam com policy bare
+         `user_id = auth.uid()` — uma conta bloqueada com JWT ainda válido conseguia escrever
+         nelas direto via REST API, ignorando toda checagem `isBlocked()` da camada de app. Fix:
+         migration `0038`, todas as 9 tabelas agora consistentes.
+      2. **Webhook Stripe nunca atualizava `plan`** em `customer.subscription.updated` — upgrade/
+         downgrade no Billing Portal (ex.: Premium→Pro) ficava com o plano antigo pra sempre no
+         banco, mesmo cobrando o valor novo. Fix: nova função `planIdForPriceId()` resolve o
+         plano pelo Price ID real do item da subscription.
+      3. **`checkout.session.completed` gravava `status:'active'` incondicionalmente** — método
+         de pagamento com confirmação demorada (boleto, comum em conta pt-BR) ou 3DS deixa a
+         subscription real como `incomplete` mesmo com o checkout "completo"; liberava acesso
+         pago antes da confirmação real. Fix: busca o status real via
+         `stripe.subscriptions.retrieve()`, e-mail de "assinatura ativada" só dispara quando o
+         status é de fato ativo.
+      4. **`.update().eq(...)` sem checar linhas afetadas** nos 2 handlers de subscription —
+         Supabase não dá erro quando 0 linhas batem; entrega de webhook fora de ordem perdia a
+         atualização pra sempre (Stripe recebia 200, nunca reentregava). Fix: checa
+         `.select()` de volta, força retry (500) se 0 linhas.
+      5. **`hasLiveSubscription` (evita 2ª assinatura órfã) não incluía `past_due`**, mas
+         `hasActiveAccess` (o gate real) sim — um usuário em dunning clicando "Assinar" de novo
+         criava exatamente a assinatura órfã paralela que esse código existe pra evitar. Fix:
+         inclui `past_due`.
+      6. **2 RPCs de contador anti-abuso (`increment_contact_message_count`,
+         `increment_home_chat_message_count`) eram chamáveis direto por `anon` via PostgREST**
+         com e-mail arbitrário — qualquer um com a anon key (pública) podia negar o
+         contato/chat público pra um e-mail de terceiro, sem nunca passar pelo formulário. Fix:
+         EXECUTE público revogado (migration `0040`), as 2 Server Actions passam a chamar via
+         `createAdminClient()` (service_role, só server-side). Confirmado antes de aplicar que
+         `SUPABASE_SERVICE_ROLE_KEY` está configurada em produção (webhook já depende dela e
+         funciona; zero erro desse tipo nos últimos 7 dias de log).
+      7. **Consultor IA (endpoint pago) nunca truncava mensagem/histórico** antes de mandar pra
+         Anthropic — diferente do Concierge, que já limitava. Fix: mesmos limites (800
+         caracteres/mensagem, 8 turnos de histórico).
+      8. **`profiles: insert own` sem restrição de coluna** — o UPDATE já tinha GRANT restrito
+         (exclui `role`, pra impedir autopromoção), o INSERT não tinha o mesmo cuidado
+         (`authenticated` conseguia inserir `role='admin'` direto). Nenhum código do app faz
+         INSERT direto hoje (é tudo via trigger `handle_new_user`, que roda como definer, não
+         afetado) — é rede de segurança pro caso desse trigger falhar algum dia. Fix: migration
+         `0039`, mesmo padrão de coluna restrita do UPDATE.
+
+      **Risco residual aceito, não corrigido** (achados 9 e 10, mudança de arquitetura maior que
+      o escopo desta revisão):
+      - Chat público da home: mesmo com o fix do item 6 acima fechando a chamada direta da RPC,
+        um script gerando um e-mail falso novo a cada chamada ainda contorna o limite por-e-mail
+        inteiro (sem IP throttling, que exigiria infra nova). Mitigado parcialmente: mensagem
+        agora é truncada (800 caracteres) e o teto de 60 msgs/dia por e-mail e 3 conversas novas/
+        dia continuam valendo pra quem não troca de e-mail a cada chamada.
+      - Cron jobs (`check-alerts`, `check-trials`) têm padrão TOCTOU (lê linhas vencidas → envia
+        e-mail/WhatsApp → só depois marca como processado, sem lock/claim) — 2 execuções
+        sobrepostas (re-trigger manual durante um run longo) podem mandar notificação duplicada.
+        Baixa probabilidade no volume atual (cron roda 1x/dia no Hobby); corrigir de verdade
+        exigiria uma etapa de "reivindicar" atômica separada.
 - [x] **Revisão geral pré-pausa (27/08) — 4 bugs reais corrigidos.** Rodei `/code-review high`
       sobre a própria correção de data (item abaixo) e achei 3 problemas na migration `0035`:
       (1) ela mudava `start_date`/`end_date` sem recalcular `experience_score`/`book_now_state`

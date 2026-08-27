@@ -7,6 +7,13 @@ import { isBlocked } from '@/lib/roles';
 import type { Opportunity, UserLoyaltyProgram, LoyaltyProgram } from '@/lib/types';
 
 const ELIGIBLE_PLANS = ['pro', 'consultor'];
+// Achado em /code-review (revisão geral 27/08): esta action nunca truncava
+// message/history antes de mandar pra Anthropic — diferente da irmã
+// lib/ai/concierge.ts, que já limita os dois (mesma constante/valores,
+// espelhados aqui de propósito). Sem isso, um script com history gigante
+// gera custo real ilimitado por chamada mesmo estando gated por plano pago.
+const MAX_MESSAGE_LENGTH = 800;
+const MAX_HISTORY_TURNS = 8;
 const DISCLAIMER =
   'Lembrete: preços, disponibilidade e regras de milhas mudam a qualquer momento — sempre confirme no site oficial da companhia/programa antes de comprar ou emitir.';
 
@@ -186,7 +193,7 @@ export async function askConsultant(
     return { error: 'Sem acesso' };
   }
 
-  const trimmedMessage = message.trim();
+  const trimmedMessage = message.trim().slice(0, MAX_MESSAGE_LENGTH);
   if (!trimmedMessage) {
     return { error: 'Mensagem vazia' };
   }
@@ -206,7 +213,7 @@ export async function askConsultant(
       max_tokens: 1024,
       system: systemPrompt,
       messages: [
-        ...history.map((m) => ({ role: m.role, content: m.content })),
+        ...history.slice(-MAX_HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_LENGTH) })),
         { role: 'user' as const, content: trimmedMessage },
       ],
     });

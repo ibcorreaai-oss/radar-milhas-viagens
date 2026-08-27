@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { contactMessageEmail } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
@@ -46,6 +47,11 @@ const MAX_NEW_CHATS_PER_DAY = 3;
 // (0019_home_chat_message_counter.sql), nunca confiando em nada vindo do
 // client. ~3 conversas de MAX_HISTORY cada, com folga.
 const MAX_MESSAGES_PER_DAY = 60;
+// Achado em /code-review (revisão geral 27/08): nenhuma mensagem era
+// truncada antes de mandar pra Anthropic — mesmo com o teto diário acima,
+// uma única mensagem gigante ainda gerava custo real desproporcional por
+// chamada. Mesmo valor de lib/ai/concierge.ts.
+const MAX_MESSAGE_LENGTH = 800;
 
 const FALLBACK_ANSWER =
   'No momento não consigo responder com IA completa, mas aqui vai o resumo: o Radar Milhas & Viagens compara preço de passagem/hotel em dinheiro vs pontos e avisa só quando vale a pena, com planos a partir de grátis. Crie sua conta em /cadastro (é gratuito) pra ver os alertas e o Consultor IA completo, personalizado com seus próprios pontos.';
@@ -83,10 +89,17 @@ async function recentChatCount(email: string): Promise<number> {
 // client. Falha aberta (0) só em erro de infraestrutura, igual ao padrão de
 // recentChatCount acima; se Supabase não está configurado, não há como
 // persistir o contador mesmo, então também não há limite pra impor.
+//
+// Achado em /code-review (revisão geral 27/08): a RPC tinha EXECUTE pra
+// anon/authenticated via PostgREST — qualquer um com a anon key (pública)
+// conseguia chamar /rest/v1/rpc/increment_home_chat_message_count direto,
+// com QUALQUER e-mail, sem nunca passar pelo widget — negava o chat público
+// pra um e-mail de terceiro maxando o contador dele. Fix (migration 0040):
+// EXECUTE público revogado, chamada aqui via createAdminClient()
+// (service_role, só server-side) — mesmo padrão de app/contato/actions.ts.
 async function incrementDailyMessageCount(email: string): Promise<number> {
   if (!isSupabaseConfigured()) return 0;
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('increment_home_chat_message_count', { target_email: email });
+  const { data, error } = await createAdminClient().rpc('increment_home_chat_message_count', { target_email: email });
   if (error) {
     logger.error('integration', 'Falha ao incrementar contador de mensagens do chat público', { reason: error.message });
     return 0;
@@ -142,7 +155,7 @@ export async function askPublicAssistant(
     return { error: parsedLead.error.issues[0]?.message ?? 'Informe nome e e-mail válidos.' };
   }
 
-  const trimmedMessage = message.trim();
+  const trimmedMessage = message.trim().slice(0, MAX_MESSAGE_LENGTH);
   if (!trimmedMessage) {
     return { error: 'Mensagem vazia.' };
   }
@@ -187,7 +200,7 @@ export async function askPublicAssistant(
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [
-        ...history.map((m) => ({ role: m.role, content: m.content })),
+        ...history.map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_LENGTH) })),
         { role: 'user' as const, content: trimmedMessage },
       ],
     });
