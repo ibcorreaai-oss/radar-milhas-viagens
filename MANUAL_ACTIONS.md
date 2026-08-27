@@ -370,7 +370,9 @@ importa pra decisão/ação sua, reorganizado por urgência.
          funcionando, estava errada: o webhook nunca tinha exercitado esse caminho porque nenhum
          checkout real foi concluído ainda). Testei ao vivo no formulário de `/contato` real logo
          depois do deploy — quebrou, revertido na hora (migration `0041`, código de volta pro
-         client normal). **Continua vulnerável, ver item de ação abaixo.**
+         client normal). **Continua vulnerável, ver item de ação abaixo.** Revert confirmado ao
+         vivo: nova submissão real em `/contato` depois do redeploy voltou a mostrar "Mensagem
+         enviada!" sem erro (`get_runtime_errors` limpo desde então).
       7. **Consultor IA (endpoint pago) nunca truncava mensagem/histórico** antes de mandar pra
          Anthropic — diferente do Concierge, que já limitava. Fix: mesmos limites (800
          caracteres/mensagem, 8 turnos de histórico).
