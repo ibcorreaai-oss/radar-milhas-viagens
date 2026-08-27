@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Navigation,
   Luggage,
+  Bot,
   Calculator,
   Heart,
   Star,
@@ -63,6 +64,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/promocoes', label: 'Promoções', icon: Tag },
   { href: '/programas', label: 'Programas', icon: Award },
   { href: '/consultor-ia', label: 'Consultor IA', icon: Sparkles },
+  { href: '/concierge', label: 'Concierge IA', icon: Bot, flag: 'conciergeAI' },
 ];
 
 export const ACCOUNT_ITEMS: NavItem[] = [

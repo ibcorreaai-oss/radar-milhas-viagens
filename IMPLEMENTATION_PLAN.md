@@ -262,22 +262,58 @@ que faltava antes de considerar a fase pronta — não recriou nada do zero.
   existente) — evitado deliberadamente para não gerar custo real numa verificação, em linha com
   a regra de custo zero reforçada pelo Igor nesta sessão. Recomendação registrada abaixo.
 
-**Pendência/recomendação registrada, não bloqueante**: o Igor pediu explicitamente (nesta
-sessão) uma camada `AIProvider` abstrata para as Fases 8/9 — grátis/local/configurável/
-`AI_PROVIDER=none` — em vez de assumir Claude pago. O Trip Builder desta fase já é seguro em
-custo (cai pra fallback grátis sem a chave), mas ainda chama a Anthropic diretamente quando a
-chave existe, sem essa camada de abstração. Refatorar isso tocaria também `/consultor-ia`
-(já em produção) — escopo maior que reconciliar esta fase, então não foi feito agora para não
-mexer numa feature já estável sem necessidade. Ver `MANUAL_ACTIONS.md`/relatório final.
+**Atualizado na Fase 9**: `lib/ai/provider.ts` foi criado (camada `AIProvider` — `AI_PROVIDER=none`
+força fallback grátis mesmo com `ANTHROPIC_API_KEY` configurada; sem a variável, mantém o
+comportamento retrocompatível de só usar Anthropic se a chave existir) e `lib/ai/trip-builder.ts`
+foi refatorado para usá-la (diff mínimo, comportamento externo idêntico). `/consultor-ia`
+(feature anterior ao World Experience Radar, fora do escopo das Fases 3-11) não foi tocado.
 
-## FASE 9-11 — AI Travel Concierge, Price Intelligence 2.0, Advanced Radars (não iniciadas)
+## FASE 9 — AI Travel Concierge ✅ CONCLUÍDA (26/08/2026)
 
-Descritas no PROMPT WORLD EXPERIENCE RADAR original. A partir daqui todas seguem a doutrina de
-custo zero absoluto reforçada pelo Igor: camada `AIProvider` (grátis/local/configurável/none)
-em vez de assumir modelo pago; Price Intelligence 2.0 constrói histórico próprio a partir de
-observações reais do próprio sistema (`price_observations`), nunca compra/inventa histórico;
-Advanced Radars só integra fonte gratuita e permitida por fonte, com graceful degradation
-quando não houver uma.
+- `lib/ai/provider.ts` (novo, compartilhado com a Fase 8) — camada `AIProvider` pedida
+  explicitamente pelo Igor: `AI_PROVIDER=none` desliga qualquer chamada paga
+  independentemente da chave configurada; sem a variável, mantém o comportamento anterior
+  (usa Anthropic só se a chave existir). Toda feature de IA deste app continua funcional em
+  modo zero-custo.
+- `lib/ai/concierge.ts` — `askConcierge()`: diferente do Consultor IA (focado em pontos/milhas
+  e perfil do usuário), o Concierge responde perguntas abertas de descoberta ("o que rola na
+  Europa em outubro?", "pra onde ir com esse orçamento?") **sempre ancorado no Trip
+  Opportunity Score real** (reaproveita `lib/opportunity-engine.ts` da Fase 5, sem recriar
+  nenhum motor de agregação novo) — o bloco `DADOS REAIS ATUAIS` no system prompt é a única
+  fonte factual permitida; a IA é instruída a recusar responder sobre qualquer coisa fora
+  desse bloco.
+  - **Defesas contra prompt injection** (documentadas em comentário no próprio arquivo):
+    mensagem do usuário nunca vira role "system"; system prompt instrui explicitamente a
+    ignorar qualquer tentativa (nos dados ou na mensagem do usuário) de mudar de papel, revelar
+    o prompt ou sair do escopo de viagens; mensagem truncada em 800 caracteres antes de
+    qualquer uso; aviso de segurança final é sempre imposto pelo código (nunca confia que o
+    modelo o manteve); IA nunca recebe tool-use/function-calling, só gera texto.
+  - Fallback sem IA (`AI_PROVIDER=none` ou chave ausente): não usa heurística de
+    palavra-chave como o Consultor IA — usa o próprio Trip Opportunity Score real, ranqueado,
+    já é uma resposta honesta e grounded por natureza.
+- `/concierge` — chat, mesmo padrão visual/estrutural do `/consultor-ia` (histórico de
+  mensagens, sugestões, textarea). Gate de plano Pro/Consultor (mesmo motivo de custo do
+  Consultor IA/Trip Builder). Flag `conciergeAI` — já existia pré-registrada em
+  `lib/types.ts`/`lib/feature-flags.ts`/tabela `feature_flags` desde etapas anteriores
+  (não precisou de migration nova), só foi ativada agora.
+- Sidebar atualizada (`Concierge IA`, ícone `Bot`, atrás da flag `conciergeAI`, ao lado do
+  Consultor IA).
+- **Verificação desta sessão**: `tsc --noEmit` e `next build` limpos (rota `/concierge`
+  confirmada, 3.88 kB). Confirmado via SQL que há 24 destinos reais com dado suficiente
+  (evento/estadia/cruzeiro) para o Concierge ter o que recomendar. **Não testado via
+  navegador**: o fluxo completo exigiria login como usuário Pro/Consultor e dispararia uma
+  chamada real à API paga da Anthropic (mesma decisão e mesmo motivo já registrados na Fase 8)
+  — evitado deliberadamente. Verificação feita por revisão de código linha a linha do prompt,
+  do fallback e das defesas de injeção, mais a confirmação de dado real via SQL.
+
+## FASE 10-11 — Price Intelligence 2.0, Advanced Radars (não iniciadas)
+
+Descritas no PROMPT WORLD EXPERIENCE RADAR original. Seguem a doutrina de custo zero absoluto
+reforçada pelo Igor: Price Intelligence 2.0 constrói histórico próprio a partir de observações
+reais do próprio sistema (`price_observations`), nunca compra/inventa histórico — mostra "dados
+históricos insuficientes" em vez de fabricar tendência; Advanced Radars só integra fonte
+gratuita e permitida por fonte (respeitando robots/ToS, sem bypass de CAPTCHA/anti-bot), com
+graceful degradation quando não houver uma disponível.
 
 ## Regra de ouro para todas as fases futuras
 

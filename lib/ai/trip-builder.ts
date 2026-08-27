@@ -1,7 +1,7 @@
-// AI Trip Builder (Fase 8) — gera itinerário + orçamento estimado via
-// Claude, reaproveitando o mesmo padrão já usado em app/(app)/consultor-ia
-// (mesmo SDK, mesmo modelo, mesmo princípio de fallback determinístico
-// nunca quebrar quando ANTHROPIC_API_KEY não está configurada).
+// AI Trip Builder (Fase 8) — gera itinerário + orçamento estimado via a
+// camada AIProvider (lib/ai/provider.ts), nunca dependendo diretamente de
+// Claude pago (AI_PROVIDER=none ou chave ausente cai sempre no fallback
+// determinístico abaixo).
 //
 // Zero Hallucination Policy: o `budget_breakdown` retornado é SEMPRE uma
 // estimativa de IA, nunca um preço real — a UI (app/(app)/viagens/[id])
@@ -14,9 +14,9 @@
 // `logger` — mesmo padrão de observabilidade efêmera já usado no resto do
 // app (ver OBSERVABILITY.md), sem tabela nova.
 
-import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { completeWithAI, estimateCostUsd } from '@/lib/ai/provider';
 import type { ExperienceTag, TripBudgetBreakdown, TripItineraryDay, TripOptimization, TripPace, TripVariant } from '@/lib/types';
 
 export interface GenerateTripInput {
@@ -40,12 +40,6 @@ export interface GeneratedTripPlan {
   summary: string;
   aiGenerated: boolean;
 }
-
-// Preço aproximado por milhão de tokens (Claude Sonnet, ago/2026) — só para
-// o log de custo estimado do §27, NUNCA é uma fatura real (a fatura real
-// vem do console da Anthropic).
-const APPROX_INPUT_COST_PER_MTOK_USD = 3;
-const APPROX_OUTPUT_COST_PER_MTOK_USD = 15;
 
 const EMPTY_BUDGET: TripBudgetBreakdown = {
   flights: null,
@@ -145,44 +139,32 @@ Regras obrigatórias:
 }
 
 export async function generateTripPlan(input: GenerateTripInput): Promise<GeneratedTripPlan> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    logger.info('system', 'trip_builder: ANTHROPIC_API_KEY ausente, usando fallback', { feature: 'trip_builder', status: 'fallback' });
-    return buildFallbackPlan(input);
-  }
-
   const startedAt = Date.now();
   const prompt = buildSystemPrompt(input);
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const textBlock = response.content.find((block) => block.type === 'text');
-    const rawText = textBlock && textBlock.type === 'text' ? textBlock.text : '';
+    const completion = await completeWithAI({ messages: [{ role: 'user', content: prompt }], maxTokens: 2048 });
+    if (!completion) {
+      logger.info('system', 'trip_builder: IA indisponível (provider=none ou sem chave), usando fallback', {
+        feature: 'trip_builder',
+        status: 'fallback',
+      });
+      return buildFallbackPlan(input);
+    }
 
     // Claude às vezes envolve o JSON em ```json — extrai só o objeto.
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const jsonMatch = completion.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('resposta sem JSON identificável');
 
     const parsed = tripPlanSchema.parse(JSON.parse(jsonMatch[0]));
 
-    const latencyMs = Date.now() - startedAt;
-    const inputTokens = response.usage?.input_tokens ?? 0;
-    const outputTokens = response.usage?.output_tokens ?? 0;
-    const estimatedCostUsd =
-      (inputTokens / 1_000_000) * APPROX_INPUT_COST_PER_MTOK_USD + (outputTokens / 1_000_000) * APPROX_OUTPUT_COST_PER_MTOK_USD;
-
     logger.info('system', 'trip_builder: geração de IA concluída', {
       feature: 'trip_builder',
       model: 'claude-sonnet-4-5',
-      inputTokens,
-      outputTokens,
-      estimatedCostUsd: Number(estimatedCostUsd.toFixed(4)),
-      latencyMs,
+      inputTokens: completion.inputTokens,
+      outputTokens: completion.outputTokens,
+      estimatedCostUsd: Number(estimateCostUsd(completion.inputTokens, completion.outputTokens).toFixed(4)),
+      latencyMs: Date.now() - startedAt,
       status: 'success',
     });
 
