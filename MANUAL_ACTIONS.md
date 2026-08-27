@@ -284,6 +284,21 @@ Nenhum. Stripe validado ponta a ponta em produção — ver DONE abaixo.
 
 ### DONE
 
+- [x] **3 eventos do World Radar com data errada, corrigidos (27/08)** — verificação com fonte
+      oficial (WebSearch) dos 9 eventos de data fixa em `world_events`: Oktoberfest, Festival de
+      Parintins, San Fermín e o eclipse solar total de 2027 já estavam certos; a janela de aurora
+      boreal é uma faixa geral (sem data exata a checar), então também ficou como estava.
+      **Rock in Rio 2026** tinha 11–20/09 no banco, mas a data real (rockinrio.com) são 7 dias
+      não-contínuos (4, 5, 6, 7, 11, 12, 13/09) — ajustado pro intervalo 04–13/09 + nota na
+      descrição. **Coachella 2027** tinha 16–25/04, real (Pollstar/NME) são 2 finais de semana,
+      9–11/04 e 16–18/04 — ajustado pro intervalo 09–18/04. **GP de Mônaco F1 2027** tinha 23/05
+      sem fonte nenhuma, real (formula1.com/ticketing, ACM Monaco) é 06/06 (corrida, sujeito a
+      aprovação formal da FIA) — corrigido. **Tomorrowland 2027 ficou como estava** (23/07–01/08)
+      — fontes conflitam e nenhuma é oficial ainda, mudar pra um palpite não confirmado seria
+      pior que deixar como está; revisar quando a organização anunciar de verdade. `is_mock`
+      continua `true` nos 3 corrigidos — isso conserta um erro factual, não substitui a decisão
+      de negócio abaixo (item 2) sobre marcar como conteúdo real pra pagante.
+      Migration `0035_fix_world_events_dates.sql`.
 - [x] **Acessibilidade: auditoria completa (27/08)** — varredura de 231 arquivos `app/`+
       `components/` em 7 categorias (botão só-ícone sem nome acessível, `<img>` sem `alt`, input
       sem label, hierarquia de heading, `outline-none` sem substituto de foco visível, diálogo/
