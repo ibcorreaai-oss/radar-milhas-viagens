@@ -103,11 +103,50 @@ deslogado vê `/cruzeiros` carregar sem itens, porque a rota não está em `PROT
 mas RLS só libera leitura pra `authenticated`) — não é regressão nova, não foi corrigida agora
 pelo mesmo motivo (preservar decisão da Fase 2, evitar scope creep).
 
-## FASE 5 — World Opportunity Engine (não iniciada)
+## FASE 5 — World Opportunity Engine ✅ CONCLUÍDA (26/08/2026)
 
-Cruza voos + milhas + `world_events` + hotel + cruzeiro + sazonalidade em um
-`Trip Opportunity Score` consolidado. Depende das Fases 3 e 4 existirem com dado real
-(não mock) para não inventar número — ver `AUDIT_REPORT.md` §8.
+**Achado de auditoria antes de implementar (regra §0 do PROMPT WORLD EXPERIENCE RADAR)**:
+ao consultar o banco real para agregar dados por destino, `world_events`/`event_categories`/
+`sources` estavam **vazios** — o seed da Fase 2 (`supabase/seed_world_radar.sql`) e as flags
+`worldRadar`/`bucketList` nunca tinham sido de fato aplicados neste projeto Supabase, apesar do
+código de `/descobrir` e `/bucket-list` já existir e a Fase 2 estar marcada como concluída.
+Corrigido nesta fase: seed aplicado (8 eventos reais, 11 categorias, 6 fontes, 8 destinos) e
+flags `worldRadar`/`bucketList` ativadas — comportamento pré-existente, não uma regressão desta
+sessão. Testado ao vivo: `/descobrir` agora renderiza os 8 eventos corretamente (GP Mônaco
+94/100, Oktoberfest 74/100, San Fermín 75/100, etc.).
+
+- Sem tabela nova — decisão deliberada: o Trip Opportunity Score depende de "dias até o
+  evento", que muda todo dia; um valor persistido ficaria desatualizado no dia seguinte
+  (diferente de `stay_score`/`cruise_score`, que descrevem a experiência em si e mudam raramente).
+  Migration `0027_world_opportunity_engine_flag.sql` só insere a feature flag.
+- `lib/scoring/opportunity-score.ts` — `evaluateTripOpportunity()`, mesmo formato
+  `ExplainableScore` das outras fases. Combina: proximidade/importância do próximo evento
+  catalogado no destino, quantidade e qualidade das estadias (`stays`) e cruzeiros (`cruises`)
+  com aquele destino, e confiança média dos dados subjacentes.
+  **Zero Hallucination Policy**: preço de voo/hotel NUNCA entra no score — este app não tem
+  provider de preço ao vivo por destino (`flight_results`/`hotel_results` são busca pontual do
+  usuário, não um feed histórico), então o componente é sempre declarado explicitamente "dado
+  indisponível" nas razões negativas, nunca estimado ou omitido silenciosamente.
+- `lib/opportunity-engine.ts` — `getDestinationOpportunities()`, agrega `world_events` +
+  `stays` + `cruises` por `destination_id`/`embarkation_destination_id` e calcula o score de
+  cada destino com pelo menos um sinal (evento, estadia ou cruzeiro) catalogado.
+- `/oportunidades-mundiais` (rota nova, distinta de `/admin/oportunidades` que gerencia a
+  tabela `opportunities` — conceito totalmente diferente, não confundir: aquela é vitrine de
+  descontos de voo/hotel/pacote, esta é o Trip Opportunity Score por destino) — lista todos os
+  destinos com sinal, ordenados por score, cada card mostrando label + confiança + positivos/
+  negativos explicáveis.
+- Sidebar atualizada (`Oportunidades`, ícone `TrendingUp`, atrás da flag `worldOpportunityEngine`).
+- Feature flag `worldOpportunityEngine` ativada.
+- Testado ao vivo localmente: Munique (Oktoberfest em 22 dias) 68/100, Rio de Janeiro (Rock in
+  Rio em 14 dias, confiança menor) 61/100, Ushuaia (cruzeiro 74/100) 52/100, hospedagens com
+  Stay Score mais alto rankeando acima das de score mais baixo — confirmado que a qualidade do
+  item subjacente influencia o score (bug encontrado e corrigido durante o teste: a primeira
+  versão só contava quantidade, não qualidade, do stay/cruzeiro — corrigido antes de commitar).
+  `tsc --noEmit` e `next build` limpos.
+
+**Não incluído nesta fase**: não há página de detalhe por destino (ex. `/destinos/[slug]`) —
+isso é o "Experience Graph" do §12, fora do escopo desta fase; os cards de `/oportunidades-mundiais`
+são informativos, sem link de destino individual (evitando link para uma página inexistente).
 
 ## FASE 6 — Inspire-me (não iniciada)
 
