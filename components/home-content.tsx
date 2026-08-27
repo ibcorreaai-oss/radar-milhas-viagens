@@ -35,6 +35,27 @@ const STEP_ICONS = [SlidersHorizontal, TrendingUp, Bell, CheckCircle2];
 const FEATURE_ICONS = [Search, Hotel, Calculator, Bell, Tag, Bot];
 const TRUST_ICONS = [ScrollText, BadgeCheck, ShieldCheck];
 
+// Fotos reais (Unsplash, licença gratuita p/ uso comercial — mesmos hosts já
+// liberados em next.config.mjs/lib/image-hosts.ts). Uma por passo/
+// funcionalidade, na mesma ordem de STEP_ICONS/FEATURE_ICONS — índice 5 de
+// FEATURE_IMAGES (Consultor IA) continua usando a imagem gerada por IA já
+// existente, pra não duplicar o card que já tinha foto.
+const STEP_IMAGES = [
+  'https://images.unsplash.com/photo-1655722724447-2d2a3071e7f8?w=1200&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1730789701634-5386e7271462?w=1200&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1470350576089-539d5a852bf7?w=1200&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1549894595-4698795b38ee?w=1200&q=80&auto=format&fit=crop',
+];
+
+const FEATURE_IMAGES = [
+  'https://images.unsplash.com/photo-1499063078284-f78f7d89616a?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1578898886225-c7c894047899?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1537724326059-2ea20251b9c8?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1544365712-91cd4904cd07?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1502301197179-65228ab57f78?w=800&q=80&auto=format&fit=crop',
+  '/images/consultor-ia.png',
+];
+
 // Conteúdo traduzível da home (ETAPA 12) — client component porque depende
 // do idioma escolhido em runtime (useLanguage/LanguageProvider em
 // app/page.tsx). SiteHeader/SiteFooter ficam de fora de propósito: são
@@ -107,15 +128,30 @@ export function HomeContent() {
             {t.steps.items.map((step, index) => {
               const Icon = STEP_ICONS[index];
               return (
-                <div key={step.title} className="relative">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Icon className="h-6 w-6" />
+                <div
+                  key={step.title}
+                  className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="relative h-32 w-full">
+                    <Image
+                      src={STEP_IMAGES[index]}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 280px, (min-width: 640px) 45vw, 100vw"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-black/0" />
+                    <div className="absolute bottom-3 left-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+                      <Icon className="h-5 w-5" />
+                    </div>
                   </div>
-                  <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-primary">
-                    {step.step}
+                  <div className="p-5">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      {step.step}
+                    </div>
+                    <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{step.description}</p>
                   </div>
-                  <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{step.description}</p>
                 </div>
               );
             })}
@@ -126,9 +162,15 @@ export function HomeContent() {
       {/* A pergunta central */}
       <section className="py-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <Card className="border-primary/20 bg-primary text-primary-foreground shadow-lg">
-            <CardContent className="p-8 text-center sm:p-12">
-              <ListChecks className="mx-auto h-8 w-8 opacity-90" />
+          <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary via-primary to-primary/80 text-primary-foreground shadow-xl">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_-10%,hsl(var(--primary-foreground)/0.20),transparent_50%),radial-gradient(circle_at_92%_110%,hsl(var(--primary-foreground)/0.14),transparent_45%)]"
+            />
+            <CardContent className="relative p-8 text-center sm:p-12">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-foreground/15 ring-1 ring-inset ring-primary-foreground/20">
+                <ListChecks className="h-7 w-7" />
+              </div>
               <p className="mx-auto mt-6 max-w-2xl text-balance text-2xl font-semibold leading-snug sm:text-3xl">
                 {t.question.quote}
               </p>
@@ -149,20 +191,17 @@ export function HomeContent() {
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {t.features.items.map((feature, index) => {
               const Icon = FEATURE_ICONS[index];
-              const isConsultorIA = index === 5;
               return (
                 <Card key={feature.title} className="overflow-hidden transition-shadow hover:shadow-md">
-                  {isConsultorIA && (
-                    <div className="relative h-32 w-full">
-                      <Image
-                        src="/images/consultor-ia.png"
-                        alt=""
-                        fill
-                        sizes="(min-width: 1024px) 380px, 100vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
+                  <div className="relative h-32 w-full">
+                    <Image
+                      src={FEATURE_IMAGES[index]}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 380px, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
                   <CardHeader>
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                       <Icon className="h-5 w-5" />
