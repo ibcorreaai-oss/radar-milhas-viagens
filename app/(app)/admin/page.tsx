@@ -70,6 +70,7 @@ export default async function AdminPage() {
     { href: '/admin/oportunidades', label: 'Gerenciar oportunidades' },
     { href: '/admin/eventos', label: 'Gerenciar eventos (World Radar)' },
     { href: '/admin/estadias', label: 'Gerenciar estadias (Stay Experience)' },
+    { href: '/admin/cruzeiros', label: 'Gerenciar cruzeiros (Cruise Radar)' },
     { href: '/admin/treinamentos', label: 'Central de Treinamentos' },
     { href: '/admin/funcionalidades', label: 'Funcionalidades (feature flags)' },
     { href: '/admin/auditoria', label: 'Auditoria' },

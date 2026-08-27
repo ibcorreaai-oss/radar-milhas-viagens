@@ -69,11 +69,39 @@ característica herdada). Registrado aqui, não corrigido agora (preservar decis
 scope creep) — fica como item de melhoria futura se o Igor quiser habilitar leitura anônima
 para SEO (mesmo padrão de `0005_public_read_promotions_programs.sql`).
 
-## FASE 4 — Cruise Radar (não iniciada)
+## FASE 4 — Cruise Radar ✅ CONCLUÍDA (26/08/2026)
 
-`cruises`, `cruise_lines`, `cruise_ships`, `cruise_itineraries`, `cruise_departures`,
-`cruise_ports`, Cruise Deal Score. Forma de dado própria (porto de embarque/desembarque,
-categoria de cabine) — tabela dedicada, não `world_events`.
+- Migration `0026_cruise_radar.sql` — tabela única `cruises` (não as 6 tabelas normalizadas
+  cruise_lines/ships/itineraries/departures/ports sugeridas no prompt original — decisão
+  deliberada citando a própria regra do prompt de "não fazer overengineering"; `cruise_line`/
+  `ship_name` são texto livre, `region_tags` é array de tags, não FK). Mesma provenance
+  rigorosa da Fase 3 (`verification_status`/`retrieved_at`/`last_verified_at` +
+  `source_id`/`confidence_score`/`is_mock`). RLS idêntica ao padrão de `world_events`/`stays`.
+- `lib/scoring/cruise-score.ts` — Cruise Score explicável (mesmo formato `ExplainableScore`),
+  determinístico, considera categoria (expedição/volta ao mundo pontuam mais), região,
+  duração, número de portos, qualidade da fonte/provenance.
+- `/cruzeiros` (não `/cruises` — mesma convenção PT-BR de `/estadias`) + `/cruzeiros/[slug]`
+  (score com "por quê", positivos/negativos).
+- `/admin/cruzeiros` — CRUD completo, mesmo padrão dos outros CRUDs do admin.
+- Sidebar atualizada (`Cruzeiros`, ícone `Ship`, atrás da flag `cruiseRadar`).
+- Seed (`supabase/seed_cruise_radar.sql`) com 8 cruzeiros reais e conhecidos (Fiordes
+  Noruegueses/Hurtigruten, Expedição à Antártida, Mediterrâneo Clássico, Danúbio fluvial,
+  Amazônia, volta ao mundo Queen Mary 2, Caribe clássico, Nilo) — `verification_status=
+  'estimated'`, `is_mock=true` (roteiros/categorias reais e conhecidos publicamente, mas
+  preço/disponibilidade não verificados ao vivo nesta sessão). Scores calculados à mão
+  replicando `evaluateCruise()`: Hurtigruten=55, Antártida=74, Mediterrâneo=47, Danúbio=55,
+  Amazônia=47, Queen Mary 2=73, Caribe=47, Nilo=55 — confirmado no banco
+  (`count=8, min_score=47, max_score=74`).
+  Feature flag `cruiseRadar` ativada (mesmo padrão das fases anteriores).
+- Testado ao vivo localmente (`next start`): listagem com 3 cards em destaque (Expedição
+  Antártida 74/100, Volta ao Mundo Queen Mary 2 73/100, Fiordes Noruegueses 55/100) e página
+  de detalhe da Expedição à Antártida com explicação do score renderizando corretamente.
+  `tsc --noEmit` e `next build` limpos, as 5 rotas novas confirmadas no output do build.
+
+**Decisão registrada**: mesma característica herdada de RLS documentada na Fase 3 (visitante
+deslogado vê `/cruzeiros` carregar sem itens, porque a rota não está em `PROTECTED_PREFIXES`
+mas RLS só libera leitura pra `authenticated`) — não é regressão nova, não foi corrigida agora
+pelo mesmo motivo (preservar decisão da Fase 2, evitar scope creep).
 
 ## FASE 5 — World Opportunity Engine (não iniciada)
 

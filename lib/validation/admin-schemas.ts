@@ -129,6 +129,32 @@ export const staySchema = z.object({
 });
 export type StayInput = z.infer<typeof staySchema>;
 
+// --- Cruises (Fase 4 do World Experience Radar) ---
+export const cruiseSchema = z.object({
+  name: z.string().trim().min(1, 'Nome é obrigatório.').max(200),
+  slug: z.string().trim().min(1, 'Não foi possível gerar um slug válido a partir do nome.').max(200),
+  embarkation_destination_id: z.string().trim().uuid().nullable(),
+  cruise_line: z.string().trim().max(120).nullable(),
+  ship_name: z.string().trim().max(120).nullable(),
+  category: z.enum(['oceanico', 'fluvial', 'expedicao', 'tematico', 'volta_ao_mundo']),
+  region_tags: z.array(z.string().trim().min(1)).default([]),
+  route_description: z.string().trim().max(2000).nullable(),
+  nights: z.number().int().positive('Número de noites precisa ser maior que zero.'),
+  ports_count: z.number().int().nonnegative('Número de portos não pode ser negativo.').default(0),
+  cabin_category: z.enum(['interna', 'vista_mar', 'varanda', 'suite']).nullable(),
+  price_from_cash: z.number().nonnegative('Preço não pode ser negativo.').nullable(),
+  price_currency: z.string().trim().min(1).max(6).default('BRL'),
+  source_id: z.string().trim().uuid().nullable(),
+  source_url: z.string().trim().url('URL da fonte inválida.').max(500).nullable(),
+  verification_status: z.enum(['verified', 'unverified', 'estimated', 'stale', 'mock']),
+  confidence_score: z.number().min(0).max(1),
+  is_mock: z.boolean().default(false),
+  cover_image_url: z.string().trim().url('URL da imagem inválida.').max(500).nullable(),
+  featured: z.boolean().default(false),
+  active: z.boolean().default(true),
+});
+export type CruiseInput = z.infer<typeof cruiseSchema>;
+
 // --- Central de Treinamentos / Mini LMS (ETAPA 15.2 — ver TRAINING.md) ---
 export const trainingModuleSchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório.').max(200),

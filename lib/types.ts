@@ -577,6 +577,89 @@ export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
   mock: 'Dado de exemplo',
 };
 
+// =====================================================================
+// FASE 4 — Cruise Radar (World Experience Radar)
+// Espelham supabase/migrations/0026_cruise_radar.sql.
+// =====================================================================
+
+export type CruiseCategory = 'oceanico' | 'fluvial' | 'expedicao' | 'tematico' | 'volta_ao_mundo';
+
+export type CruiseRegionTag =
+  | 'CARIBE'
+  | 'MEDITERRANEO'
+  | 'FIORDES_NORUEGUESES'
+  | 'AMAZONIA'
+  | 'NILO'
+  | 'MISSISSIPI'
+  | 'ANTARTIDA'
+  | 'ARTICO'
+  | 'BRASIL'
+  | 'DANUBIO'
+  | 'RENO'
+  | 'DOURO';
+
+export type CabinCategory = 'interna' | 'vista_mar' | 'varanda' | 'suite';
+
+export interface Cruise {
+  id: string;
+  embarkation_destination_id: string | null;
+  name: string;
+  slug: string;
+  cruise_line: string | null;
+  ship_name: string | null;
+  category: CruiseCategory;
+  region_tags: CruiseRegionTag[];
+  route_description: string | null;
+  nights: number;
+  ports_count: number;
+  cabin_category: CabinCategory | null;
+  price_from_cash: number | null;
+  price_currency: string;
+  cruise_score: number;
+  source_id: string | null;
+  source_url: string | null;
+  retrieved_at: string | null;
+  last_verified_at: string | null;
+  verification_status: VerificationStatus;
+  confidence_score: number;
+  is_mock: boolean;
+  cover_image_url: string | null;
+  featured: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CRUISE_CATEGORY_LABEL: Record<CruiseCategory, string> = {
+  oceanico: 'Oceânico',
+  fluvial: 'Fluvial',
+  expedicao: 'Expedição',
+  tematico: 'Temático/Cultural',
+  volta_ao_mundo: 'Volta ao mundo',
+};
+
+export const CRUISE_REGION_TAG_LABEL: Record<CruiseRegionTag, string> = {
+  CARIBE: 'Caribe',
+  MEDITERRANEO: 'Mediterrâneo',
+  FIORDES_NORUEGUESES: 'Fiordes Noruegueses',
+  AMAZONIA: 'Amazônia',
+  NILO: 'Nilo',
+  MISSISSIPI: 'Mississippi',
+  ANTARTIDA: 'Antártida',
+  ARTICO: 'Ártico',
+  BRASIL: 'Brasil',
+  DANUBIO: 'Danúbio',
+  RENO: 'Reno',
+  DOURO: 'Douro',
+};
+
+export const CABIN_CATEGORY_LABEL: Record<CabinCategory, string> = {
+  interna: 'Interna',
+  vista_mar: 'Vista mar',
+  varanda: 'Varanda',
+  suite: 'Suíte',
+};
+
 export interface BucketList {
   id: string;
   user_id: string;
