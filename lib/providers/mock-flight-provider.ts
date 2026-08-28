@@ -30,14 +30,24 @@ export class MockFlightProvider implements FlightProvider {
     const cabinMultiplier = { economica: 1, executiva: 3.2, primeira: 5.5, qualquer: 1 }[params.cabinClass];
     const paxMultiplier = params.adults + params.children * 0.75 + params.infants * 0.1;
 
+    // Achado em code-review: o preço abaixo sempre representou só 1 perna,
+    // mesmo em busca ida-e-volta (a UI antes também só mostrava 1 perna,
+    // então o preço "de ida" não destoava). Agora que a UI mostra Ida+Volta
+    // explicitamente pra busca ida-e-volta, o preço PRECISA representar a
+    // viagem inteira — senão o score/recomendação usa um valor
+    // artificialmente baixo (metade do real). Fator < 2x porque tarifa
+    // combinada ida-e-volta costuma sair mais barata que 2 tarifas de ida
+    // avulsas.
+    const roundTripFactor = params.returnDate ? 1.85 : 1;
+
     return AIRLINES.map((airline, idx) => {
       const r = rand();
       const stops = r > 0.7 ? 2 : r > 0.4 ? 1 : 0;
-      const basePrice = (600 + r * 2600) * cabinMultiplier * paxMultiplier;
+      const basePrice = (600 + r * 2600) * cabinMultiplier * paxMultiplier * roundTripFactor;
       const cashPrice = Math.round(basePrice * 100) / 100;
       const milheiroCost = 15 + rand() * 20; // R$ por milheiro implícito nesta oferta
       const pointsPrice = Math.round(((cashPrice * 0.85) / milheiroCost) * 1000);
-      const taxes = Math.round((80 + rand() * 220) * paxMultiplier * 100) / 100;
+      const taxes = Math.round((80 + rand() * 220) * paxMultiplier * roundTripFactor * 100) / 100;
       const durationMinutes = Math.round(120 + r * 600 + stops * 90);
 
       const departure = new Date(baseDate.getTime() + idx * 3600000 + rand() * 6 * 3600000);

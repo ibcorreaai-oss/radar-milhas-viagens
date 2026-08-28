@@ -107,6 +107,20 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
         </p>
       </div>
 
+      {typedSearch.return_date && (
+        // Achado em code-review: busca real de ida-e-volta hoje só expande
+        // a opção de ida mais barata pra achar a volta combinada (ver
+        // MAX_ROUND_TRIP_CANDIDATES em serpapi-flight-provider.ts — decisão
+        // deliberada pra caber no teto de tempo de função do plano Hobby da
+        // Vercel), então mostra no máximo 1 card com preço real — sem essa
+        // nota, parece bug ("por que só apareceu 1 voo?") em vez de escolha
+        // consciente.
+        <p className="text-xs text-muted-foreground">
+          Para ida-e-volta, mostramos a melhor combinação com preço real confirmado — pode aparecer só 1
+          card quando o dado é real (estimativas continuam mostrando várias opções).
+        </p>
+      )}
+
       {suggestAlert && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
