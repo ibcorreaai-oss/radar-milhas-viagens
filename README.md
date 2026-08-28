@@ -208,6 +208,25 @@ Ordem sugerida:
 - [ ] Preencher `ANTHROPIC_API_KEY` (sem isso, o consultor usa um fallback de regras simples, não quebra)
 
 ### 7. APIs de voo/hotel (fora do MVP, opcional)
+- [x] **Voo real implementado de verdade — SerpApi Google Flights (28/08/2026).**
+      Diferente de Amadeus/Duffel/Booking abaixo (que continuam stubs), este está
+      implementado e funcionando: `lib/providers/serpapi-flight-provider.ts`, plano Free da
+      SerpApi (250 buscas/mês, sem cartão), fallback automático pro mock em qualquer
+      erro/estouro de cota (nunca quebra a busca). Cota mensal com guarda própria via RPC
+      atômica `increment_provider_usage` (migrations `0043`/`0044`) — teto de 200/mês pra
+      busca interativa + 30/mês reservados só pro cron de alertas (buckets separados, pra
+      um não roubar cota do outro), total 230, sempre com folga do limite real de 250.
+  - [x] **`SERPAPI_KEY` já configurada** — conta `ibcorrea.ai@gmail.com` na SerpApi, criada e
+        verificada (e-mail + telefone) em 28/08/2026, chave em `.env.local` local. **Falta só
+        colar essa mesma chave na Vercel** (Settings → Environments → Production) — sem
+        ferramenta MCP pra setar env var lá, mesma pendência de sempre pras outras chaves. Sem
+        isso em produção, `getFlightProvider()` continua caindo no mock, sem quebrar nada.
+  - [ ] `SERPAPI_MONTHLY_CAP` é opcional (default 200 se vazio; só afeta o bucket interativo).
+  - [ ] **Escopo atual: só busca de ida simples (one-way) usa dado real.** Busca de
+        ida-e-volta (padrão do formulário, quando "Só ida" não está marcado) sempre cai pro
+        mock — a Google Flights API exige um 2º request (com `departure_token` da 1ª
+        resposta) pra pegar a perna de volta e o preço combinado real, não implementado
+        ainda. Implementar esse 2º passo é o próximo incremento natural desta integração.
 - [ ] Solicitar acesso Amadeus for Developers, preencher `AMADEUS_CLIENT_ID`/`AMADEUS_CLIENT_SECRET`
 - [ ] Solicitar acesso Duffel, preencher `DUFFEL_ACCESS_TOKEN`
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`

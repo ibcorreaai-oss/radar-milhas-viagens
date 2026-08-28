@@ -106,7 +106,8 @@ inteira — é uma decisão de arquitetura que precisa do Igor antes de qualquer
 | Resend | E-mail transacional | Interface pronta (`lib/email/*`), conta pendente |
 | Evolution API / Z-API | WhatsApp | Abstrato — `lib/whatsapp/*`, nunca trava sem credencial |
 | Anthropic / OpenAI | Consultor IA | Fallback sem IA se `ANTHROPIC_API_KEY` ausente |
-| Amadeus / Duffel / Booking | Voo/hotel reais | `lib/providers/*` — só stub, cai no mock sem credencial |
+| SerpApi (Google Flights) | Voo real | Implementado de verdade (28/08/2026, ver `lib/providers/serpapi-flight-provider.ts`) — plano Free, fallback pro mock em qualquer erro/estouro de cota; falta só colar `SERPAPI_KEY` na Vercel |
+| Amadeus / Duffel / Booking | Voo/hotel reais (alternativas) | `lib/providers/*` — só stub, cai no mock sem credencial |
 | n8n | Alerta crítico → Telegram | Workflow real, ativo e testado (ETAPA 17, ver `AUTOMATIONS.md`) |
 
 Padrão obrigatório pra qualquer integração nova: nunca travar o app por falta de credencial
@@ -188,7 +189,12 @@ e milhões de registros**:
   que 1 ano vai pra uma tabela fria ou é resumido) — só implementar quando o volume real exigir,
   seguindo a mesma regra do `PERFORMANCE.md` de não otimizar pra escala que não existe ainda.
 - **Cache de busca:** o `PROMPT.md`/master vision original cogitou um `search_hash` com TTL
-  (Redis/Upstash) pra não repetir chamada de provider — não implementado, porque hoje o
-  provider é mock (instantâneo, sem custo). **Reavaliar quando** um provider real (Amadeus/
-  Duffel/Booking) entrar em produção — aí sim uma chamada de API paga por busca repetida vira
-  custo de verdade, não antes.
+  (Redis/Upstash) pra não repetir chamada de provider — ainda não implementado. Desde 28/08/2026
+  o `SerpApiFlightProvider` (`lib/providers/serpapi-flight-provider.ts`) é o primeiro provider
+  real em produção, mas roda no plano Free da SerpApi (250 buscas/mês, sem cartão) — em vez de
+  cache de resultado, a proteção é um teto mensal com guarda própria (RPC atômica
+  `increment_provider_usage`, migrations `0043`/`0044`, teto 200 por padrão): estourar não gera
+  cobrança nenhuma (sem cartão cadastrado), só cai pro mock a partir dali. **Reavaliar cache de
+  verdade (Redis/Upstash) quando** o volume de buscas repetidas da mesma rota/data ficar alto o
+  suficiente pra valer a complexidade, ou se um provider pago por chamada (Amadeus/Duffel/
+  Booking) entrar em produção depois.
