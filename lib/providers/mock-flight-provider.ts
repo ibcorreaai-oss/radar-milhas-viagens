@@ -46,12 +46,18 @@ export class MockFlightProvider implements FlightProvider {
       // Perna de volta — só gerada em busca ida-e-volta, pra não deixar o
       // mock com "menos informação" do que o provider real mostraria pro
       // mesmo tipo de busca (ver SerpApiFlightProvider.searchRoundTrip).
+      // Achado em code-review: calcular a partir da meia-noite de
+      // returnDate, sem considerar quando a ida chega, permitia (num
+      // ida-e-volta no mesmo dia, que o date-range-field aceita) uma volta
+      // "partindo" antes da ida pousar — sempre ancora no maior entre
+      // meia-noite de returnDate e ida+2h de conexão mínima.
       let returnFields: Partial<NormalizedFlightResult> = {};
       if (params.returnDate) {
         const returnBase = new Date(params.returnDate);
+        const earliestReturnDeparture = Math.max(returnBase.getTime(), arrival.getTime() + 2 * 3600000);
         const returnStops = rand() > 0.7 ? 2 : rand() > 0.4 ? 1 : 0;
         const returnDurationMinutes = Math.round(120 + rand() * 600 + returnStops * 90);
-        const returnDeparture = new Date(returnBase.getTime() + idx * 3600000 + rand() * 6 * 3600000);
+        const returnDeparture = new Date(earliestReturnDeparture + idx * 1800000 + rand() * 6 * 3600000);
         const returnArrival = new Date(returnDeparture.getTime() + returnDurationMinutes * 60000);
         returnFields = {
           returnDepartureDatetime: returnDeparture.toISOString(),

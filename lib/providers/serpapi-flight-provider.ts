@@ -27,9 +27,20 @@ import { logger } from '@/lib/logger';
 // uma com um `departure_token`; 2) uma nova busca com esse token devolve as
 // opções de VOLTA combinadas com a ida escolhida, e o `price` dessa 2ª
 // resposta é o total real da viagem combinada (documentado em
-// https://serpapi.com/google-flights-api#api-parameters-next-flights). Só
-// expande as N ida mais baratas do passo 1 pra manter o custo de cota
-// previsível (cada ida-e-volta gasta até 1+N buscas reais, não 1).
+// https://serpapi.com/google-flights-api#api-parameters-next-flights).
+//
+// Limite de tempo (achado em code-review): app/(app)/voos/actions.ts chama
+// isto dentro de uma Server Action síncrona, e este projeto roda no plano
+// Hobby da Vercel — funções serverless aí têm um teto RÍGIDO de 10s (não dá
+// pra configurar maxDuration maior, é limite da plataforma, não do app).
+// Ida simples é só 1 chamada, folgado. Ida-e-volta é 1 (passo 1) + até
+// MAX_ROUND_TRIP_CANDIDATES (passo 2) chamadas SEQUENCIAIS — com um timeout
+// de 10s por chamada, só 2 chamadas sequenciais já estourariam o teto da
+// função inteira ANTES do try/catch de fallback rodar (a Vercel mata o
+// processo, não é um erro que o código consegue capturar). Por isso:
+// REQUEST_TIMEOUT_MS bem menor que 10s e MAX_ROUND_TRIP_CANDIDATES=1 (só 2
+// chamadas sequenciais no pior caso) — matemática: 2 × REQUEST_TIMEOUT_MS
+// precisa ficar com folga real abaixo de 10s.
 
 const SERPAPI_ENDPOINT = 'https://serpapi.com/search.json';
 const DEFAULT_INTERACTIVE_CAP = 200; // plano Free = 250 buscas/mês; margem de segurança
@@ -40,11 +51,15 @@ const DEFAULT_INTERACTIVE_CAP = 200; // plano Free = 250 buscas/mês; margem de 
 // Bucket próprio ('serpapi_alerts') com teto bem menor.
 const DEFAULT_ALERTS_CAP = 30;
 const MAX_RESULTS = 10;
-const REQUEST_TIMEOUT_MS = 10000;
-// Quantas opções de ida (as mais baratas do passo 1) ganham uma 2ª busca
-// pra achar a volta combinada. Cada busca ida-e-volta gasta até
-// 1 + MAX_ROUND_TRIP_CANDIDATES buscas reais da cota mensal.
-const MAX_ROUND_TRIP_CANDIDATES = 2;
+// 4s por chamada — ver nota sobre o teto de 10s do plano Hobby no
+// comentário do topo do arquivo. Pior caso ida-e-volta: 2 × 4s = 8s,
+// folga de 2s antes do limite da função inteira.
+const REQUEST_TIMEOUT_MS = 4000;
+// Só a ida mais barata do passo 1 ganha uma 2ª busca (pra achar a volta
+// combinada) — ver nota de timeout no topo do arquivo. Subir esse número
+// exige também revisar REQUEST_TIMEOUT_MS pra manter N × timeout com folga
+// real abaixo do teto de função do plano Hobby.
+const MAX_ROUND_TRIP_CANDIDATES = 1;
 
 // Google Flights não devolve programa de fidelidade — anexado aqui só como
 // informação de contexto (nunca usado para calcular pointsPrice, que
@@ -105,6 +120,19 @@ function currentYearMonthUTC(): string {
   return new Date().toISOString().slice(0, 7); // 'YYYY-MM'
 }
 
+// Ordena itinerários pelo mais barato primeiro (preço ausente/inválido vai
+// pro final) — único lugar que define esse critério, reaproveitado em toda
+// escolha de "mais barato" neste arquivo.
+function byCheapest(a: { price: number }, b: { price: number }): number {
+  const priceOf = (x: { price: number }) => (typeof x.price === 'number' && x.price > 0 ? x.price : Number.POSITIVE_INFINITY);
+  return priceOf(a) - priceOf(b);
+}
+
+function byCheapestResult(a: NormalizedFlightResult, b: NormalizedFlightResult): number {
+  const priceOf = (x: NormalizedFlightResult) => x.cashPrice ?? Number.POSITIVE_INFINITY;
+  return priceOf(a) - priceOf(b);
+}
+
 // Lê o contador atual SEM incrementar (pré-checagem antes de gastar um
 // request de rede) — se já estourou, nem tenta a chamada real. Falha de
 // qualquer tipo é tratada como "estourou": mais seguro nunca gastar busca
@@ -138,25 +166,32 @@ async function currentUsageCount(bucket: string, yearMonth: string): Promise<num
 // Incrementa o contador SÓ depois de uma chamada real bem-sucedida (achado
 // em code-review: incrementar antes do fetch fazia falha transitória de
 // rede/SerpApi gastar cota por um resultado que nunca chegou a ser usado).
-// Best-effort: falha aqui não derruba a busca que já teve sucesso — só fica
-// sem registrar o gasto desta vez (o teto real do plano Free, com cartão
-// nenhum cadastrado, continua sendo a rede de segurança final).
-async function recordSuccessfulUsage(bucket: string, yearMonth: string, cap: number): Promise<void> {
+// Devolve se AINDA está dentro da cota depois deste incremento — usado como
+// circuito de segurança em tempo real dentro do fluxo de ida-e-volta (achado
+// em code-review: a pré-checagem sozinha não impede 2 buscas concorrentes de
+// estourar juntas; checar o retorno real da RPC a cada chamada reduz essa
+// janela sem precisar de uma RPC de "reservar N vagas" nova). Best-effort:
+// falha aqui não derruba a busca que já teve sucesso — só assume "estourou"
+// (mais seguro parar de tentar mais chamadas do que continuar sem saber).
+async function recordSuccessfulUsage(bucket: string, yearMonth: string, cap: number): Promise<boolean> {
   try {
     const admin = createAdminClient();
-    const { error } = await admin.rpc('increment_provider_usage', {
+    const { data, error } = await admin.rpc('increment_provider_usage', {
       p_provider: bucket,
       p_year_month: yearMonth,
       p_cap: cap,
     });
     if (error) {
       logger.warn('integration', 'serpapi: falha ao registrar uso da cota mensal', { bucket, reason: error.message });
+      return false;
     }
+    return Boolean(data);
   } catch (err) {
     logger.warn('integration', 'serpapi: erro inesperado ao registrar uso da cota mensal', {
       bucket,
       reason: err instanceof Error ? err.message : String(err),
     });
+    return false;
   }
 }
 
@@ -189,12 +224,27 @@ function parseGoogleFlightsTime(raw: string, airportId: string): string {
   return new Date(naive.getTime() - offsetHours * 3600000).toISOString();
 }
 
-// Extrai só os campos de "perna" (origin/destination/horários/duração/
-// paradas) de um itinerário — reaproveitado tanto pra ida (campos
-// principais) quanto pra volta (campos return*) em mapRoundTripItinerary.
-function legFields(itinerary: SerpApiItinerary) {
+interface LegFields {
+  airline: string;
+  origin: string;
+  destination: string;
+  departureDatetime: string;
+  arrivalDatetime: string;
+  durationMinutes: number;
+  stops: number;
+}
+
+// Extrai os campos de "perna" (origin/destino/horários/duração/paradas) de
+// um itinerário — reaproveitado tanto pra ida (campos principais) quanto
+// pra volta (campos return*) em mapRoundTripItinerary. Devolve null se a
+// resposta da API vier sem duração/segmentos (defensivo — achado em
+// code-review: total_duration não tem checagem de runtime em nenhum lugar,
+// então uma resposta malformada nunca deve virar "0 min, direto" na UI).
+function legFields(itinerary: SerpApiItinerary): LegFields | null {
   const segments = itinerary.flights;
   if (!segments || segments.length === 0) return null;
+  if (typeof itinerary.total_duration !== 'number' || itinerary.total_duration <= 0) return null;
+
   const first = segments[0];
   const last = segments[segments.length - 1];
   return {
@@ -212,22 +262,14 @@ function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | nul
   const leg = legFields(itinerary);
   if (!leg) return null;
 
-  const loyaltyProgram = AIRLINE_TO_PROGRAM[leg.airline] ?? null;
-
   return {
+    ...leg,
     provider: 'serpapi',
-    airline: leg.airline,
-    origin: leg.origin,
-    destination: leg.destination,
-    departureDatetime: leg.departureDatetime,
-    arrivalDatetime: leg.arrivalDatetime,
-    durationMinutes: leg.durationMinutes,
-    stops: leg.stops,
     cashPrice: typeof itinerary.price === 'number' && itinerary.price > 0 ? itinerary.price : null,
     pointsPrice: null, // Zero Hallucination Policy — ver comentário no topo do arquivo
     taxes: 0, // preço da SerpApi já é o total (all-in)
     currency: 'BRL',
-    loyaltyProgram,
+    loyaltyProgram: AIRLINE_TO_PROGRAM[leg.airline] ?? null,
   };
 }
 
@@ -244,17 +286,9 @@ function mapRoundTripItinerary(
   const returnLeg = legFields(returnItinerary);
   if (!outboundLeg || !returnLeg) return null;
 
-  const loyaltyProgram = AIRLINE_TO_PROGRAM[outboundLeg.airline] ?? null;
-
   return {
+    ...outboundLeg,
     provider: 'serpapi',
-    airline: outboundLeg.airline,
-    origin: outboundLeg.origin,
-    destination: outboundLeg.destination,
-    departureDatetime: outboundLeg.departureDatetime,
-    arrivalDatetime: outboundLeg.arrivalDatetime,
-    durationMinutes: outboundLeg.durationMinutes,
-    stops: outboundLeg.stops,
     returnDepartureDatetime: returnLeg.departureDatetime,
     returnArrivalDatetime: returnLeg.arrivalDatetime,
     returnDurationMinutes: returnLeg.durationMinutes,
@@ -263,7 +297,7 @@ function mapRoundTripItinerary(
     pointsPrice: null, // Zero Hallucination Policy — ver comentário no topo do arquivo
     taxes: 0,
     currency: 'BRL',
-    loyaltyProgram,
+    loyaltyProgram: AIRLINE_TO_PROGRAM[outboundLeg.airline] ?? null,
   };
 }
 
@@ -373,17 +407,17 @@ export class SerpApiFlightProvider implements FlightProvider {
     const data = await this.fetchSerpApi(query);
 
     // Só registra o gasto de cota depois de confirmar resposta válida —
-    // falha de rede/parse acima nunca chega aqui (ver recordSuccessfulUsage).
+    // falha de rede/parse acima nunca chega aqui.
     await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
 
     const itineraries = [...(data.best_flights ?? []), ...(data.other_flights ?? [])];
     const results = itineraries
       .map(mapItinerary)
       .filter((r): r is NormalizedFlightResult => r !== null)
-      // Ordena por preço (nulo por último) ANTES de truncar — sem isso, um
-      // resultado mais barato que viesse depois do índice de corte na ordem
-      // bruta da API seria descartado (achado em code-review).
-      .sort((a, b) => (a.cashPrice ?? Number.POSITIVE_INFINITY) - (b.cashPrice ?? Number.POSITIVE_INFINITY))
+      // Ordena por preço ANTES de truncar — sem isso, um resultado mais
+      // barato que viesse depois do índice de corte na ordem bruta da API
+      // seria descartado (achado em code-review).
+      .sort(byCheapestResult)
       .slice(0, MAX_RESULTS);
 
     // Resposta "Success" mas sem nenhum voo pra rota/data (acontece de
@@ -417,17 +451,24 @@ export class SerpApiFlightProvider implements FlightProvider {
     outboundQuery.set('return_date', returnDate);
 
     const outboundData = await this.fetchSerpApi(outboundQuery);
-    await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
+    const stillWithinCap = await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
 
     const outboundCandidates = [...(outboundData.best_flights ?? []), ...(outboundData.other_flights ?? [])]
       .filter((it) => Boolean(it.departure_token))
-      .sort((a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY))
+      .sort(byCheapest)
       .slice(0, MAX_ROUND_TRIP_CANDIDATES);
 
     if (outboundCandidates.length === 0) {
       // Resposta "Success" sem nenhuma opção de ida-e-volta pra essa
       // rota/data — resultado vazio real, não cai pro mock.
       return [];
+    }
+
+    // Circuito de segurança em tempo real (achado em code-review): a RPC
+    // já confirmou que este incremento estourou a cota — não tenta mais
+    // nenhuma chamada real, mesmo com candidatas de ida em mãos.
+    if (!stillWithinCap) {
+      return new MockFlightProvider().search(params);
     }
 
     // --- Passo 2: pra cada ida candidata, busca a volta + preço combinado ---
@@ -444,7 +485,7 @@ export class SerpApiFlightProvider implements FlightProvider {
         await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
 
         const returnCandidates = [...(returnData.best_flights ?? []), ...(returnData.other_flights ?? [])].sort(
-          (a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY)
+          byCheapest
         );
         const cheapestReturn = returnCandidates[0];
         if (!cheapestReturn) continue;
@@ -461,13 +502,14 @@ export class SerpApiFlightProvider implements FlightProvider {
       }
     }
 
-    // Nenhuma combinação ida+volta resolvida de verdade (todas as buscas do
-    // passo 2 falharam) — melhor cair pro mock inteiro do que mostrar só a
-    // ida sem volta, que pareceria um resultado ida-e-volta incompleto.
-    if (combined.length === 0) {
-      throw new Error('serpapi: nenhuma combinação ida+volta resolvida no passo 2');
-    }
-
-    return combined.sort((a, b) => (a.cashPrice ?? Number.POSITIVE_INFINITY) - (b.cashPrice ?? Number.POSITIVE_INFINITY));
+    // Nenhuma combinação ida+volta resolvida (todas as buscas do passo 2
+    // falharam) — tratado como resultado vazio real, igual à checagem de
+    // outboundCandidates acima: a diferença entre "a Google não tem
+    // ida-e-volta pra essa busca" e "nossas tentativas de achar a volta
+    // falharam" não é visível pro usuário, e cair pro mock aqui fabricaria
+    // TANTO a ida quanto a volta — descartando a ida real que a cota já
+    // pagou pra confirmar. Melhor mostrar vazio (usuário pode tentar de
+    // novo) do que inventar uma viagem inteira.
+    return combined.sort(byCheapestResult);
   }
 }

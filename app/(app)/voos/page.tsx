@@ -128,7 +128,15 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
             key={result.id}
             title={`${result.airline} · ${result.origin} → ${result.destination}`}
             subtitle={
-              result.return_departure_datetime && result.return_arrival_datetime ? (
+              // Só mostra "Ida:"/"Volta:" separados quando os 4 campos da
+              // volta existem de verdade — nunca cai num "0 min · Direto"
+              // fabricado se duração/paradas vierem nulas por algum motivo
+              // (achado em code-review: `?? 0` faria isso parecer um dado
+              // real quando na verdade é desconhecido).
+              result.return_departure_datetime &&
+              result.return_arrival_datetime &&
+              result.return_duration_minutes != null &&
+              result.return_stops != null ? (
                 <>
                   <span className="block">
                     Ida: {formatDateTime(result.departure_datetime)} → {formatDateTime(result.arrival_datetime)} ·{' '}
@@ -137,8 +145,7 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
                   <span className="block">
                     Volta: {formatDateTime(result.return_departure_datetime)} →{' '}
                     {formatDateTime(result.return_arrival_datetime)} ·{' '}
-                    {formatDurationMinutes(result.return_duration_minutes ?? 0)} ·{' '}
-                    {stopsLabel(result.return_stops ?? 0)}
+                    {formatDurationMinutes(result.return_duration_minutes)} · {stopsLabel(result.return_stops)}
                   </span>
                 </>
               ) : (
