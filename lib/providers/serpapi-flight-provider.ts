@@ -1,6 +1,6 @@
 import type { FlightProvider, FlightSearchParams, NormalizedFlightResult } from '@/lib/providers/types';
 import { MockFlightProvider } from '@/lib/providers/mock-flight-provider';
-import { resolveIataCode } from '@/lib/airport-codes';
+import { resolveIataCode, AIRPORT_UTC_OFFSET_HOURS } from '@/lib/airport-codes';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 
@@ -21,10 +21,23 @@ import { logger } from '@/lib/logger';
 // stub do Amadeus/Duffel lança de propósito). Qualquer falha (rota sem
 // código IATA resolvido, cota mensal estourada, rede, resposta malformada)
 // cai transparentemente no MockFlightProvider, com log estruturado.
+//
+// Escopo desta versão: só busca ida simples (one-way) via API real. A busca
+// de ida-e-volta da Google Flights API é um fluxo de 2 passos (2º request
+// usando o `departure_token` da 1ª resposta pra pegar a perna de volta e o
+// preço combinado real) — não implementado ainda; buscas com returnDate
+// preenchido caem pro mock em vez de mostrar preço de só-ida como se fosse
+// o total da viagem. Reavaliar quando o 2º passo for implementado.
 
 const SERPAPI_ENDPOINT = 'https://serpapi.com/search.json';
-const DEFAULT_MONTHLY_CAP = 200; // plano Free = 250 buscas/mês; margem de segurança
-const MAX_RESULTS = 8;
+const DEFAULT_INTERACTIVE_CAP = 200; // plano Free = 250 buscas/mês; margem de segurança
+// Reserva separada pro cron de alertas (app/api/cron/check-alerts/route.ts):
+// sem isso, um número modesto de alertas ativos checados 1x/dia esgotaria a
+// cota inteira em poucos dias, sem erro visível, e "roubaria" a cota que
+// deveria sobrar pra busca interativa do usuário (achado em code-review).
+// Bucket próprio ('serpapi_alerts') com teto bem menor.
+const DEFAULT_ALERTS_CAP = 30;
+const MAX_RESULTS = 10;
 const REQUEST_TIMEOUT_MS = 10000;
 
 // Google Flights não devolve programa de fidelidade — anexado aqui só como
@@ -85,31 +98,58 @@ function currentYearMonthUTC(): string {
   return new Date().toISOString().slice(0, 7); // 'YYYY-MM'
 }
 
-// Checa e incrementa a cota mensal atomicamente (RPC security definer, ver
-// migration 0043). Falha de qualquer tipo (banco indisponível, service role
-// não configurada) é tratada como "estourou" — mais seguro nunca gastar
-// busca real da SerpApi quando não dá pra confirmar que ainda há cota.
-async function stillWithinMonthlyQuota(): Promise<boolean> {
+// Lê o contador atual SEM incrementar (pré-checagem antes de gastar um
+// request de rede) — se já estourou, nem tenta a chamada real. Falha de
+// qualquer tipo é tratada como "estourou": mais seguro nunca gastar busca
+// real da SerpApi quando não dá pra confirmar que ainda há cota.
+async function currentUsageCount(bucket: string, yearMonth: string): Promise<number> {
   try {
     const admin = createAdminClient();
-    const cap = Number(process.env.SERPAPI_MONTHLY_CAP) || DEFAULT_MONTHLY_CAP;
-    const { data, error } = await admin.rpc('increment_provider_usage', {
-      p_provider: 'serpapi',
-      p_year_month: currentYearMonthUTC(),
+    const { data, error } = await admin
+      .from('provider_usage_monthly')
+      .select('request_count')
+      .eq('provider', bucket)
+      .eq('year_month', yearMonth)
+      .maybeSingle();
+    if (error) {
+      logger.warn('integration', 'serpapi: falha ao ler cota mensal, tratando como estourada', {
+        bucket,
+        reason: error.message,
+      });
+      return Number.POSITIVE_INFINITY;
+    }
+    return (data?.request_count as number | undefined) ?? 0;
+  } catch (err) {
+    logger.warn('integration', 'serpapi: erro inesperado ao ler cota mensal, tratando como estourada', {
+      bucket,
+      reason: err instanceof Error ? err.message : String(err),
+    });
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+// Incrementa o contador SÓ depois de uma chamada real bem-sucedida (achado
+// em code-review: incrementar antes do fetch fazia falha transitória de
+// rede/SerpApi gastar cota por um resultado que nunca chegou a ser usado).
+// Best-effort: falha aqui não derruba a busca que já teve sucesso — só fica
+// sem registrar o gasto desta vez (o teto real do plano Free, com cartão
+// nenhum cadastrado, continua sendo a rede de segurança final).
+async function recordSuccessfulUsage(bucket: string, yearMonth: string, cap: number): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.rpc('increment_provider_usage', {
+      p_provider: bucket,
+      p_year_month: yearMonth,
       p_cap: cap,
     });
     if (error) {
-      logger.warn('integration', 'serpapi: falha ao checar cota mensal, tratando como estourada', {
-        reason: error.message,
-      });
-      return false;
+      logger.warn('integration', 'serpapi: falha ao registrar uso da cota mensal', { bucket, reason: error.message });
     }
-    return Boolean(data);
   } catch (err) {
-    logger.warn('integration', 'serpapi: erro inesperado ao checar cota mensal, tratando como estourada', {
+    logger.warn('integration', 'serpapi: erro inesperado ao registrar uso da cota mensal', {
+      bucket,
       reason: err instanceof Error ? err.message : String(err),
     });
-    return false;
   }
 }
 
@@ -124,17 +164,22 @@ function travelClassParam(cabinClass: FlightSearchParams['cabinClass']): number 
   }
 }
 
-// Sem timezone por aeroporto na resposta da SerpApi — o horário vem "como o
-// Google mostra" (local ao aeroporto), sem offset. Igual a qualquer consumo
-// direto dessa API sem uma base própria de timezone por aeroporto, o Date
-// resultante é aproximado (interpretado no timezone do processo Node), não
-// exato ao segundo — aceitável para exibição de busca de voo, não para
-// cálculo de duração (por isso duration_minutes vem sempre do total_duration
-// da própria API, nunca recalculado a partir das duas datas).
-function parseGoogleFlightsTime(raw: string): string {
+// A SerpApi devolve o horário "como o Google mostra" (local ao aeroporto),
+// sem offset de timezone. lib/airport-codes.ts tem um mapa de offset UTC
+// padrão (sem DST) só pros aeroportos que este app já resolve por nome de
+// cidade — corrige pro instante UTC real nesses casos. Fora dessa lista (ou
+// pra quem digitou um código IATA de aeroporto não coberto), cai no
+// best-effort antigo (assume timezone do processo Node — UTC na Vercel),
+// aproximado mas nunca inventado.
+function parseGoogleFlightsTime(raw: string, airportId: string): string {
   const iso = raw.replace(' ', 'T');
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+  const naive = new Date(iso);
+  if (Number.isNaN(naive.getTime())) return new Date().toISOString();
+
+  const offsetHours = AIRPORT_UTC_OFFSET_HOURS[airportId];
+  if (offsetHours == null) return naive.toISOString();
+
+  return new Date(naive.getTime() - offsetHours * 3600000).toISOString();
 }
 
 function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | null {
@@ -150,8 +195,8 @@ function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | nul
     airline: first.airline,
     origin: first.departure_airport.id,
     destination: last.arrival_airport.id,
-    departureDatetime: parseGoogleFlightsTime(first.departure_airport.time),
-    arrivalDatetime: parseGoogleFlightsTime(last.arrival_airport.time),
+    departureDatetime: parseGoogleFlightsTime(first.departure_airport.time, first.departure_airport.id),
+    arrivalDatetime: parseGoogleFlightsTime(last.arrival_airport.time, last.arrival_airport.id),
     durationMinutes: itinerary.total_duration,
     stops: segments.length - 1,
     cashPrice: typeof itinerary.price === 'number' && itinerary.price > 0 ? itinerary.price : null,
@@ -164,12 +209,31 @@ function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | nul
 
 export class SerpApiFlightProvider implements FlightProvider {
   readonly name = 'serpapi';
+  private readonly monthlyCap: number;
+
+  // quotaBucket/monthlyCap permitem reservar uma cota separada por tipo de
+  // chamador (ver getFlightProviderForAlerts em lib/providers/index.ts) —
+  // sem isso, busca interativa e cron de alerta competiriam pelo mesmo
+  // contador global e o cron poderia esgotar a cota sozinho. SERPAPI_MONTHLY_CAP
+  // (env var) só afeta o bucket interativo padrão — passar monthlyCap
+  // explícito (como getFlightProviderForAlerts faz) nunca é sobrescrito por
+  // env var, senão a env var anularia a reserva separada do cron.
+  constructor(private readonly quotaBucket: string = 'serpapi', monthlyCap?: number) {
+    if (monthlyCap != null) {
+      this.monthlyCap = monthlyCap;
+    } else if (quotaBucket === 'serpapi') {
+      this.monthlyCap = Number(process.env.SERPAPI_MONTHLY_CAP) || DEFAULT_INTERACTIVE_CAP;
+    } else {
+      this.monthlyCap = DEFAULT_ALERTS_CAP;
+    }
+  }
 
   async search(params: FlightSearchParams): Promise<NormalizedFlightResult[]> {
     try {
       return await this.searchReal(params);
     } catch (err) {
       logger.warn('integration', 'serpapi: busca real falhou, caindo para mock', {
+        bucket: this.quotaBucket,
         reason: err instanceof Error ? err.message : String(err),
       });
       return new MockFlightProvider().search(params);
@@ -180,24 +244,27 @@ export class SerpApiFlightProvider implements FlightProvider {
     const origin = resolveIataCode(params.origin);
     const destination = resolveIataCode(params.destination);
 
-    // Sem código IATA resolvido ou sem data de ida, a API real não tem como
-    // buscar — cai pro mock em vez de tentar um request que sempre falharia.
-    if (!origin || !destination || !params.departureDate) {
+    // Sem código IATA resolvido, sem data de ida, ou busca de ida-e-volta
+    // (ver nota de escopo no topo do arquivo) — cai pro mock em vez de
+    // tentar/mostrar um preço que não representaria a viagem completa.
+    if (!origin || !destination || !params.departureDate || params.returnDate) {
       return new MockFlightProvider().search(params);
     }
 
-    const withinQuota = await stillWithinMonthlyQuota();
-    if (!withinQuota) {
+    const yearMonth = currentYearMonthUTC();
+    const cap = this.monthlyCap;
+
+    const usedSoFar = await currentUsageCount(this.quotaBucket, yearMonth);
+    if (usedSoFar >= cap) {
       return new MockFlightProvider().search(params);
     }
 
-    const isRoundTrip = Boolean(params.returnDate);
     const query = new URLSearchParams({
       engine: 'google_flights',
       departure_id: origin,
       arrival_id: destination,
       outbound_date: params.departureDate,
-      type: isRoundTrip ? '1' : '2',
+      type: '2', // one way — ver nota de escopo no topo do arquivo
       travel_class: String(travelClassParam(params.cabinClass)),
       adults: String(Math.max(1, params.adults)),
       children: String(Math.max(0, params.children)),
@@ -211,7 +278,6 @@ export class SerpApiFlightProvider implements FlightProvider {
       hl: 'pt',
       api_key: process.env.SERPAPI_KEY as string,
     });
-    if (isRoundTrip && params.returnDate) query.set('return_date', params.returnDate);
 
     const response = await fetch(`${SERPAPI_ENDPOINT}?${query.toString()}`, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -227,8 +293,19 @@ export class SerpApiFlightProvider implements FlightProvider {
       throw new Error(`SerpApi: ${data.error ?? 'status Error sem detalhe'}`);
     }
 
-    const itineraries = [...(data.best_flights ?? []), ...(data.other_flights ?? [])].slice(0, MAX_RESULTS);
-    const results = itineraries.map(mapItinerary).filter((r): r is NormalizedFlightResult => r !== null);
+    // Só registra o gasto de cota depois de confirmar resposta válida —
+    // falha de rede/parse acima nunca chega aqui (ver recordSuccessfulUsage).
+    await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
+
+    const itineraries = [...(data.best_flights ?? []), ...(data.other_flights ?? [])];
+    const results = itineraries
+      .map(mapItinerary)
+      .filter((r): r is NormalizedFlightResult => r !== null)
+      // Ordena por preço (nulo por último) ANTES de truncar — sem isso, um
+      // resultado mais barato que viesse depois do índice de corte na ordem
+      // bruta da API seria descartado (achado em code-review).
+      .sort((a, b) => (a.cashPrice ?? Number.POSITIVE_INFINITY) - (b.cashPrice ?? Number.POSITIVE_INFINITY))
+      .slice(0, MAX_RESULTS);
 
     // Resposta "Success" mas sem nenhum voo pra rota/data (acontece de
     // verdade — rota sem operação naquele dia) não é erro, é resultado

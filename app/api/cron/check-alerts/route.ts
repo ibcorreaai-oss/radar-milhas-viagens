@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getFlightProvider, getHotelProvider } from '@/lib/providers';
+import { getFlightProviderForAlerts, getHotelProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planHasChannel } from '@/lib/plans';
 import { sendEmail } from '@/lib/email/send';
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       }> = [];
 
       if (alert.type === 'voo') {
-        const provider = getFlightProvider();
+        const provider = getFlightProviderForAlerts();
         const results = await provider.search({
           origin: alert.origin ?? '',
           destination: alert.destination ?? '',

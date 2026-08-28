@@ -24,6 +24,21 @@ export function getFlightProvider(): FlightProvider {
   return new MockFlightProvider();
 }
 
+// Variante usada só pelo cron de alertas (app/api/cron/check-alerts).
+// Bucket de cota separado ('serpapi_alerts', teto bem menor que o
+// interativo) — sem isso, alertas ativos checados 1x/dia competiriam pela
+// mesma cota mensal da SerpApi que a busca interativa do usuário usa,
+// podendo esgotá-la sozinhos e "roubar" cota que deveria sobrar pra quem
+// está buscando na hora (achado em code-review).
+export function getFlightProviderForAlerts(): FlightProvider {
+  // Sem 2º argumento: o construtor já aplica o teto reservado pro bucket
+  // 'serpapi_alerts' automaticamente (ver serpapi-flight-provider.ts).
+  if (isSerpApiConfigured()) return new SerpApiFlightProvider('serpapi_alerts');
+  if (isDuffelConfigured()) return new DuffelFlightProvider();
+  if (isAmadeusConfigured()) return new AmadeusFlightProvider();
+  return new MockFlightProvider();
+}
+
 export function getHotelProvider(): HotelProvider {
   if (isBookingConfigured()) return new BookingHotelProvider();
   if (isAmadeusConfigured()) return new AmadeusHotelProvider();

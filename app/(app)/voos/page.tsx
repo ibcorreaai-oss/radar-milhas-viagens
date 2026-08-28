@@ -135,7 +135,7 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
             score={result.score}
             recommendationText={result.recommendation ?? 'Sem recomendação disponível para este resultado.'}
             extra={
-              result.provider === 'serpapi' ? (
+              result.provider === 'serpapi' && result.cash_price != null ? (
                 <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
                   Preço real de mercado (Google Flights)
