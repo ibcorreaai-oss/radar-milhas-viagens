@@ -216,17 +216,20 @@ Ordem sugerida:
       atômica `increment_provider_usage` (migrations `0043`/`0044`) — teto de 200/mês pra
       busca interativa + 30/mês reservados só pro cron de alertas (buckets separados, pra
       um não roubar cota do outro), total 230, sempre com folga do limite real de 250.
-  - [x] **`SERPAPI_KEY` já configurada** — conta `ibcorrea.ai@gmail.com` na SerpApi, criada e
-        verificada (e-mail + telefone) em 28/08/2026, chave em `.env.local` local. **Falta só
-        colar essa mesma chave na Vercel** (Settings → Environments → Production) — sem
-        ferramenta MCP pra setar env var lá, mesma pendência de sempre pras outras chaves. Sem
-        isso em produção, `getFlightProvider()` continua caindo no mock, sem quebrar nada.
+  - [x] **`SERPAPI_KEY` configurada e validada ao vivo em produção (28/08/2026)** — conta
+        `ibcorrea.ai@gmail.com` na SerpApi, e-mail+telefone verificados, chave colada na Vercel
+        (Production) e confirmada com busca real (GRU→GIG, badge "Preço real de mercado"
+        aparecendo de verdade, `get_runtime_logs` sem warning de fallback).
   - [ ] `SERPAPI_MONTHLY_CAP` é opcional (default 200 se vazio; só afeta o bucket interativo).
-  - [ ] **Escopo atual: só busca de ida simples (one-way) usa dado real.** Busca de
-        ida-e-volta (padrão do formulário, quando "Só ida" não está marcado) sempre cai pro
-        mock — a Google Flights API exige um 2º request (com `departure_token` da 1ª
-        resposta) pra pegar a perna de volta e o preço combinado real, não implementado
-        ainda. Implementar esse 2º passo é o próximo incremento natural desta integração.
+  - [x] **Ida-e-volta também usa dado real (28/08/2026)** — fluxo oficial de 2 passos da
+        Google Flights API (`departure_token`): 1ª busca traz as opções de ida mais baratas,
+        2ª busca (só pra 1 candidata — `MAX_ROUND_TRIP_CANDIDATES=1`, ver comentário em
+        `serpapi-flight-provider.ts` sobre o teto de 10s de função do plano Hobby da Vercel)
+        traz a volta + preço combinado real. Custa até 1+1=2 buscas da cota por pesquisa
+        ida-e-volta (vs 1 pra ida simples) — mostra no máximo 1 card com preço real por
+        busca (a UI avisa isso quando é ida-e-volta). Sempre com fallback pro mock em
+        qualquer falha/estouro de cota. Schema (`flight_results`) ganhou colunas de perna de
+        volta (migrations `0045`/`0046`, com CHECK de sanidade volta-depois-da-ida).
 - [ ] Solicitar acesso Amadeus for Developers, preencher `AMADEUS_CLIENT_ID`/`AMADEUS_CLIENT_SECRET`
 - [ ] Solicitar acesso Duffel, preencher `DUFFEL_ACCESS_TOKEN`
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`

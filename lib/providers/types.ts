@@ -25,6 +25,13 @@ export interface NormalizedFlightResult {
   arrivalDatetime: string;
   durationMinutes: number;
   stops: number;
+  // Perna de volta (opcional) — presente só quando a busca foi ida-e-volta
+  // E o provider conseguiu dado real/mock pra ela. Nunca reaproveitar os
+  // campos de ida acima pra representar a volta.
+  returnDepartureDatetime?: string | null;
+  returnArrivalDatetime?: string | null;
+  returnDurationMinutes?: number | null;
+  returnStops?: number | null;
   cashPrice: number | null;
   pointsPrice: number | null;
   taxes: number;

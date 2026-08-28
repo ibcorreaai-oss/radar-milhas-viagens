@@ -57,7 +57,7 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
   const { data: results } = await supabase
     .from('flight_results')
     .select(
-      'id, provider, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
+      'id, provider, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, return_departure_datetime, return_arrival_datetime, return_duration_minutes, return_stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
     )
     .eq('search_id', searchId)
     .order('score', { ascending: false });
@@ -107,6 +107,20 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
         </p>
       </div>
 
+      {typedSearch.return_date && (
+        // Achado em code-review: busca real de ida-e-volta hoje só expande
+        // a opção de ida mais barata pra achar a volta combinada (ver
+        // MAX_ROUND_TRIP_CANDIDATES em serpapi-flight-provider.ts — decisão
+        // deliberada pra caber no teto de tempo de função do plano Hobby da
+        // Vercel), então mostra no máximo 1 card com preço real — sem essa
+        // nota, parece bug ("por que só apareceu 1 voo?") em vez de escolha
+        // consciente.
+        <p className="text-xs text-muted-foreground">
+          Para ida-e-volta, mostramos a melhor combinação com preço real confirmado — pode aparecer só 1
+          card quando o dado é real (estimativas continuam mostrando várias opções).
+        </p>
+      )}
+
       {suggestAlert && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
@@ -127,7 +141,31 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
           <PriceComparisonCard
             key={result.id}
             title={`${result.airline} · ${result.origin} → ${result.destination}`}
-            subtitle={`${formatDateTime(result.departure_datetime)} → ${formatDateTime(result.arrival_datetime)} · ${formatDurationMinutes(result.duration_minutes)} · ${stopsLabel(result.stops)}`}
+            subtitle={
+              // Só mostra "Ida:"/"Volta:" separados quando os 4 campos da
+              // volta existem de verdade — nunca cai num "0 min · Direto"
+              // fabricado se duração/paradas vierem nulas por algum motivo
+              // (achado em code-review: `?? 0` faria isso parecer um dado
+              // real quando na verdade é desconhecido).
+              result.return_departure_datetime &&
+              result.return_arrival_datetime &&
+              result.return_duration_minutes != null &&
+              result.return_stops != null ? (
+                <>
+                  <span className="block">
+                    Ida: {formatDateTime(result.departure_datetime)} → {formatDateTime(result.arrival_datetime)} ·{' '}
+                    {formatDurationMinutes(result.duration_minutes)} · {stopsLabel(result.stops)}
+                  </span>
+                  <span className="block">
+                    Volta: {formatDateTime(result.return_departure_datetime)} →{' '}
+                    {formatDateTime(result.return_arrival_datetime)} ·{' '}
+                    {formatDurationMinutes(result.return_duration_minutes)} · {stopsLabel(result.return_stops)}
+                  </span>
+                </>
+              ) : (
+                `${formatDateTime(result.departure_datetime)} → ${formatDateTime(result.arrival_datetime)} · ${formatDurationMinutes(result.duration_minutes)} · ${stopsLabel(result.stops)}`
+              )
+            }
             cashPrice={result.cash_price}
             pointsPrice={result.points_price}
             taxes={result.taxes}

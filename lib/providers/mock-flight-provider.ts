@@ -30,18 +30,52 @@ export class MockFlightProvider implements FlightProvider {
     const cabinMultiplier = { economica: 1, executiva: 3.2, primeira: 5.5, qualquer: 1 }[params.cabinClass];
     const paxMultiplier = params.adults + params.children * 0.75 + params.infants * 0.1;
 
+    // Achado em code-review: o preço abaixo sempre representou só 1 perna,
+    // mesmo em busca ida-e-volta (a UI antes também só mostrava 1 perna,
+    // então o preço "de ida" não destoava). Agora que a UI mostra Ida+Volta
+    // explicitamente pra busca ida-e-volta, o preço PRECISA representar a
+    // viagem inteira — senão o score/recomendação usa um valor
+    // artificialmente baixo (metade do real). Fator < 2x porque tarifa
+    // combinada ida-e-volta costuma sair mais barata que 2 tarifas de ida
+    // avulsas.
+    const roundTripFactor = params.returnDate ? 1.85 : 1;
+
     return AIRLINES.map((airline, idx) => {
       const r = rand();
       const stops = r > 0.7 ? 2 : r > 0.4 ? 1 : 0;
-      const basePrice = (600 + r * 2600) * cabinMultiplier * paxMultiplier;
+      const basePrice = (600 + r * 2600) * cabinMultiplier * paxMultiplier * roundTripFactor;
       const cashPrice = Math.round(basePrice * 100) / 100;
       const milheiroCost = 15 + rand() * 20; // R$ por milheiro implícito nesta oferta
       const pointsPrice = Math.round(((cashPrice * 0.85) / milheiroCost) * 1000);
-      const taxes = Math.round((80 + rand() * 220) * paxMultiplier * 100) / 100;
+      const taxes = Math.round((80 + rand() * 220) * paxMultiplier * roundTripFactor * 100) / 100;
       const durationMinutes = Math.round(120 + r * 600 + stops * 90);
 
       const departure = new Date(baseDate.getTime() + idx * 3600000 + rand() * 6 * 3600000);
       const arrival = new Date(departure.getTime() + durationMinutes * 60000);
+
+      // Perna de volta — só gerada em busca ida-e-volta, pra não deixar o
+      // mock com "menos informação" do que o provider real mostraria pro
+      // mesmo tipo de busca (ver SerpApiFlightProvider.searchRoundTrip).
+      // Achado em code-review: calcular a partir da meia-noite de
+      // returnDate, sem considerar quando a ida chega, permitia (num
+      // ida-e-volta no mesmo dia, que o date-range-field aceita) uma volta
+      // "partindo" antes da ida pousar — sempre ancora no maior entre
+      // meia-noite de returnDate e ida+2h de conexão mínima.
+      let returnFields: Partial<NormalizedFlightResult> = {};
+      if (params.returnDate) {
+        const returnBase = new Date(params.returnDate);
+        const earliestReturnDeparture = Math.max(returnBase.getTime(), arrival.getTime() + 2 * 3600000);
+        const returnStops = rand() > 0.7 ? 2 : rand() > 0.4 ? 1 : 0;
+        const returnDurationMinutes = Math.round(120 + rand() * 600 + returnStops * 90);
+        const returnDeparture = new Date(earliestReturnDeparture + idx * 1800000 + rand() * 6 * 3600000);
+        const returnArrival = new Date(returnDeparture.getTime() + returnDurationMinutes * 60000);
+        returnFields = {
+          returnDepartureDatetime: returnDeparture.toISOString(),
+          returnArrivalDatetime: returnArrival.toISOString(),
+          returnDurationMinutes,
+          returnStops,
+        };
+      }
 
       return {
         provider: 'mock',
@@ -52,6 +86,7 @@ export class MockFlightProvider implements FlightProvider {
         arrivalDatetime: arrival.toISOString(),
         durationMinutes,
         stops,
+        ...returnFields,
         cashPrice,
         pointsPrice,
         taxes,

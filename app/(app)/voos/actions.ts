@@ -123,13 +123,20 @@ export async function searchFlights(formData: FormData): Promise<void> {
       ? mileValueByProgram.get(result.loyaltyProgram) ?? null
       : null;
 
+    // Ida-e-volta: usa a PIOR das duas pernas pra paradas — um resultado
+    // com ida direta mas volta com 2 conexões não pode pontuar como se a
+    // viagem inteira fosse direta (achado em code-review). result.stops
+    // sozinho só representa a ida.
+    const combinedStops =
+      result.returnStops != null ? Math.max(result.stops, result.returnStops) : result.stops;
+
     const evaluation = evaluateOpportunity({
       cashPrice: result.cashPrice,
       pointsPrice: result.pointsPrice,
       taxes: result.taxes,
       averageMileValue,
       flexibleDates,
-      stops: result.stops,
+      stops: combinedStops,
       durationMinutes: result.durationMinutes,
     });
 
@@ -143,6 +150,10 @@ export async function searchFlights(formData: FormData): Promise<void> {
       arrival_datetime: result.arrivalDatetime,
       duration_minutes: result.durationMinutes,
       stops: result.stops,
+      return_departure_datetime: result.returnDepartureDatetime ?? null,
+      return_arrival_datetime: result.returnArrivalDatetime ?? null,
+      return_duration_minutes: result.returnDurationMinutes ?? null,
+      return_stops: result.returnStops ?? null,
       cash_price: result.cashPrice,
       points_price: result.pointsPrice,
       taxes: result.taxes,
