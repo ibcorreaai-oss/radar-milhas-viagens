@@ -57,7 +57,7 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
   const { data: results } = await supabase
     .from('flight_results')
     .select(
-      'id, provider, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
+      'id, provider, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, return_departure_datetime, return_arrival_datetime, return_duration_minutes, return_stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
     )
     .eq('search_id', searchId)
     .order('score', { ascending: false });
@@ -127,7 +127,24 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
           <PriceComparisonCard
             key={result.id}
             title={`${result.airline} · ${result.origin} → ${result.destination}`}
-            subtitle={`${formatDateTime(result.departure_datetime)} → ${formatDateTime(result.arrival_datetime)} · ${formatDurationMinutes(result.duration_minutes)} · ${stopsLabel(result.stops)}`}
+            subtitle={
+              result.return_departure_datetime && result.return_arrival_datetime ? (
+                <>
+                  <span className="block">
+                    Ida: {formatDateTime(result.departure_datetime)} → {formatDateTime(result.arrival_datetime)} ·{' '}
+                    {formatDurationMinutes(result.duration_minutes)} · {stopsLabel(result.stops)}
+                  </span>
+                  <span className="block">
+                    Volta: {formatDateTime(result.return_departure_datetime)} →{' '}
+                    {formatDateTime(result.return_arrival_datetime)} ·{' '}
+                    {formatDurationMinutes(result.return_duration_minutes ?? 0)} ·{' '}
+                    {stopsLabel(result.return_stops ?? 0)}
+                  </span>
+                </>
+              ) : (
+                `${formatDateTime(result.departure_datetime)} → ${formatDateTime(result.arrival_datetime)} · ${formatDurationMinutes(result.duration_minutes)} · ${stopsLabel(result.stops)}`
+              )
+            }
             cashPrice={result.cash_price}
             pointsPrice={result.points_price}
             taxes={result.taxes}

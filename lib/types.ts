@@ -104,6 +104,12 @@ export interface FlightResult {
   arrival_datetime: string;
   duration_minutes: number;
   stops: number;
+  // Perna de volta — só preenchida em resultado de busca ida-e-volta com
+  // dado real (SerpApiFlightProvider) ou mock de ida-e-volta.
+  return_departure_datetime: string | null;
+  return_arrival_datetime: string | null;
+  return_duration_minutes: number | null;
+  return_stops: number | null;
   cash_price: number | null;
   points_price: number | null;
   taxes: number;

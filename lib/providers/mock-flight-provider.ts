@@ -43,6 +43,24 @@ export class MockFlightProvider implements FlightProvider {
       const departure = new Date(baseDate.getTime() + idx * 3600000 + rand() * 6 * 3600000);
       const arrival = new Date(departure.getTime() + durationMinutes * 60000);
 
+      // Perna de volta — só gerada em busca ida-e-volta, pra não deixar o
+      // mock com "menos informação" do que o provider real mostraria pro
+      // mesmo tipo de busca (ver SerpApiFlightProvider.searchRoundTrip).
+      let returnFields: Partial<NormalizedFlightResult> = {};
+      if (params.returnDate) {
+        const returnBase = new Date(params.returnDate);
+        const returnStops = rand() > 0.7 ? 2 : rand() > 0.4 ? 1 : 0;
+        const returnDurationMinutes = Math.round(120 + rand() * 600 + returnStops * 90);
+        const returnDeparture = new Date(returnBase.getTime() + idx * 3600000 + rand() * 6 * 3600000);
+        const returnArrival = new Date(returnDeparture.getTime() + returnDurationMinutes * 60000);
+        returnFields = {
+          returnDepartureDatetime: returnDeparture.toISOString(),
+          returnArrivalDatetime: returnArrival.toISOString(),
+          returnDurationMinutes,
+          returnStops,
+        };
+      }
+
       return {
         provider: 'mock',
         airline: airline.name,
@@ -52,6 +70,7 @@ export class MockFlightProvider implements FlightProvider {
         arrivalDatetime: arrival.toISOString(),
         durationMinutes,
         stops,
+        ...returnFields,
         cashPrice,
         pointsPrice,
         taxes,

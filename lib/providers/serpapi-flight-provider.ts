@@ -22,12 +22,14 @@ import { logger } from '@/lib/logger';
 // código IATA resolvido, cota mensal estourada, rede, resposta malformada)
 // cai transparentemente no MockFlightProvider, com log estruturado.
 //
-// Escopo desta versão: só busca ida simples (one-way) via API real. A busca
-// de ida-e-volta da Google Flights API é um fluxo de 2 passos (2º request
-// usando o `departure_token` da 1ª resposta pra pegar a perna de volta e o
-// preço combinado real) — não implementado ainda; buscas com returnDate
-// preenchido caem pro mock em vez de mostrar preço de só-ida como se fosse
-// o total da viagem. Reavaliar quando o 2º passo for implementado.
+// Ida-e-volta usa o fluxo oficial de 2 passos da Google Flights API: 1)
+// busca type=1 com outbound_date+return_date devolve opções de IDA, cada
+// uma com um `departure_token`; 2) uma nova busca com esse token devolve as
+// opções de VOLTA combinadas com a ida escolhida, e o `price` dessa 2ª
+// resposta é o total real da viagem combinada (documentado em
+// https://serpapi.com/google-flights-api#api-parameters-next-flights). Só
+// expande as N ida mais baratas do passo 1 pra manter o custo de cota
+// previsível (cada ida-e-volta gasta até 1+N buscas reais, não 1).
 
 const SERPAPI_ENDPOINT = 'https://serpapi.com/search.json';
 const DEFAULT_INTERACTIVE_CAP = 200; // plano Free = 250 buscas/mês; margem de segurança
@@ -39,6 +41,10 @@ const DEFAULT_INTERACTIVE_CAP = 200; // plano Free = 250 buscas/mês; margem de 
 const DEFAULT_ALERTS_CAP = 30;
 const MAX_RESULTS = 10;
 const REQUEST_TIMEOUT_MS = 10000;
+// Quantas opções de ida (as mais baratas do passo 1) ganham uma 2ª busca
+// pra achar a volta combinada. Cada busca ida-e-volta gasta até
+// 1 + MAX_ROUND_TRIP_CANDIDATES buscas reais da cota mensal.
+const MAX_ROUND_TRIP_CANDIDATES = 2;
 
 // Google Flights não devolve programa de fidelidade — anexado aqui só como
 // informação de contexto (nunca usado para calcular pointsPrice, que
@@ -81,6 +87,7 @@ interface SerpApiItinerary {
   total_duration: number;
   price: number;
   type?: string;
+  departure_token?: string;
 }
 
 interface SerpApiFlightsResponse {
@@ -182,16 +189,15 @@ function parseGoogleFlightsTime(raw: string, airportId: string): string {
   return new Date(naive.getTime() - offsetHours * 3600000).toISOString();
 }
 
-function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | null {
+// Extrai só os campos de "perna" (origin/destination/horários/duração/
+// paradas) de um itinerário — reaproveitado tanto pra ida (campos
+// principais) quanto pra volta (campos return*) em mapRoundTripItinerary.
+function legFields(itinerary: SerpApiItinerary) {
   const segments = itinerary.flights;
   if (!segments || segments.length === 0) return null;
-
   const first = segments[0];
   const last = segments[segments.length - 1];
-  const loyaltyProgram = AIRLINE_TO_PROGRAM[first.airline] ?? null;
-
   return {
-    provider: 'serpapi',
     airline: first.airline,
     origin: first.departure_airport.id,
     destination: last.arrival_airport.id,
@@ -199,9 +205,63 @@ function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | nul
     arrivalDatetime: parseGoogleFlightsTime(last.arrival_airport.time, last.arrival_airport.id),
     durationMinutes: itinerary.total_duration,
     stops: segments.length - 1,
+  };
+}
+
+function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | null {
+  const leg = legFields(itinerary);
+  if (!leg) return null;
+
+  const loyaltyProgram = AIRLINE_TO_PROGRAM[leg.airline] ?? null;
+
+  return {
+    provider: 'serpapi',
+    airline: leg.airline,
+    origin: leg.origin,
+    destination: leg.destination,
+    departureDatetime: leg.departureDatetime,
+    arrivalDatetime: leg.arrivalDatetime,
+    durationMinutes: leg.durationMinutes,
+    stops: leg.stops,
     cashPrice: typeof itinerary.price === 'number' && itinerary.price > 0 ? itinerary.price : null,
     pointsPrice: null, // Zero Hallucination Policy — ver comentário no topo do arquivo
     taxes: 0, // preço da SerpApi já é o total (all-in)
+    currency: 'BRL',
+    loyaltyProgram,
+  };
+}
+
+// Combina uma opção de IDA (passo 1) com a opção de VOLTA mais barata
+// encontrada pra ela (passo 2) num único NormalizedFlightResult. O preço
+// final é sempre o da resposta do passo 2 (`returnItinerary.price`) — é o
+// único que representa o total real combinado; o price do passo 1 é só uma
+// estimativa preliminar da Google e nunca é usado como cashPrice aqui.
+function mapRoundTripItinerary(
+  outbound: SerpApiItinerary,
+  returnItinerary: SerpApiItinerary
+): NormalizedFlightResult | null {
+  const outboundLeg = legFields(outbound);
+  const returnLeg = legFields(returnItinerary);
+  if (!outboundLeg || !returnLeg) return null;
+
+  const loyaltyProgram = AIRLINE_TO_PROGRAM[outboundLeg.airline] ?? null;
+
+  return {
+    provider: 'serpapi',
+    airline: outboundLeg.airline,
+    origin: outboundLeg.origin,
+    destination: outboundLeg.destination,
+    departureDatetime: outboundLeg.departureDatetime,
+    arrivalDatetime: outboundLeg.arrivalDatetime,
+    durationMinutes: outboundLeg.durationMinutes,
+    stops: outboundLeg.stops,
+    returnDepartureDatetime: returnLeg.departureDatetime,
+    returnArrivalDatetime: returnLeg.arrivalDatetime,
+    returnDurationMinutes: returnLeg.durationMinutes,
+    returnStops: returnLeg.stops,
+    cashPrice: typeof returnItinerary.price === 'number' && returnItinerary.price > 0 ? returnItinerary.price : null,
+    pointsPrice: null, // Zero Hallucination Policy — ver comentário no topo do arquivo
+    taxes: 0,
     currency: 'BRL',
     loyaltyProgram,
   };
@@ -240,31 +300,12 @@ export class SerpApiFlightProvider implements FlightProvider {
     }
   }
 
-  private async searchReal(params: FlightSearchParams): Promise<NormalizedFlightResult[]> {
-    const origin = resolveIataCode(params.origin);
-    const destination = resolveIataCode(params.destination);
-
-    // Sem código IATA resolvido, sem data de ida, ou busca de ida-e-volta
-    // (ver nota de escopo no topo do arquivo) — cai pro mock em vez de
-    // tentar/mostrar um preço que não representaria a viagem completa.
-    if (!origin || !destination || !params.departureDate || params.returnDate) {
-      return new MockFlightProvider().search(params);
-    }
-
-    const yearMonth = currentYearMonthUTC();
-    const cap = this.monthlyCap;
-
-    const usedSoFar = await currentUsageCount(this.quotaBucket, yearMonth);
-    if (usedSoFar >= cap) {
-      return new MockFlightProvider().search(params);
-    }
-
-    const query = new URLSearchParams({
+  private baseQuery(params: FlightSearchParams, origin: string, destination: string): URLSearchParams {
+    return new URLSearchParams({
       engine: 'google_flights',
       departure_id: origin,
       arrival_id: destination,
-      outbound_date: params.departureDate,
-      type: '2', // one way — ver nota de escopo no topo do arquivo
+      outbound_date: params.departureDate as string,
       travel_class: String(travelClassParam(params.cabinClass)),
       adults: String(Math.max(1, params.adults)),
       children: String(Math.max(0, params.children)),
@@ -278,7 +319,9 @@ export class SerpApiFlightProvider implements FlightProvider {
       hl: 'pt',
       api_key: process.env.SERPAPI_KEY as string,
     });
+  }
 
+  private async fetchSerpApi(query: URLSearchParams): Promise<SerpApiFlightsResponse> {
     const response = await fetch(`${SERPAPI_ENDPOINT}?${query.toString()}`, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
@@ -292,6 +335,42 @@ export class SerpApiFlightProvider implements FlightProvider {
     if (data.search_metadata?.status === 'Error' || data.error) {
       throw new Error(`SerpApi: ${data.error ?? 'status Error sem detalhe'}`);
     }
+
+    return data;
+  }
+
+  private async searchReal(params: FlightSearchParams): Promise<NormalizedFlightResult[]> {
+    const origin = resolveIataCode(params.origin);
+    const destination = resolveIataCode(params.destination);
+
+    // Sem código IATA resolvido ou sem data de ida, a API real não tem como
+    // buscar — cai pro mock.
+    if (!origin || !destination || !params.departureDate) {
+      return new MockFlightProvider().search(params);
+    }
+
+    return params.returnDate
+      ? this.searchRoundTrip(params, origin, destination, params.returnDate)
+      : this.searchOneWay(params, origin, destination);
+  }
+
+  private async searchOneWay(
+    params: FlightSearchParams,
+    origin: string,
+    destination: string
+  ): Promise<NormalizedFlightResult[]> {
+    const yearMonth = currentYearMonthUTC();
+    const cap = this.monthlyCap;
+
+    const usedSoFar = await currentUsageCount(this.quotaBucket, yearMonth);
+    if (usedSoFar >= cap) {
+      return new MockFlightProvider().search(params);
+    }
+
+    const query = this.baseQuery(params, origin, destination);
+    query.set('type', '2'); // one way
+
+    const data = await this.fetchSerpApi(query);
 
     // Só registra o gasto de cota depois de confirmar resposta válida —
     // falha de rede/parse acima nunca chega aqui (ver recordSuccessfulUsage).
@@ -312,5 +391,83 @@ export class SerpApiFlightProvider implements FlightProvider {
     // vazio real; não cai pro mock (mostraria voos fictícios onde a
     // realidade é "não há voo").
     return results;
+  }
+
+  private async searchRoundTrip(
+    params: FlightSearchParams,
+    origin: string,
+    destination: string,
+    returnDate: string
+  ): Promise<NormalizedFlightResult[]> {
+    const yearMonth = currentYearMonthUTC();
+    const cap = this.monthlyCap;
+
+    // Pré-checagem exige espaço pro fluxo INTEIRO (1 busca de ida + até
+    // MAX_ROUND_TRIP_CANDIDATES buscas de volta) — sem isso, o fluxo podia
+    // começar, gastar a busca de ida, e abortar no meio por falta de cota
+    // pra buscar a volta, gastando cota sem produzir resultado nenhum.
+    const usedSoFar = await currentUsageCount(this.quotaBucket, yearMonth);
+    if (usedSoFar + 1 + MAX_ROUND_TRIP_CANDIDATES > cap) {
+      return new MockFlightProvider().search(params);
+    }
+
+    // --- Passo 1: opções de ida, cada uma com departure_token ---
+    const outboundQuery = this.baseQuery(params, origin, destination);
+    outboundQuery.set('type', '1'); // round trip
+    outboundQuery.set('return_date', returnDate);
+
+    const outboundData = await this.fetchSerpApi(outboundQuery);
+    await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
+
+    const outboundCandidates = [...(outboundData.best_flights ?? []), ...(outboundData.other_flights ?? [])]
+      .filter((it) => Boolean(it.departure_token))
+      .sort((a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY))
+      .slice(0, MAX_ROUND_TRIP_CANDIDATES);
+
+    if (outboundCandidates.length === 0) {
+      // Resposta "Success" sem nenhuma opção de ida-e-volta pra essa
+      // rota/data — resultado vazio real, não cai pro mock.
+      return [];
+    }
+
+    // --- Passo 2: pra cada ida candidata, busca a volta + preço combinado ---
+    const combined: NormalizedFlightResult[] = [];
+
+    for (const outbound of outboundCandidates) {
+      try {
+        const returnQuery = this.baseQuery(params, origin, destination);
+        returnQuery.set('type', '1');
+        returnQuery.set('return_date', returnDate);
+        returnQuery.set('departure_token', outbound.departure_token as string);
+
+        const returnData = await this.fetchSerpApi(returnQuery);
+        await recordSuccessfulUsage(this.quotaBucket, yearMonth, cap);
+
+        const returnCandidates = [...(returnData.best_flights ?? []), ...(returnData.other_flights ?? [])].sort(
+          (a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY)
+        );
+        const cheapestReturn = returnCandidates[0];
+        if (!cheapestReturn) continue;
+
+        const mapped = mapRoundTripItinerary(outbound, cheapestReturn);
+        if (mapped) combined.push(mapped);
+      } catch (err) {
+        // Uma candidata de ida falhar na busca da volta não derruba as
+        // outras — só essa combinação fica de fora do resultado.
+        logger.warn('integration', 'serpapi: falha buscando volta pra uma candidata de ida', {
+          bucket: this.quotaBucket,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    // Nenhuma combinação ida+volta resolvida de verdade (todas as buscas do
+    // passo 2 falharam) — melhor cair pro mock inteiro do que mostrar só a
+    // ida sem volta, que pareceria um resultado ida-e-volta incompleto.
+    if (combined.length === 0) {
+      throw new Error('serpapi: nenhuma combinação ida+volta resolvida no passo 2');
+    }
+
+    return combined.sort((a, b) => (a.cashPrice ?? Number.POSITIVE_INFINITY) - (b.cashPrice ?? Number.POSITIVE_INFINITY));
   }
 }

@@ -5,7 +5,7 @@ import { formatBRL, formatPoints } from '@/lib/utils';
 
 export interface PriceComparisonCardProps {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   cashPrice: number | null;
   pointsPrice: number | null;
   taxes: number;
