@@ -223,10 +223,13 @@ Ordem sugerida:
   - [ ] `SERPAPI_MONTHLY_CAP` é opcional (default 200 se vazio; só afeta o bucket interativo).
   - [x] **Ida-e-volta também usa dado real (28/08/2026)** — fluxo oficial de 2 passos da
         Google Flights API (`departure_token`): 1ª busca traz as opções de ida mais baratas,
-        2ª busca (por candidata de ida, até `MAX_ROUND_TRIP_CANDIDATES=2`) traz a volta +
-        preço combinado real. Custa até 1+2=3 buscas da cota por pesquisa ida-e-volta (vs 1
-        pra ida simples) — ainda assim sempre com fallback pro mock em qualquer falha/estouro
-        de cota. Schema (`flight_results`) ganhou colunas de perna de volta (migration `0045`).
+        2ª busca (só pra 1 candidata — `MAX_ROUND_TRIP_CANDIDATES=1`, ver comentário em
+        `serpapi-flight-provider.ts` sobre o teto de 10s de função do plano Hobby da Vercel)
+        traz a volta + preço combinado real. Custa até 1+1=2 buscas da cota por pesquisa
+        ida-e-volta (vs 1 pra ida simples) — mostra no máximo 1 card com preço real por
+        busca (a UI avisa isso quando é ida-e-volta). Sempre com fallback pro mock em
+        qualquer falha/estouro de cota. Schema (`flight_results`) ganhou colunas de perna de
+        volta (migrations `0045`/`0046`, com CHECK de sanidade volta-depois-da-ida).
 - [ ] Solicitar acesso Amadeus for Developers, preencher `AMADEUS_CLIENT_ID`/`AMADEUS_CLIENT_SECRET`
 - [ ] Solicitar acesso Duffel, preencher `DUFFEL_ACCESS_TOKEN`
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`

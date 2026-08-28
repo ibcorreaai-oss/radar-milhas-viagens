@@ -221,11 +221,16 @@ function travelClassParam(cabinClass: FlightSearchParams['cabinClass']): number 
 // cidade — corrige pro instante UTC real nesses casos. Fora dessa lista (ou
 // pra quem digitou um código IATA de aeroporto não coberto), cai no
 // best-effort antigo (assume timezone do processo Node — UTC na Vercel),
-// aproximado mas nunca inventado.
-function parseGoogleFlightsTime(raw: string, airportId: string): string {
+// aproximado mas nunca inventado. String realmente não interpretável devolve
+// null — achado em code-review: um fallback pro instante "agora" passava
+// sem ser notado pela guarda de sanidade ida/volta (qualquer volta futura
+// real é "depois de agora"), fabricando um horário de chegada da ida que
+// pareceria real. Melhor descartar o itinerário inteiro (mesmo tratamento
+// de qualquer outro dado malformado neste arquivo) do que inventar "agora".
+function parseGoogleFlightsTime(raw: string, airportId: string): string | null {
   const iso = raw.replace(' ', 'T');
   const naive = new Date(iso);
-  if (Number.isNaN(naive.getTime())) return new Date().toISOString();
+  if (Number.isNaN(naive.getTime())) return null;
 
   const offsetHours = AIRPORT_UTC_OFFSET_HOURS[airportId];
   if (offsetHours == null) return naive.toISOString();
@@ -267,12 +272,21 @@ function legFields(itinerary: SerpApiItinerary): LegFields | null {
 
   const first = segments[0];
   const last = segments[segments.length - 1];
+  const departureDatetime = parseGoogleFlightsTime(first.departure_airport.time, first.departure_airport.id);
+  const arrivalDatetime = parseGoogleFlightsTime(last.arrival_airport.time, last.arrival_airport.id);
+  if (departureDatetime == null || arrivalDatetime == null) {
+    logger.warn('integration', 'serpapi: itinerário com horário não interpretável, descartado', {
+      airline: first.airline,
+    });
+    return null;
+  }
+
   return {
     airline: first.airline,
     origin: first.departure_airport.id,
     destination: last.arrival_airport.id,
-    departureDatetime: parseGoogleFlightsTime(first.departure_airport.time, first.departure_airport.id),
-    arrivalDatetime: parseGoogleFlightsTime(last.arrival_airport.time, last.arrival_airport.id),
+    departureDatetime,
+    arrivalDatetime,
     durationMinutes: itinerary.total_duration,
     stops: segments.length - 1,
   };
@@ -528,10 +542,18 @@ export class SerpApiFlightProvider implements FlightProvider {
         const returnCandidates = [...(returnData.best_flights ?? []), ...(returnData.other_flights ?? [])].sort(
           byCheapest
         );
-        const cheapestReturn = returnCandidates[0];
-        if (cheapestReturn) {
-          const mapped = mapRoundTripItinerary(outbound, cheapestReturn);
-          if (mapped) combined.push(mapped);
+        // Tenta a mais barata primeiro, mas não para na primeira que a
+        // guarda de sanidade de mapRoundTripItinerary rejeitar — as
+        // próximas já vieram de graça na mesma resposta (achado em
+        // code-review: descartar a busca inteira só porque a opção mais
+        // barata tinha um horário malformado, quando a 2ª/3ª mais barata
+        // era válida, desperdiçava dado real já pago pela cota).
+        for (const candidate of returnCandidates) {
+          const mapped = mapRoundTripItinerary(outbound, candidate);
+          if (mapped) {
+            combined.push(mapped);
+            break;
+          }
         }
 
         // Circuito de segurança em tempo real (achado em code-review): se
