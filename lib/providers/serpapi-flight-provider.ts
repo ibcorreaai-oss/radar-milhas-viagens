@@ -154,7 +154,7 @@ function mapItinerary(itinerary: SerpApiItinerary): NormalizedFlightResult | nul
     arrivalDatetime: parseGoogleFlightsTime(last.arrival_airport.time),
     durationMinutes: itinerary.total_duration,
     stops: segments.length - 1,
-    cashPrice: typeof itinerary.price === 'number' ? itinerary.price : null,
+    cashPrice: typeof itinerary.price === 'number' && itinerary.price > 0 ? itinerary.price : null,
     pointsPrice: null, // Zero Hallucination Policy — ver comentário no topo do arquivo
     taxes: 0, // preço da SerpApi já é o total (all-in)
     currency: 'BRL',
@@ -201,6 +201,10 @@ export class SerpApiFlightProvider implements FlightProvider {
       travel_class: String(travelClassParam(params.cabinClass)),
       adults: String(Math.max(1, params.adults)),
       children: String(Math.max(0, params.children)),
+      // O formulário de busca (FlightSearchForm) só tem um campo "Bebês",
+      // sem distinguir colo x assento próprio — mapeado pro caso mais comum
+      // (infants_on_lap). Sem impacto no cashPrice retornado hoje: a UI não
+      // expõe a diferença de tarifa entre as duas categorias.
       infants_on_lap: String(Math.max(0, params.infants)),
       currency: 'BRL',
       gl: 'br',
