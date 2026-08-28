@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PlaneTakeoff, TriangleAlert, Bell } from 'lucide-react';
+import { PlaneTakeoff, TriangleAlert, Bell, BadgeCheck, FlaskConical } from 'lucide-react';
 import { getUserContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDateTime, formatDurationMinutes } from '@/lib/utils';
@@ -51,12 +51,13 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
   const typedSearch = search as FlightSearch;
 
   // Coluna explícita, sem raw_data (jsonb com o payload bruto do provider —
-  // pode ser grande e não é usado nesta tela) nem provider/currency/
-  // created_at (não renderizados aqui).
+  // pode ser grande e não é usado nesta tela) nem currency/created_at (não
+  // renderizados aqui). `provider` entrou pra alimentar o badge de fonte do
+  // dado (real vs estimativa) logo abaixo.
   const { data: results } = await supabase
     .from('flight_results')
     .select(
-      'id, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
+      'id, provider, airline, origin, destination, departure_datetime, arrival_datetime, duration_minutes, stops, cash_price, points_price, taxes, loyalty_program, score, recommendation'
     )
     .eq('search_id', searchId)
     .order('score', { ascending: false });
@@ -133,6 +134,19 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
             loyaltyProgram={result.loyalty_program}
             score={result.score}
             recommendationText={result.recommendation ?? 'Sem recomendação disponível para este resultado.'}
+            extra={
+              result.provider === 'serpapi' ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
+                  Preço real de mercado (Google Flights)
+                </p>
+              ) : (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+                  Estimativa — dados de exemplo, confirme no site oficial
+                </p>
+              )
+            }
           />
         ))}
       </div>

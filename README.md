@@ -208,6 +208,18 @@ Ordem sugerida:
 - [ ] Preencher `ANTHROPIC_API_KEY` (sem isso, o consultor usa um fallback de regras simples, não quebra)
 
 ### 7. APIs de voo/hotel (fora do MVP, opcional)
+- [x] **Voo real implementado de verdade — SerpApi Google Flights (28/08/2026).**
+      Diferente de Amadeus/Duffel/Booking abaixo (que continuam stubs), este está
+      implementado e funcionando: `lib/providers/serpapi-flight-provider.ts`, plano Free da
+      SerpApi (250 buscas/mês, sem cartão), fallback automático pro mock em qualquer
+      erro/estouro de cota (nunca quebra a busca). Cota mensal com guarda própria (teto 200,
+      abaixo do limite real de 250) via RPC atômica `increment_provider_usage`
+      (migrations `0043`/`0044`). Só falta:
+  - [ ] **Colar `SERPAPI_KEY` na Vercel** (Settings → Environments → Production) — a chave já
+        existe (conta `ibcorrea.ai@gmail.com` na SerpApi, criada nesta sessão), mas colar na
+        Vercel é manual, sem ferramenta MCP pra isso (mesma pendência de sempre pras outras
+        chaves). Sem isso, `getFlightProvider()` continua caindo no mock, sem quebrar nada.
+  - [ ] `SERPAPI_MONTHLY_CAP` é opcional (default 200 se vazio).
 - [ ] Solicitar acesso Amadeus for Developers, preencher `AMADEUS_CLIENT_ID`/`AMADEUS_CLIENT_SECRET`
 - [ ] Solicitar acesso Duffel, preencher `DUFFEL_ACCESS_TOKEN`
 - [ ] Solicitar Booking.com Affiliate/Demand API, preencher `BOOKING_API_KEY`
