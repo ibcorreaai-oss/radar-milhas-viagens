@@ -418,22 +418,40 @@ export class SerpApiFlightProvider implements FlightProvider {
     });
   }
 
+  // Instrumentação temporária de latência (diagnóstico ao vivo, 28/08):
+  // REQUEST_TIMEOUT_MS=4500 ainda estourou em produção real depois de já
+  // ter sido subido de 3000 — sem saber a duração real de cada chamada,
+  // qualquer novo valor seria só chute. logger.info aqui é best-effort e
+  // nunca afeta o resultado da busca.
   private async fetchSerpApi(query: URLSearchParams): Promise<SerpApiFlightsResponse> {
-    const response = await fetch(`${SERPAPI_ENDPOINT}?${query.toString()}`, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    const startedAt = Date.now();
+    try {
+      const response = await fetch(`${SERPAPI_ENDPOINT}?${query.toString()}`, {
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      logger.info('integration', 'serpapi: chamada respondeu', {
+        elapsedMs: Date.now() - startedAt,
+        status: response.status,
+      });
 
-    if (!response.ok) {
-      throw new Error(`SerpApi respondeu ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`SerpApi respondeu ${response.status}`);
+      }
+
+      const data = (await response.json()) as SerpApiFlightsResponse;
+
+      if (data.search_metadata?.status === 'Error' || data.error) {
+        throw new Error(`SerpApi: ${data.error ?? 'status Error sem detalhe'}`);
+      }
+
+      return data;
+    } catch (err) {
+      logger.warn('integration', 'serpapi: chamada falhou', {
+        elapsedMs: Date.now() - startedAt,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
-
-    const data = (await response.json()) as SerpApiFlightsResponse;
-
-    if (data.search_metadata?.status === 'Error' || data.error) {
-      throw new Error(`SerpApi: ${data.error ?? 'status Error sem detalhe'}`);
-    }
-
-    return data;
   }
 
   private async searchReal(params: FlightSearchParams): Promise<NormalizedFlightResult[]> {
