@@ -8,6 +8,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { evaluateTripOpportunity } from '@/lib/scoring/opportunity-score';
+import { todayIsoBrazil } from '@/lib/utils';
 import type { ExplainableScore } from '@/lib/scoring/event-score';
 import type { Destination, ExperienceTag } from '@/lib/types';
 
@@ -54,7 +55,7 @@ interface CruiseRow {
 
 export async function getDestinationOpportunities(): Promise<DestinationOpportunity[]> {
   const supabase = await createClient();
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayIsoBrazil();
 
   const [{ data: destinations }, { data: events }, { data: stays }, { data: cruises }] = await Promise.all([
     supabase.from('destinations').select('id, city, country, country_code, continent'),

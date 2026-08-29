@@ -7,6 +7,7 @@ import { isBlocked } from '@/lib/roles';
 import { getHotelProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planAllowsMoreSearchesToday } from '@/lib/plans';
+import { startOfDayBrazil } from '@/lib/utils';
 import type { NormalizedHotelResult } from '@/lib/providers/types';
 
 // Quantidade de noites entre check-in/check-out — usada só para aplicar o
@@ -31,8 +32,7 @@ export async function searchHotels(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   // --- Gate de plano: soma buscas de voos + hotéis feitas hoje ---
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = startOfDayBrazil();
 
   const [{ count: flightCount }, { count: hotelCount }] = await Promise.all([
     supabase

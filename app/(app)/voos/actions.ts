@@ -7,6 +7,7 @@ import { isBlocked } from '@/lib/roles';
 import { getFlightProvider } from '@/lib/providers';
 import { evaluateOpportunity } from '@/lib/scoring/opportunity-engine';
 import { planAllowsMoreSearchesToday } from '@/lib/plans';
+import { startOfDayBrazil } from '@/lib/utils';
 import type { CabinClass } from '@/lib/types';
 
 // Server Action usada diretamente como `action` do formulário de busca de
@@ -21,8 +22,7 @@ export async function searchFlights(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   // --- Gate de plano: soma buscas de voos + hotéis feitas hoje ---
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const startOfDay = startOfDayBrazil();
 
   const [{ count: flightCount }, { count: hotelCount }] = await Promise.all([
     supabase
