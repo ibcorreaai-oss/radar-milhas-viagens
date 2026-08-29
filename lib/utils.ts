@@ -75,6 +75,55 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+// Ano-mês-dia que o relógio mostra agora em America/Sao_Paulo, junto com o
+// offset UTC relatado pelo próprio Intl (funciona também se o Brasil voltar
+// a ter horário de verão, já que não fixa "-03:00" à mão). Base compartilhada
+// de startOfDayBrazil/todayIsoBrazil — um lugar só resolve "que dia é hoje em
+// Brasília", pra não divergir entre os dois usos.
+function brazilDateParts(now: Date): { year: string; month: string; day: string; isoOffset: string } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(now);
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  // timeZoneName vem como "GMT-3" (ou "GMT-2" num eventual horário de
+  // verão) — normaliza pro formato de offset ISO "-03:00".
+  const gmtOffset = get('timeZoneName').replace('GMT', '') || '-3';
+  const sign = gmtOffset.startsWith('-') ? '-' : '+';
+  const hours = String(Math.abs(Number(gmtOffset))).padStart(2, '0');
+
+  return { year: get('year'), month: get('month'), day: get('day'), isoOffset: `${sign}${hours}:00` };
+}
+
+// Início do dia civil em America/Sao_Paulo, como instante UTC — usado pra
+// gates de "buscas hoje" (voos/actions.ts, hoteis/actions.ts). `new
+// Date().setHours(0,0,0,0)` sozinho usa o timezone do processo Node, que na
+// Vercel é UTC: o gate viraria à meia-noite UTC = 21h em Brasília (achado em
+// revisão — nunca documentado/testado antes), resetando a cota diária 3h
+// mais cedo do que o usuário espera.
+export function startOfDayBrazil(now: Date = new Date()): Date {
+  const { year, month, day, isoOffset } = brazilDateParts(now);
+  return new Date(`${year}-${month}-${day}T00:00:00${isoOffset}`);
+}
+
+// "Hoje" (YYYY-MM-DD) em America/Sao_Paulo — usado pra comparar contra
+// colunas DATE (ex.: world_events.start_date em getDestinationOpportunities).
+// `new Date().toISOString().slice(0, 10)` sozinho dá o dia em UTC: entre 21h
+// e 23h59 em Brasília isso já é o dia seguinte, e um evento que começa hoje
+// sumiria da lista de oportunidades nessa janela (mesma classe de bug do
+// startOfDayBrazil acima, achado em revisão).
+export function todayIsoBrazil(now: Date = new Date()): string {
+  const { year, month, day } = brazilDateParts(now);
+  return `${year}-${month}-${day}`;
+}
+
 // Converte lista separada por vírgula (input de formulário) em array de
 // strings limpo, sem entradas vazias.
 export function parseTagsList(raw: FormDataEntryValue | null | undefined): string[] {
