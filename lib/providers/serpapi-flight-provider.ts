@@ -3,6 +3,7 @@ import { MockFlightProvider } from '@/lib/providers/mock-flight-provider';
 import { resolveIataCode, AIRPORT_UTC_OFFSET_HOURS } from '@/lib/airport-codes';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { currentYearMonthBrazil } from '@/lib/utils';
 
 // SerpApiFlightProvider — dados REAIS de mercado (Google Flights, via
 // SerpApi), diferente dos stubs "preparado, não implementado" de
@@ -126,10 +127,6 @@ interface SerpApiFlightsResponse {
 
 export function isSerpApiConfigured(): boolean {
   return Boolean(process.env.SERPAPI_KEY);
-}
-
-function currentYearMonthUTC(): string {
-  return new Date().toISOString().slice(0, 7); // 'YYYY-MM'
 }
 
 // Comparador genérico "mais barato primeiro" (preço ausente/inválido/<=0
@@ -474,7 +471,7 @@ export class SerpApiFlightProvider implements FlightProvider {
     origin: string,
     destination: string
   ): Promise<NormalizedFlightResult[]> {
-    const yearMonth = currentYearMonthUTC();
+    const yearMonth = currentYearMonthBrazil();
     const cap = this.monthlyCap;
 
     const usedSoFar = await currentUsageCount(this.quotaBucket, yearMonth);
@@ -514,7 +511,7 @@ export class SerpApiFlightProvider implements FlightProvider {
     destination: string,
     returnDate: string
   ): Promise<NormalizedFlightResult[]> {
-    const yearMonth = currentYearMonthUTC();
+    const yearMonth = currentYearMonthBrazil();
     const cap = this.monthlyCap;
 
     // Pré-checagem exige espaço pro fluxo INTEIRO (1 busca de ida + até

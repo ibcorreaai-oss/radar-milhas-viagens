@@ -173,10 +173,17 @@ async function FlightResultsSection({ searchId }: { searchId: string }) {
             score={result.score}
             recommendationText={result.recommendation ?? 'Sem recomendação disponível para este resultado.'}
             extra={
-              result.provider === 'serpapi' && result.cash_price != null ? (
+              // `provider === 'serpapi'` sozinho já identifica dado real (o
+              // outro valor possível é 'mock') — exigir `cash_price != null`
+              // aqui rotulava um itinerário real sem preço (a própria API
+              // pode devolver isso) como "dados de exemplo", o oposto do que
+              // é (achado em code-review, revisão 01/09).
+              result.provider === 'serpapi' ? (
                 <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
-                  Preço real de mercado (Google Flights)
+                  {result.cash_price != null
+                    ? 'Preço real de mercado (Google Flights)'
+                    : 'Dados reais (Google Flights) — preço indisponível nesta busca'}
                 </p>
               ) : (
                 <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

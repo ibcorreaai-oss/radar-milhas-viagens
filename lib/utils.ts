@@ -15,12 +15,19 @@ export function formatPoints(value: number): string {
 
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-BR');
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
+// Sem timeZone explícito, toLocaleString usa o timezone do PROCESSO — UTC na
+// Vercel — então um horário de voo real (já convertido pra UTC corretamente
+// por parseGoogleFlightsTime) aparecia 3h adiantado pro usuário em Brasília.
+// Achado em /code-review (revisão 01/09) sobre o diff do SerpApi ida-e-volta;
+// mesma classe de bug que startOfDayBrazil/todayIsoBrazil já corrigiram pra
+// comparações de data, só que nunca tinha sido aplicada aqui.
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
@@ -122,6 +129,15 @@ export function startOfDayBrazil(now: Date = new Date()): Date {
 export function todayIsoBrazil(now: Date = new Date()): string {
   const { year, month, day } = brazilDateParts(now);
   return `${year}-${month}-${day}`;
+}
+
+// "Ano-mês" (YYYY-MM) em America/Sao_Paulo — usado pra bucket mensal de cota
+// (lib/providers/serpapi-flight-provider.ts). Mesma classe de bug de
+// startOfDayBrazil/todayIsoBrazil: bucketar por mês UTC vira o mês ~3h antes
+// da meia-noite real em Brasília (achado em code-review, revisão 01/09).
+export function currentYearMonthBrazil(now: Date = new Date()): string {
+  const { year, month } = brazilDateParts(now);
+  return `${year}-${month}`;
 }
 
 // Converte lista separada por vírgula (input de formulário) em array de
