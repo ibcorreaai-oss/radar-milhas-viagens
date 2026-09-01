@@ -72,7 +72,8 @@ export function AlertForm({
 }) {
   const [type, setType] = useState<AlertType>('voo');
   const [flexibleDates, setFlexibleDates] = useState(false);
-  const [channelEmail, setChannelEmail] = useState(true);
+  const emailAvailable = planHasChannel(plan, 'email');
+  const [channelEmail, setChannelEmail] = useState(emailAvailable);
   const [channelWhatsapp, setChannelWhatsapp] = useState(false);
 
   const whatsappAvailable = planHasChannel(plan, 'whatsapp');
@@ -230,10 +231,28 @@ export function AlertForm({
               <p className="text-sm font-medium">Canais de aviso</p>
               <div className="flex flex-wrap items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <Switch id="channel_email" checked={channelEmail} onCheckedChange={setChannelEmail} />
-                  <Label htmlFor="channel_email" className="cursor-pointer font-normal">
+                  <Switch
+                    id="channel_email"
+                    checked={channelEmail}
+                    onCheckedChange={setChannelEmail}
+                    disabled={!emailAvailable}
+                  />
+                  <Label
+                    htmlFor="channel_email"
+                    className={cn(
+                      'font-normal',
+                      emailAvailable ? 'cursor-pointer' : 'cursor-not-allowed text-muted-foreground'
+                    )}
+                  >
                     E-mail
                   </Label>
+                  {!emailAvailable && (
+                    <Link href="/assinatura">
+                      <Badge variant="accent" className="cursor-pointer">
+                        Disponível no plano Premium
+                      </Badge>
+                    </Link>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -260,7 +279,11 @@ export function AlertForm({
                   )}
                 </div>
               </div>
-              <input type="hidden" name="channel_email" value={channelEmail ? 'true' : 'false'} />
+              <input
+                type="hidden"
+                name="channel_email"
+                value={channelEmail && emailAvailable ? 'true' : 'false'}
+              />
               <input
                 type="hidden"
                 name="channel_whatsapp"

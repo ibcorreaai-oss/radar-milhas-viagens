@@ -46,10 +46,16 @@ export async function createAlert(formData: FormData): Promise<void> {
   const maxCashPrice = type !== 'transferencia' && maxCashPriceRaw ? Number(maxCashPriceRaw) : NaN;
   const maxPointsPrice = maxPointsPriceRaw ? Number(maxPointsPriceRaw) : NaN;
 
+  const wantsEmail = formData.get('channel_email') === 'true';
   const wantsWhatsapp = formData.get('channel_whatsapp') === 'true';
-  // Defesa em profundidade: o switch de WhatsApp já vem desabilitado no
-  // client se o plano não tiver o canal, mas o insert nunca confia só
-  // nisso — o plano do usuário logado (recarregado do banco) manda.
+  // Defesa em profundidade: os switches já vêm desabilitados no client se o
+  // plano não tiver o canal, mas o insert nunca confia só nisso — o plano
+  // do usuário logado (recarregado do banco) manda. Achado em revisão
+  // (01/09): channel_email nunca tinha esse mesmo gate — plano Free
+  // conseguia salvar um alerta com channel_email=true que o cron
+  // (planHasChannel em check-alerts/route.ts) sempre pulava em silêncio,
+  // sem o usuário nunca saber que o alerta não notifica de verdade.
+  const channelEmail = wantsEmail && planHasChannel(ctx.plan, 'email');
   const channelWhatsapp = wantsWhatsapp && planHasChannel(ctx.plan, 'whatsapp');
 
   const parsed = alertSchema.safeParse({
@@ -66,7 +72,7 @@ export async function createAlert(formData: FormData): Promise<void> {
     loyalty_program: loyaltyProgramRaw || null,
     cabin_class: type === 'voo' ? ((cabinClassRaw || null) as CabinClass | null) : null,
     passengers: type === 'voo' ? Math.max(1, Number(passengersRaw) || 1) : 1,
-    channel_email: formData.get('channel_email') === 'true',
+    channel_email: channelEmail,
     channel_whatsapp: channelWhatsapp,
   });
 
