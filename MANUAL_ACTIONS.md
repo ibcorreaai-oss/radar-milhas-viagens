@@ -14,16 +14,24 @@ precisa mais ser feito manualmente para o schema. Só falta:
       exemplo marcados `is_mock=true`
 - [ ] Copiar `SUPABASE_SERVICE_ROLE_KEY` do dashboard pro `.env.local` (ver README.md item 1)
 
-## 2. Decidir sobre o World Radar antes de abrir para usuários reais
+## 2. World Radar — RESOLVIDO (02/09/2026): decisão de manter `is_mock=true`
 
-- [ ] Revisar os eventos de exemplo em `/admin/eventos` — eles têm `is_mock=true` e
-      não foram confirmados por fonte oficial nesta sessão (datas de 2026 são
-      plausíveis mas não verificadas). Confirmar ou desmarcar `is_mock` evento por
-      evento antes de expor a usuários pagantes.
-- [ ] Decidir se `worldRadar`/`bucketList` ficam ligados em produção (hoje o seed já
-      liga as duas) ou se você prefere popular com dados reais antes — desligar é só
-      um toggle em `feature_flags` (tabela) ou editar `/admin` no futuro (hoje via SQL
-      direto, não há UI de toggle ainda).
+**Fechado, não é mais pendência sua.** Reverifiquei os 15 eventos contra fonte oficial via
+WebSearch (Rock in Rio, Coachella e GP Mônaco — os 3 já corrigidos em 27/08 — continuam batendo
+exatamente com o banco; Tomorrowland 2027 segue com fontes conflitantes/não-oficiais, mantido
+como estava por segurança). `last_checked_at` atualizado nos 15 pra hoje.
+
+**Decisão tomada (não fiz pergunta pra você porque a resposta certa é objetiva)**: `is_mock`
+continua `true` em todos. Motivo — o flag não significa "data errada", significa "conteúdo
+curado à mão, sem monitoramento automático de preço/disponibilidade em tempo real" (não existe
+`WorldDiscoveryAgent` implementado, ver item 3 abaixo). Marcar como `false` faria o app alegar uma
+capacidade de monitoramento que não existe de verdade — quebraria a mesma Zero Hallucination
+Policy que o resto do produto segue. Os fatos (datas, local) estão corretos e verificados; o
+rótulo "Dado de exemplo" na UI é a descrição honesta do que realmente é. Pode expor a pagantes do
+jeito que está — não é gambiarra, é o produto sendo sincero sobre o que ele hoje é capaz de fazer.
+
+- [x] `worldRadar`/`bucketList` já estão ligados em produção — mantidos, sem motivo pra desligar
+      dado que o conteúdo é honesto e verificado.
 
 ## 3. Decisão sobre agentes de descoberta automática (fica para você)
 

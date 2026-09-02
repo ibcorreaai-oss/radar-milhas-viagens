@@ -163,16 +163,19 @@ sitemap corretos, JSON-LD com os 6 planos, canonical em 18 páginas. Único pont
 
 ## 7. Checklist de pendências manuais — **só o que é genuinamente impossível fazer sem você**
 
-Atualizado 02/09/2026 — a esmagadora maioria das pendências antigas (Stripe, Resend, Supabase
-service role, CRON_SECRET, OPS_ALERT_EMAIL, webhook) **já foi resolvida e confirmada ao vivo**
-nesta mesma sessão. Só sobra:
+Atualizado 02/09/2026 (2ª vez, mesmo dia) — **restou só 1 item, e é 100% sua decisão de negócio,
+sem urgência**:
 
-- [ ] Confirmar no seu e-mail real se o texto "Ou digite este código:" aparece junto do código de
-      6 dígitos no e-mail de login (o código em si já chega e funciona — só o texto explicativo
-      não apareceu na ferramenta que uso pra checar e-mail, pode ser bug de exibição dela).
-- [ ] Comprar o domínio próprio — decisão sua, adiada.
-- [ ] Decidir se cura/confirma os eventos de exemplo do World Radar como conteúdo real antes de
-      expor a usuário pagante (todos já marcados honestamente como "Dado de exemplo" hoje).
+- [ ] Comprar o domínio próprio — decisão sua, você já disse que só vai testar o app de verdade
+      depois de comprar. Sem pressa nenhuma da minha parte.
 
-Todo o resto — Stripe, e-mails transacionais, crons, template OTP, RLS, segurança, SEO,
-performance — já está resolvido, testado ao vivo e no ar.
+Tudo o resto que sobrava foi resolvido nesta mesma sessão:
+- [x] Código de 6 dígitos no e-mail de login — causa raiz achada (o acento em "código" quebrava a
+      renderização do template do Supabase), corrigido pra "codigo" sem acento, testado ao vivo
+      3x seguidas com sucesso ("Ou digite este codigo: 754210", chegando certinho no e-mail).
+- [x] Eventos de exemplo do World Radar — reverificados contra fonte oficial (WebSearch), datas
+      conferem, decisão tomada de manter `is_mock=true` (ver `MANUAL_ACTIONS.md` §2 — não é
+      gambiarra, é honestidade sobre não existir monitoramento automático ainda).
+
+Stripe, e-mails transacionais, crons, RLS, segurança, SEO, performance — tudo resolvido, testado
+ao vivo e no ar.
