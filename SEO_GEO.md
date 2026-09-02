@@ -131,3 +131,26 @@ Resolvido sem depender disso: `lib/site-url.ts` usa `VERCEL_PROJECT_PRODUCTION_U
 `VERCEL_URL` (variáveis que a própria Vercel expõe automaticamente) como fallback antes de
 `localhost`, então o site se autocorrige mesmo sem nenhuma configuração manual. Confirmado ao
 vivo no domínio publicado depois do redeploy.
+
+## ETAPA 20 v2 (02/09/2026) — reauditoria completa
+
+Fork read-only dedicado, sem alteração de código (nada pra corrigir — tudo confirmado saudável).
+
+- **Metadata única por página**: as 8 páginas públicas checadas (home, termos, privacidade,
+  contato, descobrir, estadias, cruzeiros, aviso-preços, política-afiliados) têm `title`/
+  `description`/`openGraph` próprios — o bug de 27/08 (11 páginas herdando metadata da home)
+  continua corrigido, sem regressão com as mudanças recentes de SerpApi/Stripe/Resend.
+- **`robots.ts`/`sitemap.ts`**: corretos. `robots.ts` desautoriza todas as rotas autenticadas e
+  libera deliberadamente as públicas-sem-login do World Radar (`/descobrir`, `/estadias`,
+  `/cruzeiros`, `/oportunidades-mundiais`, `/onde-ir`), com comentário explicando o motivo.
+  `sitemap.xml` só lista rota realmente pública.
+- **`<html lang="pt-BR">`** presente no root layout.
+- **Structured data**: `Organization` + `SoftwareApplication` com `offers` cobrindo os 6 planos
+  (mensal+anual), gerado a partir de `lib/plans.ts` — mesma fonte de verdade da página de preços,
+  sem risco de divergência.
+- **Canonical**: presente em 18 páginas (todas as públicas relevantes); ausente só nas
+  autenticadas, que corretamente não devem ser indexadas.
+- **Achado de baixo impacto (não corrigido, é melhoria futura)**: existe só um
+  `app/opengraph-image.tsx` global — a imagem de Open Graph é a mesma em toda página (só o texto
+  muda). Gerar uma imagem específica por seção (descobrir, estadias etc.) melhoraria o preview ao
+  compartilhar links dessas páginas — ver checklist de melhorias futuras.

@@ -124,10 +124,29 @@ trade-off já formalizado neste documento pra situação equivalente, não é re
 chamadores. Bundle do `/onboarding` cresceu ~2kB reais com o mascote SVG + wrapper de Web Speech
 API da ETAPA 18 — sem dependência nova, dentro do esperado.
 
+## ETAPA 20 v2 (02/09/2026) — reauditoria completa
+
+Fork read-only dedicado. Nenhum achado de alto/médio impacto — nada corrigido, nada precisava.
+
+- **Bundle**: build limpo, 78 rotas, nenhuma passa de 200kB de First Load JS. Maior é
+  `/admin/treinamentos/aulas/[id]/editar` com 199kB (editor rico, esperado). Home: 144kB.
+- **`export const dynamic = 'force-dynamic'`**: só nas 4 rotas de cron + `/api/health` — uso
+  correto, nenhuma página normal forçada a dynamic sem necessidade.
+- **Zero lib pesada** no bundle (sem lodash/moment/jQuery no `package.json` nem em imports).
+- **`next/image` vs `<img>` cru**: os 6 casos de `<img>` cru (cruise-card, stay-card,
+  world-event-card, páginas `[slug]`) **não são bug** — é decisão de segurança deliberada:
+  `next/image` é usado sempre que o host está na allowlist (`isOptimizableImageHost`, sincronizada
+  com `remotePatterns`), e cai pra `<img>` cru com `loading="lazy"` manual só quando o host não é
+  allowlistado, como proteção contra SSRF caso o campo de URL de capa aceite host arbitrário no
+  futuro. Confirmado que o padrão está correto, não precisa mudar.
+- **N+1**: nenhum padrão real encontrado. Os loops perto de `.from()` em voos/hoteis `actions.ts`
+  seguem o padrão certo — 1 query batch com `.in(...)` seguida de loop **em memória** pra montar
+  Map de lookup, não query por item. `check-alerts` processa em sequência de propósito (isolamento
+  de erro por item, documentado), aceitável por não ser rota de usuário.
+
 ## Checklist manual
 
-- [ ] Depois que o projeto Supabase real existir e tiver tráfego, habilitar o Vercel Speed
-      Insights (gratuito no plano Hobby) pra medir Core Web Vitals de campo de verdade — hoje é
-      só auditoria estática de código, sem dado real de usuário.
 - [ ] Se o admin quiser usar uma imagem de capa de um host fora da allowlist com frequência,
       adicionar o host em `next.config.mjs` E `lib/image-hosts.ts` (as duas listas).
+- [ ] Melhoria futura, baixo impacto: gerar `opengraph-image` específica por seção (descobrir,
+      estadias, cruzeiros) em vez da única imagem OG global — ver `SEO_GEO.md`.

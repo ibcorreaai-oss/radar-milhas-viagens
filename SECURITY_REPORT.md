@@ -103,15 +103,62 @@ scripts silenciosamente — fica como melhoria futura, não como pendência urge
 
 ## 7. O que só você consegue resolver (nenhuma ferramenta minha alcança)
 
-- **`STRIPE_SECRET_KEY`** — a própria Stripe nunca reexibe uma chave secreta depois de criada,
-  nem pro dono da conta; só dá pra copiar uma vez na hora ou gerar uma nova. Não é algo que eu
-  deva ou consiga extrair.
-- **`SUPABASE_SERVICE_ROLE_KEY`** — a ferramenta de API que uso pra Supabase só expõe chaves
-  publicáveis (anon/publishable) de propósito, nunca a service role, por segurança.
-- **Colar env vars no dashboard da Vercel** — não existe ferramenta de API pra isso no acesso que
-  tenho (procurei ativamente, não é falta de tentativa).
-- **Supabase → Authentication → Policies → "Leaked password protection"** — checagem gratuita
-  contra senha vazada (HaveIBeenPwned), é config do serviço de Auth, não SQL/migration.
+**Atualizado 02/09/2026 — a maioria já foi resolvida.** `STRIPE_SECRET_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `OPS_ALERT_EMAIL` e todas as env
+vars da Vercel já estão configuradas e confirmadas funcionando ao vivo (checkout pago completo,
+e-mails, crons). "Leaked password protection" também já confirmado **ativado** no Supabase. Só
+resta:
 
-Nenhum desses bloqueia o site de funcionar — o app já é desenhado pra nunca quebrar sem
-credencial (fallback/mock em todo lugar). Eles só ligam funcionalidade que ainda está desligada.
+- [ ] Template de e-mail "Magic Link" com código de 6 dígitos — funcional (código chega), mas o
+      texto explicativo "Ou digite este código:" não aparece na visualização via API do Resend;
+      pode ser só um bug de exibição da ferramenta — pedir pro Igor conferir na caixa de entrada
+      real antes de investigar mais.
+- [ ] Comprar o domínio próprio — decisão do Igor, adiada.
+
+## 8. ETAPA 20 v2 (02/09/2026) — reauditoria completa pós Stripe/Resend/cron
+
+Rodada nova, pedida pelo Igor depois de resolver Stripe (Price IDs da conta certa), RESEND_API_KEY,
+CRON_SECRET e OPS_ALERT_EMAIL no mesmo dia. Metodologia: fork read-only dedicado, com mandato de
+**testar de verdade, não assumir** — toda alegação abaixo tem teste empírico por trás, não é
+releitura de código.
+
+**IDOR/RLS testado com 2 contas reais, JWT via magic link, requests diretos no REST do Supabase
+(sem passar pelo app)** — confirmado seguro em 7 tabelas: `favorites`, `trips` (privada invisível
+pra outra conta; compartilhada legível mas não editável por quem não é dono), `bucket_lists`,
+`bucket_list_items` (inclusive tentativa de INSERT injetando `bucket_list_id` de outra conta →
+403 explícito), `flight_searches`, `hotel_searches`, `user_loyalty_programs` (mesma policy já
+confirmada nas outras 6, `loyalty_programs` sem dado pra testar com FK válida). Em todo caso:
+leitura cross-account vazia, escrita/delete 0 linhas afetadas, dado do dono nunca alterado
+(reconfirmado lendo de volta como o próprio dono).
+
+**32 arquivos com `'use server'` revisados um a um**: os 10 admin todos com `requireAdmin()`/
+`requireSuperAdmin()`; `viagens/actions.ts` usa um helper próprio `requireOwnedTrip()` que checa
+dono explicitamente além da RLS (defesa em profundidade); todo o resto (assinatura, favoritos,
+bucket-list, perfil, consultor-ia, concierge, montar-viagem, descobrir, estadias, cruzeiros,
+hoteis, voos, treinamentos, alertas) com guard presente em toda função sensível. Nenhum endpoint
+admin órfão sem checagem.
+
+**Secrets no bundle client**: `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`,
+`RESEND_API_KEY`, `CRON_SECRET`, `OPS_ALERT_EMAIL` só aparecem em route handlers/Server
+Actions/libs server-only — nenhum importador `'use client'` toca neles.
+
+**Rate limiting reconfirmado ao vivo**: as 2 RPCs de contador (`increment_home_chat_message_count`,
+`increment_contact_message_count`) continuam com `EXECUTE` revogado de `anon`/`authenticated`
+(testado via `has_function_privilege` + chamada REST direta → 401) — fix de 27/08 não regrediu.
+
+**SQL injection**: nenhum padrão de concatenação de string em query. Único `.or()` dinâmico
+(`refresh-promotions/route.ts:58`) usa data gerada só pelo servidor, zero influência de input
+externo, rota protegida por `CRON_SECRET`.
+
+**Headers**: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+`Permissions-Policy` confirmados globais em `next.config.mjs`. CSP segue deliberadamente ausente
+(mesma decisão já revisada — pixels de terceiros opcionais quebrariam sem tráfego real pra
+calibrar).
+
+**`window.confirm()` no botão "Excluir" de alertas** — travou a ferramenta de automação em
+browser (comportamento esperado e documentado: diálogo nativo do navegador bloqueia o CDP). Não é
+bug — é o padrão de confirmação da própria interface, funciona normal pra um usuário real. Vale
+registrar aqui só pra nenhuma auditoria futura reabrir isso como suspeita.
+
+**Nenhum achado novo de segurança nesta rodada — zero fix necessário.** `git status` limpo antes
+e depois da auditoria.

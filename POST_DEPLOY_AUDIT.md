@@ -109,49 +109,70 @@ protegida do site publicado ficava sem verificação de sessão de verdade (ver 
 dado (fallback mostra só estado vazio genérico), mas o gate não rodava. Já corrigido nesta
 mesma etapa antes de qualquer usuário real ter acessado o site.
 
-## 5. Checklist de melhorias futuras (não-bloqueantes, para quando fizer sentido)
+## 5. ETAPA 20 v2 (02/09/2026) — reauditoria completa pós Stripe/Resend/cron
 
-- [ ] Content-Security-Policy — deliberadamente não implementada ainda (ETAPA 19): o app carrega
-      scripts de terceiros opcionais (GA4, Meta/Google/TikTok/Twitter pixel) e uma CSP mal
-      calibrada sem tráfego real pra testar contra correria o risco de quebrar algum
-      silenciosamente. Revisitar quando os pixels de anúncio forem configurados de verdade.
+Pedida pelo Igor no mesmo dia em que Stripe (Price IDs da conta certa, `acct_1SvLpN2Zak4ptRAo`),
+`RESEND_API_KEY`, `CRON_SECRET` e `OPS_ALERT_EMAIL` foram resolvidos e testados ao vivo (checkout
+pago completo com cartão de teste, webhook confirmado, e-mail de ativação entregue). Auditoria
+rodada em 3 frentes paralelas (forks read-only dedicados) + verificação própria de 1 achado
+ambíguo. Detalhe completo de cada frente já em `SECURITY_REPORT.md` §8, `SEO_GEO.md`
+"ETAPA 20 v2" e `PERFORMANCE.md` "ETAPA 20 v2" — aqui só o resumo executivo.
+
+**Funcional/UX/responsividade**: todas as páginas públicas e a maioria das autenticadas navegadas
+de verdade (não só lidas no código), zero erro de console em 5+ páginas testadas, RBAC confirmado
+(usuário comum em `/admin` redireciona sem vazar nada), fluxo de criar/editar alerta funcionando
+com gate de plano correto. Único ponto investigado a fundo: o botão "Excluir" de alerta trava a
+automação de browser — confirmado que é `window.confirm()` nativo (`components/ui/
+confirm-submit-button.tsx`), comportamento esperado do navegador, não bug do app. Responsividade
+mobile (390px) **não foi possível testar nesta rodada** — limitação da ferramenta de automação
+(`resize_window` não mudou `window.innerWidth` de verdade), não falha do app; fica pra retestar
+com outra abordagem numa próxima sessão.
+
+**Segurança**: IDOR testado empiricamente (JWT real de 2 contas, requests diretos no REST,
+sem passar pelo app) em 7 tabelas — todas seguras. 32 Server Actions revisadas uma a uma — todas
+com guard de auth. Zero secret vazando no bundle client. Rate limiting das RPCs públicas
+reconfirmado. Zero SQL injection. Headers de segurança presentes. **Nenhum achado novo.**
+
+**SEO**: metadata única em todas as páginas públicas (bug de 27/08 continua corrigido), robots/
+sitemap corretos, JSON-LD com os 6 planos, canonical em 18 páginas. Único ponto de melhoria
+(baixo impacto): imagem de Open Graph é global, não por seção.
+
+**Performance**: nenhuma rota passa de 200kB de First Load JS, zero lib pesada, `next/image` vs
+`<img>` cru é decisão de segurança deliberada (não bug), zero padrão N+1 real encontrado.
+
+**Veredito**: app segue saudável depois das correções de hoje — nenhuma regressão introduzida.
+
+## 6. Checklist de melhorias futuras (não-bloqueantes, para quando fizer sentido)
+
+- [ ] Content-Security-Policy — deliberadamente não implementada ainda: o app carrega scripts de
+      terceiros opcionais (GA4, Meta/Google/TikTok/Twitter pixel) e uma CSP mal calibrada sem
+      tráfego real pra testar contra correria o risco de quebrar algum silenciosamente. Revisitar
+      quando os pixels de anúncio forem configurados de verdade.
 - [ ] Alertas com frequência menor que 1x/dia — exige upgrade pro plano Pro da Vercel (custo
       recorrente, decisão sua).
-- [ ] Agentes de descoberta automática de eventos do World Radar (§46 do PROMPT 3.0 original) —
-      decisão pendente de fonte de dados, sem custo de API novo aprovado ainda.
-- [ ] Dashboard interno de métricas de engajamento por coorte (D1/D7/D30) — `GROWTH.md` já cobre
-      ativação/conversão/churn, retenção por coorte é extensão real pra etapa dedicada.
-- [ ] Revisar o copy de todos os e-mails transacionais antes de considerar o produto em
-      divulgação ampla (pendência já registrada em `GROWTH.md`).
+- [ ] Agentes de descoberta automática de eventos do World Radar — decisão pendente de fonte de
+      dados, sem custo de API novo aprovado ainda.
 - [ ] Conteúdo do Mini LMS (Central de Treinamentos) todo em rascunho esperando vídeo real.
-- [ ] Focus trap no drawer mobile (menu hambúrguer) — funciona com Esc/clique-fora, mas não
-      prende Tab dentro do painel ainda (achado em auditoria de acessibilidade, não bloqueante).
+- [ ] Imagem de Open Graph específica por seção (descobrir/estadias/cruzeiros) em vez da única
+      imagem global — melhoria de baixo impacto, ver `SEO_GEO.md`.
+- [ ] Popular `loyalty_programs` de verdade — `/programas` mostra catálogo vazio hoje (os
+      cálculos de milheiro em `/hoteis`/`/voos` funcionam normal porque não dependem dessa
+      tabela; é lacuna de conteúdo, não bug).
+- [ ] Retestar responsividade mobile (390px) numa próxima sessão com outra abordagem — não deu
+      pra confirmar desta vez por limitação da ferramenta de automação, não do app.
 
-## 6. Checklist de pendências manuais — **só o que é genuinamente impossível fazer sem você**
+## 7. Checklist de pendências manuais — **só o que é genuinamente impossível fazer sem você**
 
-Fui atrás de cada uma dessas de novo nesta etapa, com ferramentas reais (Vercel/Supabase/Stripe
-MCP), antes de listar — não é uma lista por preguiça, é o que sobrou depois de tentar:
+Atualizado 02/09/2026 — a esmagadora maioria das pendências antigas (Stripe, Resend, Supabase
+service role, CRON_SECRET, OPS_ALERT_EMAIL, webhook) **já foi resolvida e confirmada ao vivo**
+nesta mesma sessão. Só sobra:
 
-- [ ] **`STRIPE_SECRET_KEY`** — a Stripe nunca re-exibe uma chave secreta depois de criada, pra
-      ninguém, nem pra você mesmo sem gerar uma nova ou revelar no dashboard. Não é limite da
-      integração, é como a Stripe funciona por design. Developers → API keys → "Reveal test key".
-- [ ] **`SUPABASE_SERVICE_ROLE_KEY`** — testei a ferramenta de API disponível
-      (`get_publishable_keys`); ela só devolve chaves públicas/anon por design, nunca a
-      service role. Dashboard → Project Settings → API Keys.
-- [ ] **`RESEND_API_KEY`** / **`ANTHROPIC_API_KEY`** — contas externas que eu não tenho acesso
-      nenhum.
-- [ ] **Colar as 3 chaves acima (+ `STRIPE_WEBHOOK_SECRET`, `CRON_SECRET`) no dashboard da
-      Vercel** — não existe ferramenta MCP pra setar env var lá (procurei, confirmado). As
-      públicas (Supabase URL/anon) eu já resolvi sozinho via `.env.production` (ver §0) — só
-      essas 5 realmente secretas continuam presas ao dashboard.
-- [ ] **Ativar "Leaked password protection"** no Supabase (Authentication → Policies) — é
-      config do serviço de Auth, não SQL/migration, sem ferramenta pra isso.
-- [ ] **Comprar o domínio próprio** — você já disse que quer fazer isso você mesmo; depois que
-      tiver, eu aponto no projeto da Vercel (HTTPS vem automático, não precisa configurar nada
-      à parte).
-- [ ] Criar o webhook da Stripe (`STRIPE_WEBHOOK_SECRET`) — só depois do domínio, porque a
-      Stripe precisa de uma URL pública de verdade pra entregar o evento.
+- [ ] Confirmar no seu e-mail real se o texto "Ou digite este código:" aparece junto do código de
+      6 dígitos no e-mail de login (o código em si já chega e funciona — só o texto explicativo
+      não apareceu na ferramenta que uso pra checar e-mail, pode ser bug de exibição dela).
+- [ ] Comprar o domínio próprio — decisão sua, adiada.
+- [ ] Decidir se cura/confirma os eventos de exemplo do World Radar como conteúdo real antes de
+      expor a usuário pagante (todos já marcados honestamente como "Dado de exemplo" hoje).
 
-Todo o resto — deploy, correções de bug, criação de produtos/preços na Stripe, workflow n8n,
-migrations no banco, ajuste de cron pro plano Hobby, fix de URL de produção — já está feito e no
-ar.
+Todo o resto — Stripe, e-mails transacionais, crons, template OTP, RLS, segurança, SEO,
+performance — já está resolvido, testado ao vivo e no ar.
